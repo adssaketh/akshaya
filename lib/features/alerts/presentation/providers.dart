@@ -96,10 +96,14 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
         return;
       }
 
-      final List<ItemWithBatches> items =
-          await ref.read(itemsStreamProvider.future);
-      final List<ShoppingEntry> entries =
-          await ref.read(shoppingEntriesProvider.future);
+      // Both are listened to below; when either has not loaded yet, the
+      // listener queues another pass as soon as it does.
+      final List<ItemWithBatches>? items = ref.read(itemsStreamProvider).value;
+      final List<ShoppingEntry>? entries =
+          ref.read(shoppingEntriesProvider).value;
+      if (items == null || entries == null) {
+        return;
+      }
       await gateway.initialize();
       await scheduler.refresh(
         settings: settings,

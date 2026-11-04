@@ -24,6 +24,10 @@ class AlertsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AlertSettings settings = ref.watch(alertSettingsProvider);
     final bool? allowed = ref.watch(notificationsAllowedProvider).value;
+    // Kept loaded for the preview button.
+    ref
+      ..watch(itemsStreamProvider)
+      ..watch(shoppingEntriesProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,7 +186,6 @@ class AlertsSection extends ConsumerWidget {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final NotificationGateway gateway = ref.read(notificationGatewayProvider);
     try {
-      debugPrint('DBG preview start');
       if (!await gateway.areNotificationsAllowed()) {
         showMessage(
           messenger,
@@ -190,13 +193,14 @@ class AlertsSection extends ConsumerWidget {
         );
         return;
       }
-      debugPrint('DBG allowed');
-      final List<ItemWithBatches> items =
-          await ref.read(itemsStreamProvider.future);
-      debugPrint('DBG items ${items.length}');
-      final List<ShoppingEntry> entries =
-          await ref.read(shoppingEntriesProvider.future);
-      debugPrint('DBG entries ${entries.length}');
+      // Watched in build, so both are already loaded (or still loading).
+      final List<ItemWithBatches>? items = ref.read(itemsStreamProvider).value;
+      final List<ShoppingEntry>? entries =
+          ref.read(shoppingEntriesProvider).value;
+      if (items == null || entries == null) {
+        showMessage(messenger, 'Still loading your pantry. Try again.');
+        return;
+      }
       final List<AlertNotification> shown =
           await ref.read(alertSchedulerProvider).showPreview(
                 settings: settings,
