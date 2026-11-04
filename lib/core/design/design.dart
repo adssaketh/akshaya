@@ -12,6 +12,7 @@ export 'tokens/status_kind.dart';
 export 'typography/akshaya_text.dart';
 export 'widgets/akshaya_header.dart';
 export 'widgets/akshaya_logo.dart';
+export 'widgets/checklist_card.dart';
 export 'widgets/empty_state.dart';
 export 'widgets/item_card.dart';
 export 'widgets/kolam_motif.dart';

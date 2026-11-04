@@ -5,6 +5,10 @@
 
 import 'package:drift/drift.dart';
 
+import '../../../shopping/data/database/shopping_tables.dart';
+import '../../../shopping/domain/shopping_entities.dart'
+    show kDefaultListId, kDefaultListName;
+import '../../../shopping/domain/shopping_enums.dart';
 import '../../domain/consumption_type.dart';
 import '../../domain/default_categories.dart';
 import '../../domain/storage_location.dart';
@@ -20,6 +24,7 @@ part 'app_database.g.dart';
 /// Schema history:
 ///  - v1 (Phase 1): categories, items, item_aliases, stock_batches,
 ///    consumption_logs.
+///  - v2 (Phase 2): shopping_lists, shopping_entries (+ the default list).
 ///
 /// Later phases add tables through migrations in [migration]; never edit a
 /// released version in place.
@@ -30,13 +35,15 @@ part 'app_database.g.dart';
     ItemAliases,
     StockBatches,
     ConsumptionLogs,
+    ShoppingLists,
+    ShoppingEntries,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -44,7 +51,39 @@ class AppDatabase extends _$AppDatabase {
       onCreate: (Migrator m) async {
         await m.createAll();
         await _seedCategories();
+        await _seedDefaultList();
       },
+      onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 2) {
+          await m.createTable(shoppingLists);
+          await m.createTable(shoppingEntries);
+          // Same indexes a fresh install gets from createAll().
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS shopping_entries_list_idx '
+            'ON shopping_entries (list_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS shopping_entries_item_idx '
+            'ON shopping_entries (item_id)',
+          );
+          await _seedDefaultList();
+        }
+      },
+    );
+  }
+
+  /// The list every install starts with (fixed id, so synced devices agree).
+  Future<void> _seedDefaultList() async {
+    final DateTime now = DateTime.now();
+    await into(shoppingLists).insert(
+      ShoppingListsCompanion.insert(
+        id: kDefaultListId,
+        name: kDefaultListName,
+        sortOrder: 0,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      mode: InsertMode.insertOrIgnore,
     );
   }
 

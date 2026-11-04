@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../pantry/presentation/pantry_screen.dart';
 import '../settings/settings_screen.dart';
+import '../shopping/presentation/shopping_screen.dart';
 
 /// Bottom navigation: Home, Pantry, Shopping, Recipes, Settings.
-/// Only Pantry and Settings exist in Phase 1; the rest are placeholders.
+/// Pantry, Shopping and Settings are live; Home and Recipes are placeholders.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -29,11 +30,7 @@ class _AppShellState extends State<AppShell> {
             body: 'Your dashboard arrives in a later phase.',
           ),
           PantryScreen(),
-          _Placeholder(
-            icon: Icons.shopping_basket_rounded,
-            title: 'Shopping list',
-            body: 'Lists and low-stock suggestions arrive in Phase 2.',
-          ),
+          ShoppingScreen(),
           _Placeholder(
             icon: Icons.soup_kitchen_rounded,
             title: 'Recipes',

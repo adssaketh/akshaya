@@ -6,11 +6,59 @@ App name: Akshaya (spec placeholder "Pantry" is replaced everywhere). Repo: `ads
 
 | Phase | State |
 | --- | --- |
-| 0 Design research and design system | Built. Gets its first real analyze/test run in CI with Phase 1. |
-| 1 Data model, database, pantry CRUD, add/use items | Built, not yet compiled (no SDK in the sandbox). First CI run will be the real check. |
-| 2 to 8 | Not started |
+| 0 Design research and design system | Done. Green in CI. |
+| 1 Data model, database, pantry CRUD, add/use items | Done. CI green, APK installed and checklist passed. |
+| 2 Shopping list + auto-suggestions | Built, not yet compiled (no Dart SDK reachable from my sandbox). First CI run is the real check. |
+| 3 to 8 | Not started |
 
-## Phase 1: what is built
+## Phase 2: what is built
+
+Shopping tab (replaces the placeholder): multiple named lists, entries grouped by category, check-off into an "In basket" section, urgent entries first, recurring entries (daily / weekly / monthly), computed restock suggestions, "Done shopping" into the pantry (expiry and price only, plus one optional store field), share as plain text, undo on every destructive action. Drift schema v2 with a real migration.
+
+### Files (new or changed in Phase 2)
+
+```
+pubspec.yaml                                      + share_plus ^13.3.1
+.github/workflows/android.yml                     pubspec.lock is now committed whenever it changes
+lib/core/design/design.dart                       + export checklist_card
+lib/core/design/widgets/checklist_card.dart       NEW design widget: check-off row
+lib/core/share/share_service.dart                 NEW ShareService + share_plus implementation
+lib/features/shell/app_shell.dart                 Shopping tab is live
+lib/features/pantry/data/database/app_database.dart   schema v2, onUpgrade, default list seed
+lib/features/shopping/domain/
+  shopping_enums.dart                             Recurrence (+ nextDue), AddedReason, ShoppingPriority
+  shopping_entities.dart                          ShoppingList, ShoppingEntry, drafts, tokens, CheckoutLine/Result
+  shopping_repository.dart                        interface
+  shopping_suggestions.dart                       pure restock rules
+  shopping_view.dart                              pure grouping / ordering
+  shopping_share.dart                             plain-text share format
+lib/features/shopping/data/
+  database/shopping_tables.dart                   shopping_lists, shopping_entries
+  drift_shopping_repository.dart                  incl. Done shopping transaction + undo
+lib/features/shopping/presentation/
+  providers.dart, shopping_screen.dart, shopping_actions.dart,
+  entry_form_screen.dart, checkout_screen.dart
+test/core/design/checklist_card_test.dart
+test/features/shopping/domain/                    suggestions, view/recurrence/share, test data
+test/features/shopping/data/                      repository + v1->v2 migration test
+test/features/shopping/presentation/              fake repository, widget tests
+```
+
+### Key decisions (Phase 2)
+
+- **Schema v2** adds `shopping_lists` and `shopping_entries`, both with the standard sync columns. Entries carry `recurrence` and `dueOn` (no separate rules table). `onUpgrade` creates both tables and the indexes, and seeds the default list. A test builds a v1 database, upgrades it, and checks the result.
+- **Default list** has the fixed id `list_default` and the name "Shopping list" (renamable), so synced devices agree on it. The last list can never be deleted.
+- **Entries always store an English `name`**; `itemId` is set when the entry is linked to a pantry item (picked from the autocomplete, or typed exactly as an item name or alias).
+- **Suggestions are computed, not stored.** Out of stock (only if the item was ever bought or is essential), everything left is past its date, or usable stock at or below the low-stock level. Expired stock does not count as stock. Quantity = what was bought last time. Items already on any list (by item or name) are skipped. "Dismiss" lasts until the app restarts. Out of stock is saved as reason `lowStock`, because the spec has no out-of-stock reason.
+- **Adding a duplicate merges** into the unchecked entry already on that list (same item or name, convertible unit, same repeat) by adding the quantity; urgent wins.
+- **Recurrence:** buying a repeating entry unchecks it, sets `dueOn` to the next date from today, and marks it reason `recurring`. Until due it sits in a collapsed "Repeats later" section and cannot be ticked.
+- **Done shopping** runs in one transaction. Linked entry adds a batch to the item; a free-text entry reuses the pantry item with the same name or creates one (category Other, entry's unit). Purchase date = today, location = the item's usual one. Any failure (for example a unit that cannot convert) rolls everything back. Undo removes the batches and any new items and restores the entries as they were.
+- **Price semantics** match Phase 1: price is the total paid for that entry's batch. Prices accept "1,250".
+- **Share** uses the system share sheet (`share_plus`); if it cannot open, the text is copied to the clipboard instead. Only unchecked, due entries are shared.
+- **FABs need unique `heroTag`s** because every tab stays alive in the IndexedStack. The Shopping FAB uses `shopping-add-fab`; give each later tab its own.
+- **Design system:** added `ChecklistCard` (with tests). Everything else uses existing tokens.
+
+## Phase 1: what was built (unchanged)
 
 Drift database (schema v1), pantry CRUD, add/use/waste with FIFO and undo, pantry list with search/group/sort/status filter, item detail (batches, usage history, price history), 5-tab shell (only Pantry and Settings are live), CI.
 
@@ -63,31 +111,36 @@ test/features/pantry/presentation/            pantry + add-item widget tests (fa
 1. Import `package:akshaya/core/design/design.dart`; use only its tokens, text styles and widgets.
 2. Missing a token or widget? Add it to the design system first, with a test, then use it.
 3. Use `ThemeMode.system` by default; the manual override arrives with Settings (Phase 8).
+4. Give every FAB a unique `heroTag`.
 
-## Test checklist (you), Phase 1
+## Test checklist (you), Phase 2
 
-1. `git pull --rebase`, then run the push script. Open the Actions tab: the `bootstrap`, `verify` and `build-apk` jobs should go green. Paste me any red log.
-2. Download the `akshaya-debug-apk` artifact and install it.
-3. Settings tab > Load sample data. Pantry should show 10 items across statuses (Fresh, Expiring, Expired, Low stock, Out of stock).
-4. Search a sample item by its Telugu or Hindi alias (e.g. "biyyam", "chawal", "ullipaya"); it should match.
-5. Group by Category / Location; sort by each option; tap a status chip to filter.
-6. Add item: new item with quantity and expiry shortcut; type an existing name and confirm it adds stock rather than erroring.
-7. Swipe right to Use: quick amounts, custom amount, using more than you have (should show an error), using across two batches (oldest expiry first). Undo.
-8. Item detail: edit a batch, mark wasted, mark expired, delete batch (Undo each), check usage and price history.
-9. Delete an item from the list and Undo.
-10. Rotate, switch light/dark, set system font to 200%: nothing should overflow.
-11. Kill and reopen the app: data persists; leave it overnight or change the date: statuses update on resume.
+1. Run the push script, then open the Actions tab. `verify` (analyze + tests) and `build-apk` should go green. Paste me any red log. CI will also commit an updated `pubspec.lock` (adds `share_plus`): run `git pull --rebase` before your next push.
+2. Install the new APK over the old one. Your pantry data must still be there (this exercises the v1 to v2 migration). Shopping tab shows "Shopping list" and an empty state.
+3. Settings > Load sample data. Shopping tab should show **Suggested for you (4)**: Tomato (out of stock), Curd (expired), then Onion and Toor Dal (low stock), each with "buy" = the last purchase size. Rice, Milk, Ghee, Turmeric, Atta and Peanuts must not appear. Nothing is added by itself.
+4. Tap the + on one suggestion: it joins the list, quantity = what you bought last time, a reason chip shows. Tap Add all; tap the x on one to dismiss it.
+5. Add item: type a pantry name or an alias ("biyyam", "chawal"): the pantry item is suggested; pick it. The unit list narrows to units that convert. Add a free-text item ("Candles", 4 pcs). Add the same item twice: one entry, quantities added.
+6. Mark one entry Urgent (it sorts first). Give another a Repeat of "Every week".
+7. Tick a few entries: they move to **In basket** and a **Done shopping (n)** button appears. Untick one.
+8. Swipe an entry left: removed, Undo brings it back. Tap an entry to edit it, change its list.
+9. New list "DMart", add something, switch between lists (chips show the open count). Rename it, delete it (Undo restores its entries). Try to delete the only list (should refuse).
+10. Done shopping: add expiry with the shortcut chips, a price like 1,250, and a store. Confirm. Pantry shows the new stock (batch details: today's date, your price/store). The free-text item now exists in the pantry under Other. Undo works and removes the stock again.
+11. The weekly-repeat entry: after Done shopping it returns unchecked under "Repeats later", dated 7 days ahead.
+12. List menu > Share as text: WhatsApp preview shows the list by category.
+13. Rotate, dark mode, system font at 200%: no overflow.
 
 ## Known issues
 
-- Nothing has been compiled, analyzed or run (no Dart SDK in my sandbox). Code was reviewed by hand against upstream sources, but expect a few fixes from the first CI run (likely: lints, a Riverpod 3 or Drift 2.35 API detail, a widget-test finder).
-- The CI auto-commit of `android/` means your local clone goes behind after the first run.
-- Riverpod 3 retries failed providers by default; a persistent DB error may retry quietly before showing the error state.
-- `sqlite3` native library is needed for repository tests in CI; the workflow installs `libsqlite3-dev`. If tests fail to find it, tell me.
-- Settings tab is temporary (sample data + design gallery).
-- No `google-services.json` is needed until Phase 6; the CI step is skipped when the secret is empty.
+- Not compiled or run in my sandbox (the Dart SDK download is blocked there). Hand-reviewed only, so expect a few small fixes from the first CI run (likely: a lint, a Drift generated-name detail, a widget-test finder).
+- `share_plus` 13 needs AGP 8.12.1+, Gradle 8.13+, Kotlin 2.2+ (your project has AGP 9.1, Gradle 9.3, Kotlin 2.4), but I could not test the Android build with it. If `build-apk` fails on the plugin, paste the log.
+- "Done shopping" relies on nested Drift transactions (checkout calls the pantry repository inside its own transaction). The rollback test covers it; if it fails in CI that is the first place to look.
+- Free-text entries become pantry items in category **Other** with no low-stock level; edit them in Pantry afterwards.
+- Dismissed suggestions come back after an app restart (not stored).
+- Phase 1's batch form still reads a price like "1,250" as 1.25 (it treats the comma as a decimal point). Done shopping handles it correctly. I can fix the Phase 1 form in the next phase.
+- Voice entry (reason `voice`) and recipe entries (reason `recipe`) are in the data model but arrive in Phases 5 and 7. Daily "low stock" notifications arrive in Phase 4.
+- Settings tab is still temporary (sample data + design gallery).
 
-## Next: Phase 2 (shopping list + auto-suggestions)
+## Next: Phase 3 (barcode scanning + Open Food Facts lookup)
 
 Start in a new chat when you say so.
 
@@ -143,4 +196,3 @@ PROGRESS.md
 - No hard-coded colours outside `akshaya_colors.dart`: enforced by `no_hardcoded_colors_test.dart` (`Colors.transparent` allowed).
 - Chips ellipsise at 144 dp so large system font sizes never overflow rows.
 - Icons: Material rounded/outlined icons; category icons are chosen per item in Phase 1.
-
