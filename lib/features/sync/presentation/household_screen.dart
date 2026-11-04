@@ -49,21 +49,20 @@ class HouseholdScreen extends ConsumerWidget {
                 child: Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: const BoxDecoration(
-                    // A QR code needs dark-on-light in every theme to scan.
-                    color: Colors.white,
+                    color: AkshayaColors.qrBackground,
                     borderRadius: AppRadius.controlBorder,
                   ),
                   child: QrImageView(
                     data: InviteCode.qrPayload(code),
                     size: AppSizes.qrCode,
-                    backgroundColor: Colors.white,
+                    backgroundColor: AkshayaColors.qrBackground,
                     eyeStyle: const QrEyeStyle(
                       eyeShape: QrEyeShape.square,
-                      color: Colors.black,
+                      color: AkshayaColors.qrForeground,
                     ),
                     dataModuleStyle: const QrDataModuleStyle(
                       dataModuleShape: QrDataModuleShape.square,
-                      color: Colors.black,
+                      color: AkshayaColors.qrForeground,
                     ),
                   ),
                 ),

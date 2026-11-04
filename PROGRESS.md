@@ -414,7 +414,7 @@ test/features/sync/                                merge, documents, invite code
 
 - Categories are synced too (not in the spec list) because items point at them.
 - `image_path` is not synced (local path, no Storage uploads).
-- The QR code is drawn black on white in every theme so it scans (the one hard-coded colour).
+- The QR code is drawn black on white in every theme so it scans (tokens `AkshayaColors.qrForeground` and `qrBackground`).
 
 ## Test checklist (you), Phase 6
 

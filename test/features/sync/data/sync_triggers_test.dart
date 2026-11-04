@@ -31,6 +31,8 @@ void main() {
   });
 
   test('changing the status itself does not loop', () async {
+    // Moving the status itself (pending, then synced) never re-queues a row.
+    await db.customStatement("UPDATE items SET sync_status = 'pending'");
     await db.customStatement("UPDATE items SET sync_status = 'synced'");
     expect(await pending(), 0);
   });

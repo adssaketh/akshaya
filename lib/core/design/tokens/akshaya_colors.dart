@@ -74,6 +74,10 @@ class AkshayaColors extends ThemeExtension<AkshayaColors> {
   final StatusColors lowStock;
   final StatusColors outOfStock;
 
+  /// QR codes must be dark on light in every theme to scan.
+  static const Color qrForeground = Color(0xFF000000);
+  static const Color qrBackground = Color(0xFFFFFFFF);
+
   static const AkshayaColors light = AkshayaColors(
     background: Color(0xFFFBF5EC),
     surface: Color(0xFFFFFFFF),
