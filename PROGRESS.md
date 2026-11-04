@@ -1,6 +1,6 @@
-# Akshaya: PROGRESS
+# Akshaya Patra: PROGRESS
 
-App name: Akshaya (spec placeholder "Pantry" is replaced everywhere). Repo: `adssaketh/akshaya`. Firebase Spark plan only.
+App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code package stays `akshaya`). Repo: `adssaketh/akshaya`. Firebase Spark plan only.
 
 ## Status
 
@@ -9,7 +9,8 @@ App name: Akshaya (spec placeholder "Pantry" is replaced everywhere). Repo: `ads
 | 0 Design research and design system | Done. Green in CI. |
 | 1 Data model, database, pantry CRUD, add/use items | Done. CI green, APK installed and checklist passed. |
 | 2 Shopping list + auto-suggestions | Done. CI green (180 tests), APK installed and checklist passed. |
-| 3 to 8 | Not started |
+| 3 Barcode scanning + Open Food Facts | Built, **not yet compiled or tested** (no Flutter SDK in my workspace). First CI run is the real check. |
+| 4 to 8 | Not started |
 
 ## Phase 2: what is built
 
@@ -137,13 +138,84 @@ test/features/pantry/presentation/            pantry + add-item widget tests (fa
 - Voice entry (reason `voice`) and recipe entries (reason `recipe`) are in the data model but arrive in Phases 5 and 7. Daily "low stock" notifications arrive in Phase 4.
 - Settings tab is still temporary (sample data + design gallery).
 
-## Next: Phase 3 (barcode scanning + Open Food Facts lookup)
+## Phase 3: what is built
+
+Scan a barcode from the Pantry screen (small scan FAB) or from Add item (scan icon in the app bar). A known barcode opens "Add stock" for that item. An unknown one is looked up on Open Food Facts and pre-fills name, brand, pack size (quantity and unit) and a guessed category. If the product is not found, or the phone is offline, you get the plain form with the barcode kept. A camera problem offers "Type the barcode" (check digit validated). Also: app renamed **Akshaya Patra** with a new basket logo and launcher icon, and the motif is now `SarukuluMotif`.
+
+### Files (new or changed in Phase 3)
+
+```
+pubspec.yaml                                      + http ^1.2.0, mobile_scanner ^7.5.0
+.github/workflows/android.yml                     bootstrap uses new applicationId + label
+android/app/build.gradle.kts                      applicationId com.akshayapatra.app
+android/app/src/main/AndroidManifest.xml          label, INTERNET, CAMERA, optional camera features
+android/app/src/main/res/...                      launcher icons (legacy, adaptive, monochrome, background)
+assets/branding/                                  akshaya_patra_logo.svg, akshaya_patra_icon_512.png
+tool/generate_launcher_icons.py                   Pillow script that draws logo B and writes all icons
+lib/core/util/barcode.dart                        NEW canonical form, check digit, lookup variants
+lib/core/design/widgets/akshaya_logo.dart         basket logo painter (tokens only)
+lib/core/design/widgets/sarukulu_motif.dart       renamed from kolam_motif.dart
+lib/core/design/{design.dart,README.md,tokens/layout_tokens.dart,widgets/akshaya_header.dart,widgets/empty_state.dart}
+lib/app.dart                                      title
+lib/features/scanning/domain/                     product_info, product_lookup, scan_service
+lib/features/scanning/data/                       open_food_facts_client, cached_product_lookup, database/scanning_tables
+lib/features/scanning/presentation/               providers, barcode_scan_screen, scan_flow
+lib/features/pantry/data/database/app_database.dart   schema v3 + migration
+lib/features/pantry/domain/pantry_repository.dart     + addBarcode
+lib/features/pantry/data/drift_pantry_repository.dart barcode lookups via item_barcodes
+lib/features/pantry/presentation/{add_item_screen,pantry_actions,pantry_screen}.dart
+lib/features/pantry/presentation/widgets/item_fields.dart  barcode helper text
+test/core/barcode_test.dart
+test/core/design/design_widgets_test.dart
+test/features/pantry/presentation/fake_repository.dart
+test/features/scanning/{domain,data,presentation}/    product_info, scan_service, OFF client, cache, repository + v2->v3 migration, widgets
+```
+
+### Key decisions (Phase 3)
+
+- **Schema v3** adds `item_barcodes` (one item, many barcodes; not unique in SQL so deleted items keep their rows for Undo; the repository only matches live items) and `product_cache` (local only). `items.barcode` already existed, so it stays as the item's main barcode, and the migration copies existing values into `item_barcodes`.
+- **Canonical barcodes:** UPC-A becomes EAN-13 (leading zero), zero-padded GTIN-14 becomes EAN-13. Lookups try both spellings. Check digits are validated only for typed codes.
+- **Open Food Facts:** `GET /api/v2/product/{barcode}.json` with a fields filter; 8 s timeout; generic User-Agent, nothing personal sent. Found products cached 30 days, unknown barcodes 1 day, an expired found entry is used when offline, failures are never cached.
+- **Pack size** is parsed from the product's quantity text ("500 g", "1,5 l", "6 x 100 g"); 1000 g or more shows as kg, 1000 ml or more as L.
+- **Category** is a heuristic from Open Food Facts category tags; falls back to Other. Always editable.
+- **Same barcode, existing item:** scanning opens Add stock for it. Scanning a new barcode and naming an existing item links the barcode to that item instead of creating a duplicate. A barcode owned by another item is refused.
+- **Logo B** (basket with handle, bottle, carrot, greens). The launcher icon uses the same geometry, simplified to fit the adaptive safe zone. The in-app painter, the SVG and the Python script are kept in sync by hand.
+- **applicationId** is `com.akshayapatra.app` (fresh install). Namespace and MainActivity stay `com.akshaya.akshaya`.
+- **Two FABs on Pantry** (scan + Add item) with heroTags `pantry-scan-fab` and `pantry-add-fab`.
+
+## Test checklist (you), Phase 3
+
+1. Run the push script (it removes the old `kolam_motif.dart`). `verify` and `build-apk` in Actions: paste me any red log. CI also commits an updated `pubspec.lock`, so run `git pull --rebase` before the next push.
+2. The new app installs **next to** the old one (new applicationId) with an empty pantry. Uninstall the old app when ready. Launcher icon and name show "Akshaya Patra"; the header shows the basket logo.
+3. Pantry > scan button. Camera permission prompt appears only now. Deny it once: the screen offers "Type the barcode".
+4. Scan a packaged product with internet on (Amul, Parle-G, Maggi...). Add item opens with name, brand, quantity, unit and category filled and a "Filled in from Open Food Facts" note. Add expiry, save. Item appears.
+5. Scan the same pack again: "Add stock" for the existing item, no duplicate.
+6. Scan something Open Food Facts does not know (a local-shop item): form opens empty with the barcode and a "does not know this barcode" note. Name it, save.
+7. Airplane mode, scan a new product: "Could not reach Open Food Facts" note, manual entry works, barcode kept. Scan a product you looked up earlier in airplane mode: it still fills in from the cache.
+8. Torch toggle works; the phone vibrates on a successful read.
+9. Type a barcode with a wrong last digit: rejected with a typo message. A valid one is accepted.
+10. Add item screen: scan icon in the app bar fills the form the same way. Scanning a second pack size of an existing item (name it the same) links both barcodes to that one item.
+11. Rotate, dark mode, font scale 200%: no overflow on the scan screen and the new note banner.
+
+## Known issues (Phase 3)
+
+- **Nothing was compiled or run locally.** I reviewed by reading only; expect possible analyzer or test fixes on the first CI run. The scanner screen is the riskiest part.
+- The migration test, `product_cache` table and the extra `payload` column are mine; `product_cache` was not part of the schema question you answered.
+- Open Food Facts asks apps to send contact details in the User-Agent. I used a generic one; add yours in `open_food_facts_client.dart` if you want.
+- The product image from Open Food Facts is not stored or shown (no image UI yet).
+- UPC-E (8 digits starting with 0 or 1) and EAN-8 are ambiguous on some labels; the scanner reports them as read.
+- Category mapping is a heuristic and can be wrong for unusual products.
+- Phase 1's batch form still reads a price like "1,250" as 1.25. Not touched in this phase.
+- Barcode scanning needs a real device camera; emulators will not read codes.
+- Reinstalling under the new applicationId loses old data; there is no export until Phase 8.
+
+## Next: Phase 4 (local notifications and background checks)
 
 Start in a new chat when you say so.
 
 ## Phase 0: what was built (unchanged)
 
-Direction chosen: **A, Haldi** (terracotta, turmeric, cream; Fraunces + Nunito Sans; soft filled cards; round icons; vessel mark and kolam dot motif).
+Direction chosen: **A, Haldi** (terracotta, turmeric, cream; Fraunces + Nunito Sans; soft filled cards; round icons; vessel mark and dot-diamond motif, later renamed SarukuluMotif).
 
 Research summary (patterns adopted): expiry-first sections; colour plus icon plus word for status; large countdown or count numbers; storage-location grouping; resolve actions (used / discarded / frozen); recipes from expiring items; fast add; low stock feeding the shopping list. Used only as inspiration, nothing copied.
 
@@ -168,7 +240,7 @@ lib/core/design/theme/akshaya_theme.dart     AkshayaTheme.light()/dark()
 lib/core/design/theme/design_context.dart    context.akColors, context.akText
 lib/core/design/widgets/akshaya_header.dart
 lib/core/design/widgets/akshaya_logo.dart
-lib/core/design/widgets/kolam_motif.dart
+lib/core/design/widgets/sarukulu_motif.dart   (was kolam_motif.dart)
 lib/core/design/widgets/status_chip.dart
 lib/core/design/widgets/summary_tile.dart
 lib/core/design/widgets/item_card.dart

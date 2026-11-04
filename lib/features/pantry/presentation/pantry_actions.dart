@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/feedback.dart';
+import '../../scanning/domain/scan_service.dart';
+import '../../scanning/presentation/barcode_scan_screen.dart';
+import '../../scanning/presentation/scan_flow.dart';
 import '../domain/entities.dart';
 import '../domain/pantry_repository.dart';
 import '../domain/stock_logic.dart';
@@ -17,6 +20,24 @@ void openAddItem(BuildContext context, {Item? existing}) {
   Navigator.of(context).push<void>(
     MaterialPageRoute<void>(
       builder: (BuildContext _) => AddItemScreen(initialItem: existing),
+    ),
+  );
+}
+
+/// Scans a barcode, looks it up, then opens the add-item screen ready to
+/// fill in (or to add stock to the item the barcode already belongs to).
+Future<void> openScanToAdd(BuildContext context, WidgetRef ref) async {
+  final String? code = await scanBarcode(context);
+  if (code == null || !context.mounted) {
+    return;
+  }
+  final ScanOutcome outcome = await resolveScan(context, ref, code);
+  if (!context.mounted) {
+    return;
+  }
+  await Navigator.of(context).push<void>(
+    MaterialPageRoute<void>(
+      builder: (BuildContext _) => AddItemScreen(initialScan: outcome),
     ),
   );
 }

@@ -311,7 +311,7 @@ class ItemFields extends ConsumerWidget {
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Barcode (optional)',
-                helperText: 'Scanning arrives in a later update',
+                helperText: 'The digits printed under the bars',
               ),
             ),
             const SizedBox(height: AppSpacing.md),

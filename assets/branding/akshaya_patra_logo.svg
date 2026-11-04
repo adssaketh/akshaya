@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="512" height="512" role="img">
+  <title>Akshaya Patra</title>
+  <rect x="2" y="2" width="116" height="116" rx="28" fill="#FBF5EC"/>
+  <path d="M36 60 C36 12 84 12 84 60" fill="none" stroke="#2B1D14" stroke-width="3.5" stroke-linecap="round"/>
+  <rect x="39" y="34" width="14" height="28" rx="3" fill="#245F85"/>
+  <rect x="42" y="28" width="8" height="7" rx="2" fill="#E3A21A"/>
+  <path d="M58 62 L70 62 L64 34 Z" fill="#E3A21A"/>
+  <path d="M64 34 C58 24 60 20 64 18 C68 20 70 24 64 34 Z" fill="#3F6F2E"/>
+  <ellipse cx="78" cy="48" rx="5" ry="13" transform="rotate(22 78 48)" fill="#3F6F2E"/>
+  <ellipse cx="85" cy="52" rx="4" ry="11" transform="rotate(50 85 52)" fill="#779767"/>
+  <path d="M30 63 L90 63 L84 99 Q83.5 103 79.5 103 L40.5 103 Q36.5 103 36 99 Z" fill="#B5502D"/>
+  <rect x="27" y="58" width="66" height="9" rx="4.5" fill="#2B1D14"/>
+  <g stroke="#FBF5EC" stroke-width="2.2" stroke-linecap="round" fill="none">
+    <line x1="34" y1="79" x2="86" y2="79"/>
+    <line x1="36" y1="91" x2="84" y2="91"/>
+    <line x1="48" y1="68" x2="46" y2="100"/>
+    <line x1="60" y1="68" x2="60" y2="100"/>
+    <line x1="72" y1="68" x2="74" y2="100"/>
+  </g>
+  <circle cx="60" cy="85" r="2.6" fill="#E3A21A"/>
+</svg>

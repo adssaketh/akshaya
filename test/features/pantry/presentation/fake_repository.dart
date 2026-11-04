@@ -17,6 +17,12 @@ class FakePantryRepository extends Fake implements PantryRepository {
   final List<ItemDraft> addedItems = <ItemDraft>[];
   final List<BatchDraft> addedBatches = <BatchDraft>[];
 
+  /// Barcode to item id, answered by [findItemByBarcode].
+  final Map<String, String> barcodes = <String, String>{};
+
+  /// Every (itemId, barcode) passed to [addBarcode].
+  final List<(String, String)> addedBarcodes = <(String, String)>[];
+
   static final List<Category> categories = <Category>[
     for (int i = 0; i < kDefaultCategories.length; i++)
       Category(
@@ -43,6 +49,26 @@ class FakePantryRepository extends Fake implements PantryRepository {
       }
     }
     return null;
+  }
+
+  @override
+  Future<Item?> findItemByBarcode(String barcode) async {
+    final String? id = barcodes[barcode];
+    if (id == null) {
+      return null;
+    }
+    for (final ItemWithBatches r in _items) {
+      if (r.item.id == id) {
+        return r.item;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<void> addBarcode(String itemId, String barcode) async {
+    addedBarcodes.add((itemId, barcode));
+    barcodes[barcode] = itemId;
   }
 
   @override

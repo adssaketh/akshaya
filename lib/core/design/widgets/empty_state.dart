@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/design_context.dart';
 import '../tokens/layout_tokens.dart';
-import 'kolam_motif.dart';
+import 'sarukulu_motif.dart';
 
 /// Empty state: an invitation, not an apology. Headline names the space, one
 /// line of body copy explains it, and the optional button is a verb.
@@ -35,7 +35,7 @@ class EmptyState extends StatelessWidget {
             Stack(
               alignment: Alignment.center,
               children: <Widget>[
-                const KolamMotif(size: AppSizes.kolamEmpty),
+                const SarukuluMotif(size: AppSizes.sarukuluEmpty),
                 Icon(icon, size: AppSizes.iconXl, color: colors.primary),
               ],
             ),

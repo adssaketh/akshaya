@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide Batch;
 import 'package:uuid/uuid.dart';
 
+import '../../../core/util/barcode.dart';
 import '../../../core/util/date_only.dart';
 import '../../../core/util/quantity.dart';
 import '../domain/consumption_type.dart';
@@ -201,18 +202,69 @@ class DriftPantryRepository implements PantryRepository {
         .getSingleOrNull();
   }
 
-  Future<ItemRow?> _itemRowByBarcode(String barcode, {String? excludeId}) {
-    return (_db.select(_db.items)
-          ..where((t) {
-            Expression<bool> condition =
-                t.isDeleted.equals(false) & t.barcode.equals(barcode);
-            if (excludeId != null) {
-              condition = condition & t.id.equals(excludeId).not();
-            }
-            return condition;
-          })
+  /// The live item that answers to [barcode] under any spelling of the code.
+  Future<ItemRow?> _itemRowByBarcode(String barcode, {String? excludeId}) async {
+    Expression<bool> condition = _db.items.isDeleted.equals(false) &
+        _db.itemBarcodes.barcode.isIn(barcodeVariants(barcode));
+    if (excludeId != null) {
+      condition = condition & _db.items.id.equals(excludeId).not();
+    }
+    final JoinedSelectStatement<$ItemsTable, ItemRow> query =
+        _db.select(_db.items).join([
+      innerJoin(
+        _db.itemBarcodes,
+        _db.itemBarcodes.itemId.equalsExp(_db.items.id),
+      ),
+    ])
+          ..where(condition)
+          ..limit(1);
+    final List<TypedResult> rows = await query.get();
+    return rows.isEmpty ? null : rows.first.readTable(_db.items);
+  }
+
+  Future<ItemBarcodeRow?> _barcodeRow(String itemId, String barcode) {
+    return (_db.select(_db.itemBarcodes)
+          ..where(
+            (t) => t.itemId.equals(itemId) & t.barcode.isIn(barcodeVariants(barcode)),
+          )
           ..limit(1))
         .getSingleOrNull();
+  }
+
+  Future<void> _insertBarcode(String itemId, String barcode, DateTime now) {
+    return _db.into(_db.itemBarcodes).insert(
+          ItemBarcodesCompanion.insert(
+            id: _newId(),
+            itemId: itemId,
+            barcode: barcode,
+            createdAt: now,
+          ),
+        );
+  }
+
+  /// Keeps `item_barcodes` in step with an item's main barcode: the previous
+  /// main barcode stops identifying the item and the new one starts.
+  Future<void> _syncMainBarcode(
+    String itemId, {
+    required String? previous,
+    required String? current,
+    required DateTime now,
+  }) async {
+    if (previous == current) {
+      return;
+    }
+    if (previous != null) {
+      await (_db.delete(_db.itemBarcodes)
+            ..where(
+              (t) =>
+                  t.itemId.equals(itemId) &
+                  t.barcode.isIn(barcodeVariants(previous)),
+            ))
+          .go();
+    }
+    if (current != null && await _barcodeRow(itemId, current) == null) {
+      await _insertBarcode(itemId, current, now);
+    }
   }
 
   Future<List<String>> _aliasesOf(String itemId) async {
@@ -245,6 +297,41 @@ class DriftPantryRepository implements PantryRepository {
   }
 
   @override
+  Future<void> addBarcode(String itemId, String barcode) async {
+    final String code = canonicalBarcode(barcode);
+    if (code.isEmpty) {
+      throw const InvalidInputFailure('Enter a barcode.');
+    }
+    await _db.transaction<void>(() async {
+      final ItemRow item = await _requireItem(itemId);
+      final ItemRow? owner = await _itemRowByBarcode(code);
+      if (owner != null) {
+        if (owner.id == itemId) {
+          return;
+        }
+        throw DuplicateBarcodeFailure(
+          existingItemId: owner.id,
+          itemName: owner.name,
+        );
+      }
+
+      final DateTime now = _now();
+      await _insertBarcode(itemId, code, now);
+      await (_db.update(_db.items)..where((t) => t.id.equals(itemId))).write(
+        ItemsCompanion(
+          // The first barcode an item gets is its main one.
+          barcode: item.barcode == null
+              ? Value<String?>(code)
+              : const Value<String?>.absent(),
+          updatedAt: Value<DateTime>(now),
+          updatedBy: Value<String?>(_userId),
+          syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        ),
+      );
+    });
+  }
+
+  @override
   Future<Item?> findItemByBarcode(String barcode) async {
     final String cleaned = barcode.trim();
     if (cleaned.isEmpty) {
@@ -260,6 +347,12 @@ class DriftPantryRepository implements PantryRepository {
 
   String _cleanName(String text) {
     return text.trim().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  /// A barcode in canonical form, or null when there is none.
+  String? _cleanBarcode(String? text) {
+    final String? cleaned = _cleanOptional(text);
+    return cleaned == null ? null : canonicalBarcode(cleaned);
   }
 
   String? _cleanOptional(String? text) {
@@ -348,7 +441,7 @@ class DriftPantryRepository implements PantryRepository {
           name: duplicate.name,
         );
       }
-      final String? barcode = _cleanOptional(draft.barcode);
+      final String? barcode = _cleanBarcode(draft.barcode);
       if (barcode != null) {
         final ItemRow? sameBarcode = await _itemRowByBarcode(barcode);
         if (sameBarcode != null) {
@@ -383,6 +476,9 @@ class DriftPantryRepository implements PantryRepository {
             ),
           );
       await _replaceAliases(id, aliases, now);
+      if (barcode != null) {
+        await _insertBarcode(id, barcode, now);
+      }
 
       return Item(
         id: id,
@@ -439,7 +535,7 @@ class DriftPantryRepository implements PantryRepository {
           name: duplicate.name,
         );
       }
-      final String? barcode = _cleanOptional(item.barcode);
+      final String? barcode = _cleanBarcode(item.barcode);
       if (barcode != null) {
         final ItemRow? sameBarcode =
             await _itemRowByBarcode(barcode, excludeId: item.id);
@@ -484,6 +580,12 @@ class DriftPantryRepository implements PantryRepository {
         ),
       );
       await _replaceAliases(item.id, aliases, now);
+      await _syncMainBarcode(
+        item.id,
+        previous: existing.barcode,
+        current: barcode,
+        now: now,
+      );
 
       return Item(
         id: item.id,

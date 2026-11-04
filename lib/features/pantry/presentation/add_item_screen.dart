@@ -4,6 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/clock.dart';
 import '../../../core/ui/feedback.dart';
+import '../../../core/util/quantity.dart';
+import '../../scanning/domain/product_info.dart';
+import '../../scanning/domain/scan_service.dart';
+import '../../scanning/presentation/barcode_scan_screen.dart';
+import '../../scanning/presentation/scan_flow.dart';
 import '../domain/entities.dart';
 import '../domain/pantry_query.dart';
 import '../domain/pantry_repository.dart';
@@ -16,12 +21,16 @@ import 'widgets/stock_fields.dart';
 ///
 /// Type a name: matching items (by name or any alias) are suggested. Pick one
 /// to add a purchase to it, or carry on to create a new item. Quantity and
-/// expiry shortcuts make adding fast.
+/// expiry shortcuts make adding fast. The scan button reads a barcode and
+/// fills the form from the pantry or from Open Food Facts.
 class AddItemScreen extends ConsumerStatefulWidget {
-  const AddItemScreen({super.key, this.initialItem});
+  const AddItemScreen({super.key, this.initialItem, this.initialScan});
 
   /// Item to add stock to (opened from an item's detail screen).
   final Item? initialItem;
+
+  /// A barcode that was just scanned, to prefill the form from.
+  final ScanOutcome? initialScan;
 
   @override
   ConsumerState<AddItemScreen> createState() => _AddItemScreenState();
@@ -39,6 +48,11 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   bool _saving = false;
   String? _error;
 
+  /// Barcode from the last scan that is not yet saved anywhere. Saved with
+  /// the item when the form is saved.
+  String? _scannedBarcode;
+  ScanNotice? _scanNotice;
+
   @override
   void initState() {
     super.initState();
@@ -55,7 +69,58 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     if (initial != null) {
       _name.text = initial.name;
     }
+    final ScanOutcome? scan = widget.initialScan;
+    if (scan != null) {
+      // Before the listener below exists, so nothing rebuilds half-way.
+      _applyScan(scan);
+    }
     _itemFields.addListener(_syncStockWithItemFields);
+  }
+
+  /// Fills the form from a scan. Callers rebuild afterwards.
+  void _applyScan(ScanOutcome outcome) {
+    switch (outcome) {
+      case ScanKnownItem(:final Item item):
+        _existing = item;
+        _scannedBarcode = null;
+        _scanNotice = null;
+        _name.text = item.name;
+        _stock.setUnit(item.defaultUnit);
+        _stock.setLocation(item.defaultStorageLocation);
+      case ScanNewProduct(
+          :final String barcode,
+          :final ProductInfo? info,
+          :final ScanNotice notice,
+        ):
+        _existing = null;
+        _scannedBarcode = barcode;
+        _scanNotice = notice;
+        _itemFields.barcode.text = barcode;
+        if (info != null) {
+          _name.text = info.name;
+          _itemFields.brand.text = info.brand ?? '';
+          _itemFields.categoryId = info.suggestedCategoryId;
+          final PackSize? pack = info.packSize;
+          if (pack != null) {
+            _itemFields.unit = pack.unit;
+            _stock.setUnit(pack.unit);
+            _stock.quantity.text = formatNumber(pack.amount);
+          }
+        }
+    }
+  }
+
+  Future<void> _scanNow() async {
+    final String? code = await scanBarcode(context);
+    if (code == null || !mounted) {
+      return;
+    }
+    final ScanOutcome outcome = await resolveScan(context, ref, code);
+    if (!mounted) {
+      return;
+    }
+    _applyScan(outcome);
+    setState(() => _error = null);
   }
 
   /// While creating a new item, the purchase follows the item's unit and
@@ -167,6 +232,12 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
         });
         return;
       }
+      final String? scanned = _scannedBarcode;
+      if (item != null && scanned != null) {
+        // The scanned code now identifies this item, so the next scan of it
+        // goes straight to the pantry.
+        await repo.addBarcode(item.id, scanned);
+      }
       item ??= await repo.addItem(_itemFields.toDraft(name));
 
       if (quantity != null) {
@@ -201,6 +272,13 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(existing == null ? 'Add item' : 'Add stock'),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Scan barcode',
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            onPressed: _saving ? null : _scanNow,
+          ),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -223,6 +301,10 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
           children: <Widget>[
             _buildNameField(context),
             const SizedBox(height: AppSpacing.md),
+            if (_scanNotice != null && existing == null) ...<Widget>[
+              _ScanNote(notice: _scanNotice!),
+              const SizedBox(height: AppSpacing.md),
+            ],
             if (existing != null)
               _ExistingItemNote(item: existing)
             else ...<Widget>[
@@ -332,6 +414,53 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
           },
         );
       },
+    );
+  }
+}
+
+/// What the barcode lookup found, shown above the form after a scan.
+class _ScanNote extends StatelessWidget {
+  const _ScanNote({required this.notice});
+
+  final ScanNotice notice;
+
+  String get _text {
+    switch (notice) {
+      case ScanNotice.none:
+        return 'Filled in from Open Food Facts. Check the details before '
+            'saving.';
+      case ScanNotice.notFound:
+        return 'Open Food Facts does not know this barcode. Fill in the '
+            'details; the barcode is saved with the item.';
+      case ScanNotice.offline:
+        return 'Could not reach Open Food Facts. Fill in the details; the '
+            'barcode is saved with the item.';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AkshayaColors colors = context.akColors;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surfaceAlt,
+        borderRadius: AppRadius.cardBorder,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              Icons.qr_code_scanner_rounded,
+              size: AppSizes.iconMd,
+              color: colors.primary,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(child: Text(_text, style: context.akText.bodyMedium)),
+          ],
+        ),
+      ),
     );
   }
 }

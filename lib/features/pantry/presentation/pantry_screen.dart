@@ -44,10 +44,24 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
         ref.watch(pantrySectionsProvider);
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => openAddItem(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add item'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: <Widget>[
+          FloatingActionButton.small(
+            heroTag: 'pantry-scan-fab',
+            tooltip: 'Scan barcode',
+            onPressed: () => openScanToAdd(context, ref),
+            child: const Icon(Icons.qr_code_scanner_rounded),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          FloatingActionButton.extended(
+            heroTag: 'pantry-add-fab',
+            onPressed: () => openAddItem(context),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add item'),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(

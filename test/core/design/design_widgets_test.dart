@@ -197,9 +197,9 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Akshaya'), findsOneWidget);
+      expect(find.text('Akshaya Patra'), findsOneWidget);
       expect(find.byType(AkshayaLogo), findsOneWidget);
-      expect(find.byType(KolamMotif), findsOneWidget);
+      expect(find.byType(SarukuluMotif), findsOneWidget);
       expect(find.byIcon(Icons.notifications_none_rounded), findsOneWidget);
     });
   });
@@ -217,7 +217,7 @@ void main() {
           MaterialApp(theme: entry.value, home: const DesignGalleryPage()),
         );
         expect(tester.takeException(), isNull);
-        expect(find.text('Akshaya'), findsOneWidget);
+        expect(find.text('Akshaya Patra'), findsOneWidget);
         expect(find.text('4 items need attention'), findsOneWidget);
       });
     }

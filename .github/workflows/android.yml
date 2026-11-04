@@ -13,8 +13,10 @@ concurrency:
 
 jobs:
   bootstrap:
-    # Creates the android/ platform folder once (applicationId com.akshaya.app)
-    # and commits it back, so it is never hand-maintained.
+    # Creates the android/ platform folder once (applicationId
+    # com.akshayapatra.app) and commits it back. It only runs when android/ is
+    # missing: permissions, icons and the label are committed in android/ and
+    # live there from then on.
     runs-on: ubuntu-latest
     outputs:
       created: ${{ steps.check.outputs.created }}
@@ -33,14 +35,14 @@ jobs:
           flutter create --platforms=android --org com.akshaya --project-name akshaya .
           # Pin the application id and label.
           for f in android/app/build.gradle.kts android/app/build.gradle; do
-            [ -f "$f" ] && sed -i 's/applicationId = "[^"]*"/applicationId = "com.akshaya.app"/; s/applicationId "[^"]*"/applicationId "com.akshaya.app"/' "$f"
+            [ -f "$f" ] && sed -i 's/applicationId = "[^"]*"/applicationId = "com.akshayapatra.app"/; s/applicationId "[^"]*"/applicationId "com.akshayapatra.app"/' "$f"
           done
-          sed -i 's/android:label="[^"]*"/android:label="Akshaya"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="[^"]*"/android:label="Akshaya Patra"/' android/app/src/main/AndroidManifest.xml
           git checkout -- lib pubspec.yaml test 2>/dev/null || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add android
-          git commit -m "ci: bootstrap android platform (com.akshaya.app)"
+          git commit -m "ci: bootstrap android platform (com.akshayapatra.app)"
           # GitHub occasionally answers pushes with a transient 500; retry.
           for attempt in 1 2 3 4 5; do
             if git push; then exit 0; fi

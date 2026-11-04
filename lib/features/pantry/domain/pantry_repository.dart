@@ -21,7 +21,14 @@ abstract interface class PantryRepository {
   /// Case-insensitive exact match on the canonical name.
   Future<Item?> findItemByName(String name);
 
+  /// The live item that answers to [barcode] (any of its barcodes, in any
+  /// spelling of the same code, such as UPC-A and EAN-13), or null.
   Future<Item?> findItemByBarcode(String barcode);
+
+  /// Makes [barcode] also identify the item [itemId]. Does nothing when it
+  /// already does; throws `DuplicateBarcodeFailure` when it belongs to another
+  /// item. The first barcode an item gets becomes its main barcode.
+  Future<void> addBarcode(String itemId, String barcode);
 
   Future<Item> addItem(ItemDraft draft);
 

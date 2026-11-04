@@ -1,6 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Open Food Facts lookups. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Barcode scanning. The camera is optional: without one the barcode can
+         still be typed, so the app installs on every device. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
     <application
-        android:label="Akshaya"
+        android:label="Akshaya Patra"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

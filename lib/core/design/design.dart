@@ -15,7 +15,7 @@ export 'widgets/akshaya_logo.dart';
 export 'widgets/checklist_card.dart';
 export 'widgets/empty_state.dart';
 export 'widgets/item_card.dart';
-export 'widgets/kolam_motif.dart';
+export 'widgets/sarukulu_motif.dart';
 export 'widgets/section_header.dart';
 export 'widgets/status_chip.dart';
 export 'widgets/summary_tile.dart';

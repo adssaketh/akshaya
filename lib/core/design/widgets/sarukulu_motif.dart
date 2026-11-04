@@ -3,10 +3,15 @@ import 'package:flutter/material.dart';
 import '../theme/design_context.dart';
 import '../tokens/layout_tokens.dart';
 
-/// A small kolam-style diamond of dots (1-3-5-3-1), used as a quiet
-/// decorative motif in headers and empty states.
-class KolamMotif extends StatelessWidget {
-  const KolamMotif({super.key, this.size = AppSizes.kolamHeader, this.color});
+/// A small diamond of dots (1-3-5-3-1), used as a quiet decorative motif in
+/// headers and empty states. Named for sarukulu (సరుకులు), the groceries and
+/// provisions the app keeps track of.
+class SarukuluMotif extends StatelessWidget {
+  const SarukuluMotif({
+    super.key,
+    this.size = AppSizes.sarukuluHeader,
+    this.color,
+  });
 
   final double size;
 
@@ -18,14 +23,14 @@ class KolamMotif extends StatelessWidget {
     return ExcludeSemantics(
       child: CustomPaint(
         size: Size.square(size),
-        painter: _KolamPainter(color ?? context.akColors.accent),
+        painter: _SarukuluPainter(color ?? context.akColors.accent),
       ),
     );
   }
 }
 
-class _KolamPainter extends CustomPainter {
-  _KolamPainter(this.color);
+class _SarukuluPainter extends CustomPainter {
+  _SarukuluPainter(this.color);
 
   final Color color;
 
@@ -48,5 +53,6 @@ class _KolamPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_KolamPainter oldDelegate) => oldDelegate.color != color;
+  bool shouldRepaint(_SarukuluPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

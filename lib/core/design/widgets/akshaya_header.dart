@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../tokens/layout_tokens.dart';
 import '../theme/design_context.dart';
 import 'akshaya_logo.dart';
-import 'kolam_motif.dart';
+import 'sarukulu_motif.dart';
 
-/// Top-of-screen brand header: vessel mark, wordmark, a faint kolam motif and
-/// optional trailing [actions] (for example a notifications button).
+/// Top-of-screen brand header: basket mark, "Akshaya Patra" wordmark, a faint
+/// dot motif and optional trailing [actions] (for example a notifications
+/// button).
 class AkshayaHeader extends StatelessWidget {
   const AkshayaHeader({super.key, this.actions = const <Widget>[]});
 
@@ -24,7 +25,7 @@ class AkshayaHeader extends StatelessWidget {
         children: <Widget>[
           Positioned(
             right: AppSizes.touchTarget + AppSpacing.lg,
-            child: const KolamMotif(),
+            child: const SarukuluMotif(),
           ),
           Row(
             children: <Widget>[
@@ -33,7 +34,12 @@ class AkshayaHeader extends StatelessWidget {
               Expanded(
                 child: Semantics(
                   header: true,
-                  child: Text('Akshaya', style: context.akText.titleLarge),
+                  child: Text(
+                    'Akshaya Patra',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.akText.titleLarge,
+                  ),
                 ),
               ),
               ...actions,

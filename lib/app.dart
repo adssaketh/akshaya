@@ -33,7 +33,7 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Akshaya',
+      title: 'Akshaya Patra',
       debugShowCheckedModeBanner: false,
       theme: AkshayaTheme.light(),
       darkTheme: AkshayaTheme.dark(),

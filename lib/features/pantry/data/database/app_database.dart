@@ -5,6 +5,7 @@
 
 import 'package:drift/drift.dart';
 
+import '../../../scanning/data/database/scanning_tables.dart';
 import '../../../shopping/data/database/shopping_tables.dart';
 import '../../../shopping/domain/shopping_entities.dart'
     show kDefaultListId, kDefaultListName;
@@ -25,6 +26,8 @@ part 'app_database.g.dart';
 ///  - v1 (Phase 1): categories, items, item_aliases, stock_batches,
 ///    consumption_logs.
 ///  - v2 (Phase 2): shopping_lists, shopping_entries (+ the default list).
+///  - v3 (Phase 3): item_barcodes (existing `items.barcode` values are copied
+///    in), product_cache (Open Food Facts answers).
 ///
 /// Later phases add tables through migrations in [migration]; never edit a
 /// released version in place.
@@ -37,13 +40,15 @@ part 'app_database.g.dart';
     ConsumptionLogs,
     ShoppingLists,
     ShoppingEntries,
+    ItemBarcodes,
+    ProductCache,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -67,6 +72,26 @@ class AppDatabase extends _$AppDatabase {
             'ON shopping_entries (item_id)',
           );
           await _seedDefaultList();
+        }
+        if (from < 3) {
+          await m.createTable(itemBarcodes);
+          await m.createTable(productCache);
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS item_barcodes_barcode_idx '
+            'ON item_barcodes (barcode)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS item_barcodes_item_idx '
+            'ON item_barcodes (item_id)',
+          );
+          // Barcodes typed in earlier versions live in items.barcode; make
+          // them answer to scans too. That column stays as the item's main
+          // barcode.
+          await customStatement(
+            'INSERT INTO item_barcodes (id, item_id, barcode, created_at) '
+            'SELECT lower(hex(randomblob(16))), id, trim(barcode), created_at '
+            "FROM items WHERE barcode IS NOT NULL AND trim(barcode) <> ''",
+          );
         }
       },
     );

@@ -39,9 +39,15 @@ abstract final class AppSizes {
   /// Round icon holder inside item cards.
   static const double avatar = 40;
 
-  static const double logo = 24;
-  static const double kolamHeader = 48;
-  static const double kolamEmpty = 96;
+  /// The basket logo has fine detail, so it needs more room than an icon.
+  static const double logo = 36;
+  static const double sarukuluHeader = 48;
+  static const double sarukuluEmpty = 96;
+
+  /// Barcode scanner viewfinder.
+  static const double scanFrameWidth = 280;
+  static const double scanFrameHeight = 160;
+  static const double scanFrameBorder = 3;
 
   static const double navBarHeight = 72;
   static const double fab = 56;

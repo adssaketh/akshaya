@@ -1,6 +1,6 @@
 # Akshaya design system (Haldi)
 
-Warm terracotta, turmeric and cream, with a faint kolam dot motif and an Akshaya Patra vessel mark.
+Warm terracotta, turmeric and cream, with a faint dot motif (`SarukuluMotif`, named for sarukulu, groceries) and the Akshaya Patra basket mark (`AkshayaLogo`).
 
 Import one file from feature code:
 
@@ -26,8 +26,8 @@ tokens/      akshaya_colors.dart  light + dark palettes, status colours (only fi
 typography/  akshaya_text.dart    Fraunces (display) + Nunito Sans (body) scale
 theme/       akshaya_theme.dart   AkshayaTheme.light() / .dark() (Material 3)
              design_context.dart  context.akColors, context.akText
-widgets/     AkshayaHeader, AkshayaLogo, KolamMotif, StatusChip, SummaryTile,
-             ItemCard, SectionHeader, EmptyState
+widgets/     AkshayaHeader, AkshayaLogo, SarukuluMotif, StatusChip, SummaryTile,
+             ItemCard, SectionHeader, EmptyState, ChecklistCard
 gallery/     DesignGalleryPage    developer showcase of everything above
 ```
 
