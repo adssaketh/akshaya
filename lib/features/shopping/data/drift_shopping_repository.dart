@@ -183,7 +183,7 @@ class DriftShoppingRepository implements ShoppingRepository {
   // ---------------------------------------------------------------------
 
   @override
-  Future<ShoppingList> addList(String name) {
+  Future<ShoppingList> addList(String name) async {
     final String cleaned = _cleanName(name);
     _validateListName(cleaned);
 
@@ -218,7 +218,7 @@ class DriftShoppingRepository implements ShoppingRepository {
   }
 
   @override
-  Future<ShoppingList> renameList(String listId, String name) {
+  Future<ShoppingList> renameList(String listId, String name) async {
     final String cleaned = _cleanName(name);
     _validateListName(cleaned);
 
