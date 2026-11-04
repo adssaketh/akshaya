@@ -10,7 +10,7 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 1 Data model, database, pantry CRUD, add/use items | Done. CI green, APK installed and checklist passed. |
 | 2 Shopping list + auto-suggestions | Done. CI green (180 tests), APK installed and checklist passed. |
 | 3 Barcode scanning + Open Food Facts | Done. CI green, APK installed and checked on device. |
-| 4 Local notifications and background checks | Built, awaiting CI and device check |
+| 4 Local notifications and background checks | Done. CI green (verify + build-apk); device checklist pending |
 | 5 to 8 | Not started |
 
 ## Phase 2: what is built
@@ -253,6 +253,7 @@ test/features/alerts/{fake_notification_gateway.dart,domain/*,data/alert_worker_
 - **Inexact alarms** (`inexactAllowWhileIdle`): no exact-alarm permission. An alert can arrive a few minutes late.
 - **Scheduled notifications have fixed text**, so the app schedules the next 3 days, each with that day's own content, and re-plans on any change to settings, pantry or lists, on a new day, and every 6 h from WorkManager. If the worker is delayed, the 3-day buffer still covers you.
 - **Only pending notifications are cancelled** when re-planning, so an alert already in the shade stays. Alerts time out after 18 h.
+- **Pantry data is read from already-loaded providers, never `await provider.future`** (that hung in tests when nothing was listening). The coordinator and the preview both listen first, then read `.value`.
 - **Worker isolate opens its own DB connection** with `busy_timeout = 5000`; the migration is safe if the worker runs it first.
 - **Low stock excludes "expired"** suggestions (those are already in the Expired alert).
 - **"Expiring soon" days drives the Pantry status too** (one setting, one meaning).
@@ -274,7 +275,7 @@ test/features/alerts/{fake_notification_gateway.dart,domain/*,data/alert_worker_
 
 ## Known issues (Phase 4)
 
-- I could not run `flutter analyze` or tests locally; CI is the first run. Expect possible small fixes.
+- I could not run `flutter analyze` or tests locally; CI needed four rounds (unused imports, two test bugs, the stream-read hang). Now green.
 - Alerts are inexact and can be several minutes late. Some phone makers (Xiaomi, Oppo, Vivo, Samsung battery saver) stop background work; the 3-day schedule still fires, but the content is only as fresh as the last time the app or worker ran.
 - A day's text is fixed when it is scheduled: stock used after that is reflected at the next re-plan (any change in the app triggers one).
 - No custom notification sound, action buttons or per-item snooze.
