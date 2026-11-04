@@ -182,6 +182,7 @@ class AlertsSection extends ConsumerWidget {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final NotificationGateway gateway = ref.read(notificationGatewayProvider);
     try {
+      debugPrint('DBG preview start');
       if (!await gateway.areNotificationsAllowed()) {
         showMessage(
           messenger,
@@ -189,10 +190,13 @@ class AlertsSection extends ConsumerWidget {
         );
         return;
       }
+      debugPrint('DBG allowed');
       final List<ItemWithBatches> items =
           await ref.read(itemsStreamProvider.future);
+      debugPrint('DBG items ${items.length}');
       final List<ShoppingEntry> entries =
           await ref.read(shoppingEntriesProvider.future);
+      debugPrint('DBG entries ${entries.length}');
       final List<AlertNotification> shown =
           await ref.read(alertSchedulerProvider).showPreview(
                 settings: settings,
