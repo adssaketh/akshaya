@@ -1,22 +1,80 @@
+import 'dart:async';
+
 import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../alerts/domain/alert_plan.dart';
+import '../alerts/presentation/first_run_prompt.dart';
+import '../alerts/presentation/providers.dart';
 import '../pantry/presentation/pantry_screen.dart';
+import '../pantry/presentation/providers.dart';
 import '../settings/settings_screen.dart';
 import '../shopping/presentation/shopping_screen.dart';
 
 /// Bottom navigation: Home, Pantry, Shopping, Recipes, Settings.
 /// Pantry, Shopping and Settings are live; Home and Recipes are placeholders.
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   static const int _pantryTab = 1;
+  static const int _shoppingTab = 2;
   int _index = _pantryTab;
+
+  @override
+  void initState() {
+    super.initState();
+    // Alerts tapped while the app is running.
+    ref.listenManual<AlertTarget?>(alertTargetProvider, (previous, next) {
+      if (next != null) {
+        _openAlertTarget(next);
+      }
+    });
+    // Providers cannot be changed while the first frame builds, so anything
+    // pending from start-up (an alert that launched the app) waits for it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final AlertTarget? pending = ref.read(alertTargetProvider);
+      if (pending != null) {
+        _openAlertTarget(pending);
+      } else {
+        unawaited(askForNotificationsOnFirstRun(context, ref));
+      }
+    });
+  }
+
+  /// Shows the screen an alert is about: Pantry filtered to the alert's
+  /// status, or the Shopping tab with its restock suggestions.
+  void _openAlertTarget(AlertTarget target) {
+    if (!mounted) {
+      return;
+    }
+    // Back to the tabs if a form or detail screen is open.
+    Navigator.of(context).popUntil((Route<dynamic> route) => route.isFirst);
+    final PantryQueryNotifier query = ref.read(pantryQueryProvider.notifier);
+    switch (target) {
+      case AlertTarget.pantryExpired:
+        query
+          ..clearFilters()
+          ..setStatus(StatusKind.expired);
+        setState(() => _index = _pantryTab);
+      case AlertTarget.pantryExpiring:
+        query
+          ..clearFilters()
+          ..setStatus(StatusKind.expiring);
+        setState(() => _index = _pantryTab);
+      case AlertTarget.shoppingSuggestions:
+        setState(() => _index = _shoppingTab);
+    }
+    ref.read(alertTargetProvider.notifier).clear();
+  }
 
   @override
   Widget build(BuildContext context) {

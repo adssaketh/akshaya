@@ -1,4 +1,5 @@
 import 'package:akshaya/core/util/date_only.dart';
+import 'package:akshaya/core/util/money.dart';
 import 'package:akshaya/core/util/quantity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -50,6 +51,32 @@ void main() {
     test('formatNumber trims trailing zeros', () {
       expect(formatNumber(2), '2');
       expect(formatNumber(1.5), '1.5');
+    });
+  });
+
+  group('parseMoney', () {
+    test('reads plain and decimal amounts', () {
+      expect(parseMoney('1250'), 1250);
+      expect(parseMoney('120.50'), 120.5);
+    });
+
+    test('treats commas as thousands separators', () {
+      expect(parseMoney('1,250'), 1250);
+      expect(parseMoney('1,25,000'), 125000);
+    });
+
+    test('ignores the rupee sign and spaces', () {
+      expect(parseMoney('₹120'), 120);
+      expect(parseMoney(' ₹ 1,250 '), 1250);
+    });
+
+    test('returns null for empty or non-numeric text', () {
+      expect(parseMoney(''), isNull);
+      expect(parseMoney('  '), isNull);
+      expect(parseMoney('abc'), isNull);
+      expect(parseMoney('₹'), isNull);
+      expect(parseMoney('NaN'), isNull);
+      expect(parseMoney('Infinity'), isNull);
     });
   });
 }

@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ui/feedback.dart';
+import '../alerts/presentation/alerts_section.dart';
 import '../pantry/presentation/providers.dart';
 
-/// Temporary Settings tab. The full settings (theme, alerts, AI, usage and so
-/// on) arrive in Phase 8.
+/// Temporary Settings tab: the daily alert settings (Phase 4), sample data and
+/// the design gallery. The full settings (theme, AI, usage and so on) arrive
+/// in Phase 8.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -17,6 +19,8 @@ class SettingsScreen extends ConsumerWidget {
       child: ListView(
         children: <Widget>[
           const AkshayaHeader(),
+          const AlertsSection(),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.science_outlined),
             title: const Text('Load sample data'),

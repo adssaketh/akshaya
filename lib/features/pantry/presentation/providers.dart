@@ -1,9 +1,9 @@
 import 'package:akshaya/core/design/design.dart' show StatusKind;
-import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/clock.dart';
 import '../data/database/app_database.dart';
+import '../data/database/open_database.dart';
 import '../data/drift_pantry_repository.dart';
 import '../domain/entities.dart';
 import '../domain/pantry_query.dart';
@@ -13,7 +13,7 @@ import '../domain/stock_logic.dart';
 /// The local SQLite database. Tests override this with an in-memory database.
 final Provider<AppDatabase> appDatabaseProvider = Provider<AppDatabase>(
   (Ref ref) {
-    final AppDatabase db = AppDatabase(driftDatabase(name: 'akshaya'));
+    final AppDatabase db = openAppDatabase();
     ref.onDispose(db.close);
     return db;
   },
@@ -27,8 +27,9 @@ final Provider<PantryRepository> pantryRepositoryProvider =
   );
 });
 
-/// Days before expiry that count as "expiring soon". Becomes a setting in
-/// Phase 8.
+/// Days before expiry that count as "expiring soon". The app root
+/// (`main.dart`) overrides this with the saved alert setting, so the pantry
+/// list and the daily alert always agree.
 final Provider<int> expiryWarningDaysProvider =
     Provider<int>((Ref ref) => kDefaultExpiryWarningDays);
 

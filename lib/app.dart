@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/time/clock.dart';
+import 'features/alerts/presentation/providers.dart';
 import 'features/shell/app_shell.dart';
 
 class AkshayaApp extends ConsumerStatefulWidget {
@@ -18,9 +19,16 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
   @override
   void initState() {
     super.initState();
+    // Starts keeping the scheduled alerts and the background check in step
+    // with the app.
+    ref.read(alertCoordinatorProvider);
     _lifecycle = AppLifecycleListener(
-      // A new day may have started while the app was in the background.
-      onResume: () => ref.read(todayProvider.notifier).refresh(),
+      onResume: () {
+        // A new day may have started while the app was in the background.
+        ref.read(todayProvider.notifier).refresh();
+        // Notifications may have been switched on or off in system settings.
+        ref.invalidate(notificationsAllowedProvider);
+      },
     );
   }
 

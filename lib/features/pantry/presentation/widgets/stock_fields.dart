@@ -56,7 +56,7 @@ class StockFieldsController extends ChangeNotifier {
 
   double? get remainingValue => parseQuantity(remaining.text);
 
-  double? get priceValue => parseQuantity(price.text);
+  double? get priceValue => parseMoney(price.text);
 
   int? get useWithinValue => int.tryParse(useWithinDays.text.trim());
 
@@ -212,7 +212,7 @@ class StockFields extends StatelessWidget {
     if (value.isEmpty) {
       return null;
     }
-    final double? parsed = parseQuantity(value);
+    final double? parsed = parseMoney(value);
     if (parsed == null || parsed < 0) {
       return 'Enter a valid price';
     }

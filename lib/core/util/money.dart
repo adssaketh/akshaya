@@ -9,3 +9,23 @@ String formatMoney(double amount) {
       : rounded.toStringAsFixed(2);
   return '$kCurrencySymbol$body';
 }
+
+/// Reads a price typed by a person: "1250", "1,250", "1,25,000" (Indian
+/// grouping), "120.50", "₹120". Commas are thousands separators, never decimal
+/// points, so "1,250" is 1250. Returns null when the text is empty or not a
+/// number; the caller decides whether a negative amount is acceptable.
+double? parseMoney(String input) {
+  String text = input.trim();
+  if (text.startsWith(kCurrencySymbol)) {
+    text = text.substring(kCurrencySymbol.length);
+  }
+  text = text.replaceAll(',', '').replaceAll(RegExp(r'\s'), '');
+  if (text.isEmpty) {
+    return null;
+  }
+  final double? value = double.tryParse(text);
+  if (value == null || !value.isFinite) {
+    return null;
+  }
+  return value;
+}

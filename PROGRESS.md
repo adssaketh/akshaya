@@ -10,7 +10,8 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 1 Data model, database, pantry CRUD, add/use items | Done. CI green, APK installed and checklist passed. |
 | 2 Shopping list + auto-suggestions | Done. CI green (180 tests), APK installed and checklist passed. |
 | 3 Barcode scanning + Open Food Facts | Done. CI green, APK installed and checked on device. |
-| 4 to 8 | Not started |
+| 4 Local notifications and background checks | Built, awaiting CI and device check |
+| 5 to 8 | Not started |
 
 ## Phase 2: what is built
 
@@ -205,11 +206,82 @@ test/features/scanning/{domain,data,presentation}/    product_info, scan_service
 - The product image from Open Food Facts is not stored or shown (no image UI yet).
 - UPC-E (8 digits starting with 0 or 1) and EAN-8 are ambiguous on some labels; the scanner reports them as read.
 - Category mapping is a heuristic and can be wrong for unusual products.
-- Phase 1's batch form still reads a price like "1,250" as 1.25. Not touched in this phase.
+- Phase 1's batch form read a price like "1,250" as 1.25: fixed in Phase 4.
 - Barcode scanning needs a real device camera; emulators will not read codes.
 - Reinstalling under the new applicationId loses old data; there is no export until Phase 8.
 
-## Next: Phase 4 (local notifications and background checks)
+## Phase 4: what is built
+
+A daily local alert at a time you choose (default 8:00 am, Asia/Kolkata), up to three grouped notifications: **Expired**, **Expiring** (today and the next N days, default 3) and **Low stock**. Each tap opens its own list: Pantry filtered to Expired, Pantry filtered to Expiring soon, or the Shopping tab (restock suggestions on top). The opened-item rule (earlier of printed expiry or opened + use-within days) comes from the existing `StockLogic`, so alerts and the Pantry statuses always agree. A periodic WorkManager check (every 6 h) re-plans the alerts even if the app is never opened. Settings has a new "Alerts" block: switch, time, window (1 to 14 days), include low stock, permission banner, and "Show today's alert now". Notification permission is asked once on first run (with an explanation) and again from Settings; declining just leaves the banner. Also fixed: Phase 1 batch form read "1,250" as 1.25 (now `parseMoney`).
+
+### Files (new or changed in Phase 4)
+
+```
+pubspec.yaml                                      + flutter_local_notifications ^22.3.3, timezone (>=0.10.1 <0.12.0), workmanager ^0.10.10
+android/app/build.gradle.kts                      core library desugaring, multidex
+android/app/src/main/AndroidManifest.xml          POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, notification receivers
+lib/main.dart                                     expiryWarningDaysProvider follows the saved setting
+lib/app.dart                                      starts alertCoordinatorProvider; re-checks permission on resume
+lib/core/util/money.dart                          + parseMoney
+lib/features/pantry/data/database/app_database.dart   schema v4 (+ app_settings), migration
+lib/features/pantry/data/database/open_database.dart  NEW openAppDatabase() (busy_timeout, shared with the worker)
+lib/features/pantry/presentation/providers.dart   uses openAppDatabase
+lib/features/pantry/presentation/widgets/stock_fields.dart   price via parseMoney
+lib/features/shopping/presentation/checkout_screen.dart      price via parseMoney
+lib/features/shell/app_shell.dart                 opens the tapped alert's list; first-run prompt
+lib/features/settings/settings_screen.dart        + Alerts block
+lib/features/settings/domain/settings_repository.dart
+lib/features/settings/data/{drift_settings_repository.dart,database/settings_tables.dart}
+lib/features/settings/presentation/providers.dart
+lib/features/alerts/domain/
+  alert_settings.dart, alert_digest.dart, alert_plan.dart, alert_schedule.dart,
+  alert_scheduler.dart, notification_gateway.dart, background_work.dart
+lib/features/alerts/data/
+  local_notification_gateway.dart, alert_worker.dart, workmanager_background_work.dart
+lib/features/alerts/presentation/
+  providers.dart, alerts_section.dart, first_run_prompt.dart
+test/core/util_test.dart                          + parseMoney
+test/features/pantry/presentation/stock_fields_price_test.dart
+test/features/settings/{fake_settings_repository.dart,data/settings_repository_test.dart}   incl. v3->v4 migration
+test/features/alerts/{fake_notification_gateway.dart,domain/*,data/alert_worker_test.dart,presentation/alerts_widgets_test.dart}
+```
+
+### Key decisions (Phase 4)
+
+- **Schema v4** adds `app_settings` (key/value text, local only). Alert settings live there; Phase 8 reuses it for the other settings.
+- **Fixed Asia/Kolkata** time zone (no device time-zone lookup). Wall-clock times are carried as UTC-labelled `DateTime`s, so no DST maths exists.
+- **Inexact alarms** (`inexactAllowWhileIdle`): no exact-alarm permission. An alert can arrive a few minutes late.
+- **Scheduled notifications have fixed text**, so the app schedules the next 3 days, each with that day's own content, and re-plans on any change to settings, pantry or lists, on a new day, and every 6 h from WorkManager. If the worker is delayed, the 3-day buffer still covers you.
+- **Only pending notifications are cancelled** when re-planning, so an alert already in the shade stays. Alerts time out after 18 h.
+- **Worker isolate opens its own DB connection** with `busy_timeout = 5000`; the migration is safe if the worker runs it first.
+- **Low stock excludes "expired"** suggestions (those are already in the Expired alert).
+- **"Expiring soon" days drives the Pantry status too** (one setting, one meaning).
+- Nothing is scheduled on days with nothing to say.
+
+## Test checklist (you), Phase 4
+
+1. Push, then check Actions: `verify` and `build-apk`. Paste me any red log (I could not run the analyzer locally). Run `git pull --rebase` before the next push.
+2. Install the APK over Phase 3 (data must survive: v3 to v4 migration). First launch: a "Daily expiry alerts" dialog. Tap Allow, grant the system prompt.
+3. Settings > Load sample data, then Alerts > "Show today's alert now": up to three notifications appear (Expired, Expiring, Low stock). Expand one: the body lists names with days.
+4. Tap each: Expired and Expiring open Pantry with that status filter set; Low stock opens Shopping. Do it with the app in the background and with it closed.
+5. Set the alert time 2 minutes ahead, lock the phone: the alert arrives (a few minutes late is normal on some phones).
+6. Change "Expiring soon means" to 7: the Pantry "Expiring soon" chip count changes to match.
+7. Switch "Include low stock" off, then "Daily alert" off: nothing further is scheduled (re-check at the set time).
+8. Deny the permission (system settings > Akshaya Patra > Notifications off), return to the app: the banner appears; "Allow notifications" / "Open settings" works.
+9. Restart the phone: alerts are still scheduled (open the app once if your phone's battery saver blocks the boot receiver).
+10. Add a batch price of "1,250": detail shows ₹1250.
+11. Dark mode and 200% font scale on the Alerts block: no overflow.
+
+## Known issues (Phase 4)
+
+- I could not run `flutter analyze` or tests locally; CI is the first run. Expect possible small fixes.
+- Alerts are inexact and can be several minutes late. Some phone makers (Xiaomi, Oppo, Vivo, Samsung battery saver) stop background work; the 3-day schedule still fires, but the content is only as fresh as the last time the app or worker ran.
+- A day's text is fixed when it is scheduled: stock used after that is reflected at the next re-plan (any change in the app triggers one).
+- No custom notification sound, action buttons or per-item snooze.
+- The Settings tab is still temporary (sample data, design gallery, Alerts block). Phase 8 builds the full screen.
+- Notification title/body are English only (as the spec requires).
+
+## Next: Phase 5 (multilingual input: offline dictionary + parser, then Gemini with daily cap)
 
 Start in a new chat when you say so.
 

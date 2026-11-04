@@ -60,18 +60,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     super.dispose();
   }
 
-  /// A price typed as "1,250" or "1250.50"; null when empty or not a number.
-  double? _parsePrice(String text) {
-    final String cleaned = text.trim().replaceAll(',', '');
-    return cleaned.isEmpty ? null : double.tryParse(cleaned);
-  }
-
   String? _validatePrice(String? text) {
     final String value = (text ?? '').trim();
     if (value.isEmpty) {
       return null;
     }
-    final double? parsed = _parsePrice(value);
+    final double? parsed = parseMoney(value);
     if (parsed == null || parsed < 0 || !parsed.isFinite) {
       return 'Enter a valid price';
     }
@@ -103,7 +97,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             CheckoutLine(
               entryId: line.entry.id,
               expiryDate: line.expiry,
-              price: _parsePrice(line.price.text),
+              price: parseMoney(line.price.text),
             ),
         ],
         store: _store.text,
