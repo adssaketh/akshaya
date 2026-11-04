@@ -1,0 +1,94 @@
+name: Android debug APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bootstrap:
+    # Creates the android/ platform folder once (applicationId com.akshaya.app)
+    # and commits it back, so it is never hand-maintained.
+    runs-on: ubuntu-latest
+    outputs:
+      created: ${{ steps.check.outputs.created }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ -d android ]; then echo "created=false" >> "$GITHUB_OUTPUT"; else echo "created=true" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.check.outputs.created == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - if: steps.check.outputs.created == 'true'
+        run: |
+          flutter create --platforms=android --org com.akshaya --project-name akshaya .
+          # Pin the application id and label.
+          for f in android/app/build.gradle.kts android/app/build.gradle; do
+            [ -f "$f" ] && sed -i 's/applicationId = "[^"]*"/applicationId = "com.akshaya.app"/; s/applicationId "[^"]*"/applicationId "com.akshaya.app"/' "$f"
+          done
+          sed -i 's/android:label="[^"]*"/android:label="Akshaya"/' android/app/src/main/AndroidManifest.xml
+          git checkout -- lib pubspec.yaml test 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android
+          git commit -m "ci: bootstrap android platform (com.akshaya.app)"
+          git push
+
+  verify:
+    needs: bootstrap
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter analyze
+      - run: flutter test
+
+  build-apk:
+    needs: bootstrap
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Pull bootstrap commit
+        if: needs.bootstrap.outputs.created == 'true'
+        run: git pull --rebase origin "${GITHUB_REF_NAME}"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - name: Inject google-services.json (if secret is set)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          else
+            echo "No GOOGLE_SERVICES_JSON secret; building without Firebase (not needed before Phase 6)."
+          fi
+      - run: flutter build apk --debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: akshaya-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
