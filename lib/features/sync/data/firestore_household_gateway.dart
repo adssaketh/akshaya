@@ -22,15 +22,15 @@ import 'firebase_errors.dart';
 class FirestoreHouseholdGateway implements HouseholdGateway {
   FirestoreHouseholdGateway(
     this._runtime, {
-    Random? random,
+    this.random,
     Uuid? uuid,
     DateTime Function()? clock,
-  })  : _random = random,
-        _uuid = uuid ?? const Uuid(),
+  })  : _uuid = uuid ?? const Uuid(),
         _clock = clock ?? DateTime.now;
 
   final FirebaseRuntime _runtime;
-  final Random? _random;
+  /// Source of invite codes; tests pass a seeded one.
+  final Random? random;
   final Uuid _uuid;
   final DateTime Function() _clock;
 
@@ -97,7 +97,7 @@ class FirestoreHouseholdGateway implements HouseholdGateway {
       if (id is! String || id.isEmpty) {
         return null;
       }
-      return get(id);
+      return await get(id);
     } on Object catch (error) {
       throw accountFailureOf(error);
     }
@@ -130,7 +130,7 @@ class FirestoreHouseholdGateway implements HouseholdGateway {
       throw const AccountFailure('Give the household a name.');
     }
     final String id = _uuid.v4();
-    final String code = InviteCode.generate(_random);
+    final String code = InviteCode.generate(random);
     final int now = _clock().millisecondsSinceEpoch;
     try {
       final FirebaseFirestore fs = await _firestore();
@@ -241,7 +241,7 @@ class FirestoreHouseholdGateway implements HouseholdGateway {
 
   @override
   Future<String> newInviteCode(String householdId, String oldCode) async {
-    final String code = InviteCode.generate(_random);
+    final String code = InviteCode.generate(random);
     try {
       final FirebaseFirestore fs = await _firestore();
       final DocumentSnapshot<Map<String, dynamic>> snap =
