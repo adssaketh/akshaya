@@ -71,7 +71,8 @@ void main() {
 
   double remaining(ItemWithBatches r) => r.batches.fold<double>(
         0,
-        (double sum, StockBatch b) => sum + b.quantityRemaining,
+        (double sum, StockBatch b) =>
+            sum + b.unit.convertTo(b.quantityRemaining, r.item.defaultUnit),
       );
 
   Future<CommandRunResult> run(
