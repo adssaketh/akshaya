@@ -11,7 +11,8 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 2 Shopping list + auto-suggestions | Done. CI green (180 tests), APK installed and checklist passed. |
 | 3 Barcode scanning + Open Food Facts | Done. CI green, APK installed and checked on device. |
 | 4 Local notifications and background checks | Done. CI green (verify + build-apk); device checklist pending |
-| 5 to 8 | Not started |
+| 5 Multilingual input (offline parser, then Gemini with daily cap) | Built. Not compiled locally; needs a CI round. Device checklist pending. |
+| 6 to 8 | Not started |
 
 ## Phase 2: what is built
 
@@ -282,7 +283,96 @@ test/features/alerts/{fake_notification_gateway.dart,domain/*,data/alert_worker_
 - The Settings tab is still temporary (sample data, design gallery, Alerts block). Phase 8 builds the full screen.
 - Notification title/body are English only (as the spec requires).
 
-## Next: Phase 5 (multilingual input: offline dictionary + parser, then Gemini with daily cap)
+## Phase 5: what is built
+
+Mic button in the header of every main tab (Home, Pantry, Shopping, Recipes placeholders, Settings). Tap it: speak (phone speech recogniser, `en-IN`, `te-IN` or `hi-IN`) or type, and the words go through the pipeline **offline parser -> (only if not confident and AI is allowed) Gemini with a strict JSON schema -> app validates -> confirmation card -> you confirm or edit -> action runs -> Undo**. Nothing is executed from AI output without the card.
+
+Also in this change: the launcher icon artwork is bigger inside its tile (legacy icon 0.70 -> 0.82 of the tile, adaptive foreground 50/108 -> 60/108; the artwork still sits inside the 66/108 adaptive safe zone).
+
+### Files (new or changed in Phase 5)
+
+```
+assets/dictionary/grocery_dictionary.json          NEW 138 products, 1100+ words (en/te/hi, script + romanised)
+assets/prompts/parse_command.txt                   NEW Gemini prompt template (parsing)
+tool/offline_words/                                NEW generator: tables.py, dictionary_source.txt, generate.py, README.md
+tool/generate_launcher_icons.py                    bigger artwork
+android/app/src/main/res/{mipmap,drawable}-*/      regenerated launcher PNGs; assets/branding/akshaya_patra_icon_512.png
+pubspec.yaml                                       + firebase_core, firebase_ai, firebase_app_check, firebase_remote_config, speech_to_text, record; + assets
+android/app/src/main/AndroidManifest.xml           + RECORD_AUDIO, microphone feature (optional), RecognitionService query
+.github/workflows/android.yml                      Firebase settings from the secret -> --dart-define (no google-services plugin)
+lib/features/commands/domain/
+  text_normalizer.dart                             lower-case, nukta/ZWJ/digit folding, tokenizer, phonetic key
+  parser_words.dart                                GENERATED numbers, units, intent words, separators, filler words
+  grocery_dictionary.dart, grocery_lexicon.dart    dictionary + the pantry's own names/aliases, longest match
+  offline_command_parser.dart                      clauses, quantity groups, intent, confidence
+  command_models.dart                              CommandIntent (the 7 schema intents), CommandAction, CommandInterpretation
+  command_service.dart                             offline first, AI only if unsure and allowed
+  command_executor.dart                            runs confirmed actions, per-action outcome + undo
+  voice_language.dart, speech_gateway.dart         language choice; speech/recorder interfaces
+lib/features/commands/data/                        speech_to_text_gateway.dart, record_audio_gateway.dart
+lib/features/commands/presentation/                providers, voice_mic_button, command_input_sheet,
+                                                   command_confirmation_sheet, command_flow
+lib/features/ai/domain/                            ai_settings, ai_gate, ai_failures, ai_response_validator, ai_command_service
+lib/features/ai/data/                              firebase_runtime (lazy init, App Check, Remote Config),
+                                                   firebase_generative_backend (Firebase AI Logic)
+lib/features/ai/presentation/                      providers, ai_voice_section (Settings), ai_notice_dialog
+lib/features/{pantry,shopping,shell,settings}/...  mic button in the header; AI and voice block in Settings
+test/features/commands/, test/features/ai/         parser (3 languages, both scripts), dictionary sanity,
+                                                   normalizer, service, executor, confirmation card, validator, gate, daily cap
+```
+
+### Key decisions (Phase 5)
+
+- **Offline first.** Longest-match item lookup over the dictionary plus your own item names and aliases (yours win, and a dictionary product you already have, such as "rice" when you have "Basmati Rice", resolves to *your* item, so no duplicates). Unknown spellings are matched by a phonetic key and plural/case stems, not fuzzy edit distance (it produced false hits). Function words ("cheyyi", "khatam", "mein") are matched exactly only.
+- **Confident** only if no word was unknown, every clause has an intent and every item-needing action found an item. Otherwise the AI is asked (if allowed) or the card opens with a "not sure, please check" line.
+- **Intent rules:** need/list words -> shopping list; "bought" -> pantry; bare "add" -> pantry, but the shopping list when the mic is tapped on the Shopping tab; remove > finished > use > expiring > how much. Two different kinds of request in one clause (for example "milk khatam add karo") are flagged, not guessed.
+- **AI gate order:** off -> not configured -> notice not accepted -> daily cap reached -> cooling down after a quota error -> ready. Every attempt (including retries) counts against the cap before it is sent. Backoff 1 s then 2 s on server errors; quota (429) and offline errors are not retried; a quota error pauses AI for one minute. 20 s timeout. All failures fall back to the offline reading with a one-line reason; nothing is lost.
+- **Privacy:** only the typed/spoken grocery text (max 300 chars, control characters and template markers stripped), up to 150 pantry item *names*, today's date and the language name are sent. No user, household, location or alias data. The text is fenced in the prompt and marked as data. One-time notice (declining turns AI off; Settings can turn it on again, which shows the notice again).
+- **Validation:** the whole AI answer is rejected if any action has an unknown intent, a missing item name, a bad/zero/huge quantity, an unknown unit or location, or an impossible date. Then the offline reading is kept.
+- **Firebase without the google-services plugin.** AGP 9 + the Gradle plugin is a build risk, so the app initialises Firebase lazily from `--dart-define` values (`FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_SENDER_ID`). CI derives them from your `GOOGLE_SERVICES_JSON` secret (client for package `com.akshayapatra.app`) and masks them. No secret -> the app builds and AI stays in offline mode. Startup speed is unchanged because Firebase starts only on the first AI call.
+- **Model name** is the Remote Config key `gemini_model_name` (default `gemini-3.8-flash`, used until a fetch succeeds).
+- **Aliases grow:** a new item created by a command stores your word ("kandi pappu") as an alias; when the AI read the command, an existing item also learns the new word, so next time no AI call is needed.
+- **Voice:** the phone's recogniser first. If the phone has none, and AI is allowed, it records up to 10 s of 16 kHz WAV, sends it to Gemini for transcription, and deletes the file. Otherwise you are told to type.
+- **Executor details:** mark finished uses the item's remaining total (retries with the exact available amount on rounding); shopping adds merge into an existing entry and undo restores the old quantity; an unknown product on the shopping list becomes a free-text entry (it becomes a pantry item at "Done shopping"); unit mismatches (litres for a kg item) are refused with a message; one failing action never stops the others.
+
+### Spec notes to be aware of
+
+- The dictionary has 138 products and about 1,100 words/spellings (the spec said ~300 words); extend it by editing `tool/offline_words/dictionary_source.txt` (see the README there).
+- Docs do not explicitly say the Gemini Developer API free tier works with App Check on a Spark project with no billing account; it should, but this is the first thing to confirm on device.
+- Gemini audio is used only as the fallback when the phone has no speech recogniser, so it adds the `record` package.
+
+## Test checklist (you), Phase 5
+
+Before anything: push, wait for CI. If `flutter analyze` or tests fail, paste the output; this phase was written without a compiler.
+
+Offline (turn on airplane mode, or leave the secret unset):
+1. Tap the mic on Pantry. Say or type: "add 1 litre milk, 6 eggs and half kilo tomatoes". The card shows what was heard, three English lines (Milk 1 L, Eggs 6, Tomato 0.5 kg), and "Understood on your phone". Confirm: they appear in the pantry with an Undo snackbar. Undo removes them.
+2. Type (or say) each of: "rendu kilo biyyam add cheyyi", "do kilo chawal list mein daalo", "milk ayipoyindi", "half packet ravva vaadesanu". Check the card text before confirming each. Native script: "రెండు కిలోలు బియ్యం యాడ్ చేయి", "दो किलो चावल लिस्ट में डालो".
+3. On the Shopping tab, "eggs 12 add" goes to the shopping list; on the Pantry tab it goes to the pantry.
+4. "what is expiring" and "dahi kitna hai" show an answer sheet and change nothing.
+5. Edit a name, quantity and unit on the card before confirming; remove a line; "Change words" returns to the text.
+6. Type nonsense ("xyzzy 2 kg add"): the card says it is not sure and shows "Xyzzy" as a new item; Cancel changes nothing.
+7. Say a word for an item you already have with an alias (add alias "biyyam" to Rice first). It must update Rice, not create a second item.
+8. Mic permission: first tap shows the explanation, then the system prompt. Deny it: you get a message and can still type.
+
+With AI (secret set, notice accepted):
+9. First mic tap shows the AI notice. "Use offline only" turns AI off in Settings.
+10. Type a hard sentence ("amma ki 2 kilos kandi pappu and oka dabba nuvvulu kavali"). The card says "Read by AI (Google Gemini). Please check it." Confirm, and the new words are saved as aliases (item detail).
+11. Settings -> AI and voice: calls today increase by one per AI read. Set the limit to 5 and use it up: you see "AI limit reached for today, using offline mode." and commands still work offline.
+12. Turn AI off: no AI calls at all.
+13. Debug APK: register the App Check debug token (logcat shows it on first AI call) in Firebase console -> App Check -> Apps -> Manage debug tokens, otherwise AI calls are rejected and you stay offline.
+
+## Known issues (Phase 5)
+
+- Not compiled or run locally. Package versions for the Firebase and speech packages are lower bounds (`^`); after the first green CI, tell me the resolved versions and I will pin them. If `AndroidProvider.debug/playIntegrity` or a `firebase_ai` signature differs in the resolved version, CI will say so.
+- Several different intents in one sentence with no separator ("add rice and milk finished") can fall back to the AI or manual edit. Say them as separate commands or use commas.
+- A mixed-intent clause is never guessed; the card opens with whatever was understood and a warning.
+- Quantities spoken as words beyond twelve (thirteen, fourteen, ...) are digits-only offline; the AI handles the rest.
+- Items spoken for the shopping list that are not in the pantry become free-text entries.
+- Recipes and Home are still placeholders (mic button is there; "Recipes" and "Home" commands arrive with Phases 7 and 8).
+- Phase 4 device checklist is still pending from earlier.
+
+## Next: Phase 6 (Firebase auth, household sharing, sync, security rules)
 
 Start in a new chat when you say so.
 

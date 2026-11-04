@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../alerts/domain/alert_plan.dart';
 import '../alerts/presentation/first_run_prompt.dart';
 import '../alerts/presentation/providers.dart';
+import '../commands/presentation/voice_mic_button.dart';
 import '../pantry/presentation/pantry_screen.dart';
 import '../pantry/presentation/providers.dart';
 import '../settings/settings_screen.dart';
@@ -148,7 +149,7 @@ class _Placeholder extends StatelessWidget {
     return SafeArea(
       child: Column(
         children: <Widget>[
-          const AkshayaHeader(),
+          const AkshayaHeader(actions: <Widget>[VoiceMicButton()]),
           Expanded(child: EmptyState(icon: icon, title: title, body: body)),
         ],
       ),

@@ -171,15 +171,17 @@ def save(img, path):
 def main():
     legacy = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
     for name, px in legacy.items():
-        save(render(px, 0.70, tile=True), f"{RES}/mipmap-{name}/ic_launcher.png")
+        save(render(px, 0.82, tile=True), f"{RES}/mipmap-{name}/ic_launcher.png")
 
-    # Adaptive icons: 108 dp canvas; keep the artwork inside the 66 dp safe
-    # circle (the logo is about 0.78 as wide as it is tall).
+    # Adaptive icons: 108 dp canvas; the artwork is 60 dp tall (was 50) and
+    # still inside the 66 dp safe circle: the farthest points (handle top,
+    # basket bottom corners) sit about 0.7 x 60 / 0.92 dp = 32.6 dp from the
+    # centre, under the 33 dp radius.
     density = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
     for name, factor in density.items():
         px = round(108 * factor)
-        save(render(px, 50 / 108), f"{RES}/drawable-{name}/ic_launcher_foreground.png")
-        save(render(px, 50 / 108, mono=True),
+        save(render(px, 60 / 108), f"{RES}/drawable-{name}/ic_launcher_foreground.png")
+        save(render(px, 60 / 108, mono=True),
              f"{RES}/drawable-{name}/ic_launcher_monochrome.png")
 
     os.makedirs(f"{RES}/mipmap-anydpi-v26", exist_ok=True)
@@ -200,7 +202,7 @@ def main():
             "</resources>\n"
         )
 
-    save(render(512, 0.70, tile=True), "assets/branding/akshaya_patra_icon_512.png")
+    save(render(512, 0.82, tile=True), "assets/branding/akshaya_patra_icon_512.png")
     write_svg("assets/branding/akshaya_patra_logo.svg")
 
 

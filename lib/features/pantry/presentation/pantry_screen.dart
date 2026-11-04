@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/feedback.dart';
+import '../../commands/domain/command_models.dart';
+import '../../commands/presentation/voice_mic_button.dart';
 import '../domain/entities.dart';
 import '../domain/pantry_query.dart';
 import '../domain/stock_logic.dart';
@@ -66,7 +68,11 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            const AkshayaHeader(),
+            const AkshayaHeader(
+              actions: <Widget>[
+                VoiceMicButton(commandContext: CommandContext.pantry),
+              ],
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: TextField(

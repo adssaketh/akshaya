@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ui/feedback.dart';
+import '../ai/presentation/ai_voice_section.dart';
 import '../alerts/presentation/alerts_section.dart';
+import '../commands/presentation/voice_mic_button.dart';
 import '../pantry/presentation/providers.dart';
 
 /// Temporary Settings tab: the daily alert settings (Phase 4), sample data and
@@ -18,8 +20,10 @@ class SettingsScreen extends ConsumerWidget {
     return SafeArea(
       child: ListView(
         children: <Widget>[
-          const AkshayaHeader(),
+          const AkshayaHeader(actions: <Widget>[VoiceMicButton()]),
           const AlertsSection(),
+          const Divider(),
+          const AiVoiceSection(),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.science_outlined),

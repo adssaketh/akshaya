@@ -100,16 +100,35 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
-      - name: Inject google-services.json (if secret is set)
+      - name: Firebase settings from the GOOGLE_SERVICES_JSON secret (if set)
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
+          # The app reads its Firebase settings from --dart-define values (no
+          # google-services Gradle plugin, nothing committed). Without the
+          # secret the app still builds; AI then stays in offline mode.
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
-            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            printf '%s' "$GOOGLE_SERVICES_JSON" > "$RUNNER_TEMP/gs.json"
+            PKG=com.akshayapatra.app
+            API_KEY=$(jq -r --arg p "$PKG" '[.client[] | select(.client_info.android_client_info.package_name==$p)][0].api_key[0].current_key // empty' "$RUNNER_TEMP/gs.json")
+            APP_ID=$(jq -r --arg p "$PKG" '[.client[] | select(.client_info.android_client_info.package_name==$p)][0].client_info.mobilesdk_app_id // empty' "$RUNNER_TEMP/gs.json")
+            PROJECT_ID=$(jq -r '.project_info.project_id // empty' "$RUNNER_TEMP/gs.json")
+            SENDER_ID=$(jq -r '.project_info.project_number // empty' "$RUNNER_TEMP/gs.json")
+            rm -f "$RUNNER_TEMP/gs.json"
+            if [ -z "$API_KEY" ] || [ -z "$APP_ID" ] || [ -z "$PROJECT_ID" ] || [ -z "$SENDER_ID" ]; then
+              echo "::warning::GOOGLE_SERVICES_JSON has no Android app for $PKG; building without Firebase."
+            else
+              echo "::add-mask::$API_KEY"
+              echo "::add-mask::$APP_ID"
+              {
+                echo "DART_DEFINES=--dart-define=FIREBASE_API_KEY=$API_KEY --dart-define=FIREBASE_APP_ID=$APP_ID --dart-define=FIREBASE_PROJECT_ID=$PROJECT_ID --dart-define=FIREBASE_SENDER_ID=$SENDER_ID"
+              } >> "$GITHUB_ENV"
+            fi
           else
-            echo "No GOOGLE_SERVICES_JSON secret; building without Firebase (not needed before Phase 6)."
+            echo "No GOOGLE_SERVICES_JSON secret; building without Firebase (AI stays offline)."
           fi
-      - run: flutter build apk --debug
+      - name: Build debug APK
+        run: flutter build apk --debug $DART_DEFINES
       - uses: actions/upload-artifact@v4
         with:
           name: akshaya-debug-apk

@@ -8,6 +8,8 @@ import '../../../core/util/date_only.dart';
 import '../../pantry/domain/entities.dart';
 import '../../pantry/presentation/pantry_icons.dart';
 import '../../pantry/presentation/providers.dart';
+import '../../commands/domain/command_models.dart';
+import '../../commands/presentation/voice_mic_button.dart';
 import '../domain/shopping_entities.dart';
 import '../domain/shopping_enums.dart';
 import '../domain/shopping_repository.dart';
@@ -63,7 +65,11 @@ class ShoppingScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            const AkshayaHeader(),
+            const AkshayaHeader(
+              actions: <Widget>[
+                VoiceMicButton(commandContext: CommandContext.shopping),
+              ],
+            ),
             if (selected != null) _ListBar(selected: selected),
             Expanded(
               child: lists.when(
