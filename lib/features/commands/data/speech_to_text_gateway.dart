@@ -60,16 +60,16 @@ final class SpeechToTextGateway implements SpeechGateway {
       if (!_initialized) {
         _pending = null;
         return SpeechResult(
-          _speech.hasPermission
+          await _speech.hasPermission
               ? SpeechStatus.notAvailable
               : SpeechStatus.permissionDenied,
         );
       }
       await _speech.listen(
-        localeId: localeId,
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3),
         listenOptions: SpeechListenOptions(
+          localeId: localeId,
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(seconds: 3),
           partialResults: true,
           cancelOnError: true,
         ),

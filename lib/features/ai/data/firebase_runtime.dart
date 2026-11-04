@@ -62,8 +62,9 @@ class FirebaseRuntime {
       // Debug builds use the debug provider (register its token in the
       // Firebase console); release builds use Play Integrity.
       await FirebaseAppCheck.instance.activate(
-        androidProvider:
-            kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+        providerAndroid: kDebugMode
+            ? const AndroidDebugProvider()
+            : const AndroidPlayIntegrityProvider(),
       );
     } on Object {
       // Without App Check the AI calls are refused by the server when

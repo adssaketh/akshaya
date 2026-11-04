@@ -21,6 +21,9 @@ Future<void> runCommandFlow(
   final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
   String initialText = '';
   while (true) {
+    if (!context.mounted) {
+      return;
+    }
     final CommandInterpretation? interpretation = await showCommandInputSheet(
       context,
       commandContext: commandContext,

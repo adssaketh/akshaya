@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:firebase_ai/firebase_ai.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
 
 import '../domain/ai_command_service.dart';
 import 'firebase_runtime.dart';
@@ -70,9 +69,7 @@ final class FirebaseGenerativeBackend implements GenerativeBackend {
   @override
   Future<String> generateJson(String prompt) async {
     await _runtime.ensureReady();
-    final GenerativeModel model = FirebaseAI.googleAI(
-      appCheck: FirebaseAppCheck.instance,
-    ).generativeModel(
+    final GenerativeModel model = FirebaseAI.googleAI().generativeModel(
       model: _runtime.modelName(),
       generationConfig: GenerationConfig(
         responseMimeType: 'application/json',
@@ -91,9 +88,7 @@ final class FirebaseGenerativeBackend implements GenerativeBackend {
     required String prompt,
   }) async {
     await _runtime.ensureReady();
-    final GenerativeModel model = FirebaseAI.googleAI(
-      appCheck: FirebaseAppCheck.instance,
-    ).generativeModel(model: _runtime.modelName());
+    final GenerativeModel model = FirebaseAI.googleAI().generativeModel(model: _runtime.modelName());
     final GenerateContentResponse response = await model.generateContent(
       <Content>[
         Content.multi(<Part>[TextPart(prompt), InlineDataPart(mimeType, audio)]),
