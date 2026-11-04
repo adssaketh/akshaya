@@ -202,7 +202,8 @@ class AlertsSection extends ConsumerWidget {
       if (shown.isEmpty) {
         showMessage(messenger, 'Nothing to alert about right now.');
       }
-    } on Object catch (error) {
+    } on Object catch (error, stack) {
+      debugPrint('Alert preview failed: $error\n$stack');
       showMessage(messenger, failureMessage(error));
     }
   }
