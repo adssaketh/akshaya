@@ -8,7 +8,7 @@ App name: Akshaya (spec placeholder "Pantry" is replaced everywhere). Repo: `ads
 | --- | --- |
 | 0 Design research and design system | Done. Green in CI. |
 | 1 Data model, database, pantry CRUD, add/use items | Done. CI green, APK installed and checklist passed. |
-| 2 Shopping list + auto-suggestions | Built, not yet compiled (no Dart SDK reachable from my sandbox). First CI run is the real check. |
+| 2 Shopping list + auto-suggestions | Done. CI green (180 tests), APK installed and checklist passed. |
 | 3 to 8 | Not started |
 
 ## Phase 2: what is built
@@ -113,7 +113,7 @@ test/features/pantry/presentation/            pantry + add-item widget tests (fa
 3. Use `ThemeMode.system` by default; the manual override arrives with Settings (Phase 8).
 4. Give every FAB a unique `heroTag`.
 
-## Test checklist (you), Phase 2
+## Test checklist (you), Phase 2 (passed)
 
 1. Run the push script, then open the Actions tab. `verify` (analyze + tests) and `build-apk` should go green. Paste me any red log. CI will also commit an updated `pubspec.lock` (adds `share_plus`): run `git pull --rebase` before your next push.
 2. Install the new APK over the old one. Your pantry data must still be there (this exercises the v1 to v2 migration). Shopping tab shows "Shopping list" and an empty state.
@@ -131,9 +131,6 @@ test/features/pantry/presentation/            pantry + add-item widget tests (fa
 
 ## Known issues
 
-- Not compiled or run in my sandbox (the Dart SDK download is blocked there). Hand-reviewed only, so expect a few small fixes from the first CI run (likely: a lint, a Drift generated-name detail, a widget-test finder).
-- `share_plus` 13 needs AGP 8.12.1+, Gradle 8.13+, Kotlin 2.2+ (your project has AGP 9.1, Gradle 9.3, Kotlin 2.4), but I could not test the Android build with it. If `build-apk` fails on the plugin, paste the log.
-- "Done shopping" relies on nested Drift transactions (checkout calls the pantry repository inside its own transaction). The rollback test covers it; if it fails in CI that is the first place to look.
 - Free-text entries become pantry items in category **Other** with no low-stock level; edit them in Pantry afterwards.
 - Dismissed suggestions come back after an app restart (not stored).
 - Phase 1's batch form still reads a price like "1,250" as 1.25 (it treats the comma as a decimal point). Done shopping handles it correctly. I can fix the Phase 1 form in the next phase.
