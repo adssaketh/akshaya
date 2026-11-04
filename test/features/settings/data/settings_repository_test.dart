@@ -3,10 +3,13 @@ import 'dart:io';
 
 import 'package:akshaya/features/pantry/data/database/app_database.dart';
 import 'package:akshaya/features/settings/data/drift_settings_repository.dart';
+import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+
   late AppDatabase db;
   late DriftSettingsRepository repo;
 

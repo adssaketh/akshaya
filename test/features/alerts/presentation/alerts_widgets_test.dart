@@ -47,6 +47,14 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
+  // The preview reads two streams and awaits the gateway, which takes several
+  // event-loop turns; pump a few frames so they all finish.
+  Future<void> letAsyncWorkFinish(WidgetTester tester) async {
+    for (int i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+  }
+
   group('AlertsSection', () {
     testWidgets('shows the defaults', (WidgetTester tester) async {
       bigScreen(tester);
@@ -85,6 +93,7 @@ void main() {
       expect(settings.values[AlertSettingKeys.warningDays], '4');
 
       await tester.tap(find.byTooltip('One day fewer'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('One day fewer'));
       await tester.pumpAndSettle();
       expect(settings.values[AlertSettingKeys.warningDays], '2');
@@ -194,7 +203,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Show today’s alert now'));
-      await tester.pumpAndSettle();
+      await letAsyncWorkFinish(tester);
 
       expect(find.text('Nothing to alert about right now.'), findsOneWidget);
       expect(gateway.shown, isEmpty);
@@ -223,7 +232,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Show today’s alert now'));
-      await tester.pumpAndSettle();
+      await letAsyncWorkFinish(tester);
 
       expect(gateway.shown, hasLength(1));
       expect(gateway.shown.single.single.title, '1 item expiring soon');
