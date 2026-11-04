@@ -9,7 +9,7 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 0 Design research and design system | Done. Green in CI. |
 | 1 Data model, database, pantry CRUD, add/use items | Done. CI green, APK installed and checklist passed. |
 | 2 Shopping list + auto-suggestions | Done. CI green (180 tests), APK installed and checklist passed. |
-| 3 Barcode scanning + Open Food Facts | Built, **not yet compiled or tested** (no Flutter SDK in my workspace). First CI run is the real check. |
+| 3 Barcode scanning + Open Food Facts | Done. CI green, APK installed and checked on device. |
 | 4 to 8 | Not started |
 
 ## Phase 2: what is built
@@ -199,7 +199,7 @@ test/features/scanning/{domain,data,presentation}/    product_info, scan_service
 
 ## Known issues (Phase 3)
 
-- **Nothing was compiled or run locally.** I reviewed by reading only; expect possible analyzer or test fixes on the first CI run. The scanner screen is the riskiest part.
+- Verified in CI and on device after one analyzer fix (join query type, private named formals).
 - The migration test, `product_cache` table and the extra `payload` column are mine; `product_cache` was not part of the schema question you answered.
 - Open Food Facts asks apps to send contact details in the User-Agent. I used a generic one; add yours in `open_food_facts_client.dart` if you want.
 - The product image from Open Food Facts is not stored or shown (no image UI yet).
