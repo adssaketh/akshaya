@@ -10,8 +10,8 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 1 Data model, database, pantry CRUD, add/use items | Done. CI green, APK installed and checklist passed. |
 | 2 Shopping list + auto-suggestions | Done. CI green (180 tests), APK installed and checklist passed. |
 | 3 Barcode scanning + Open Food Facts | Done. CI green, APK installed and checked on device. |
-| 4 Local notifications and background checks | Done. CI green (verify + build-apk); device checklist pending |
-| 5 Multilingual input (offline parser, then Gemini with daily cap) | Built. Not compiled locally; needs a CI round. Device checklist pending. |
+| 4 Local notifications and background checks | Done. CI green (verify + build-apk), APK installed and checklist passed. |
+| 5 Multilingual input (offline parser, then Gemini with daily cap) | Done. CI green after fix rounds, APK installed and checklist passed. |
 | 6 to 8 | Not started |
 
 ## Phase 2: what is built
@@ -370,7 +370,7 @@ With AI (secret set, notice accepted):
 - Quantities spoken as words beyond twelve (thirteen, fourteen, ...) are digits-only offline; the AI handles the rest.
 - Items spoken for the shopping list that are not in the pantry become free-text entries.
 - Recipes and Home are still placeholders (mic button is there; "Recipes" and "Home" commands arrive with Phases 7 and 8).
-- Phase 4 device checklist is still pending from earlier.
+- Phase 4 device checklist: passed (confirmed after this phase).
 
 ## Next: Phase 6 (Firebase auth, household sharing, sync, security rules)
 
