@@ -12,7 +12,7 @@ import 'fake_repository.dart';
 
 Widget host(FakePantryRepository repo, Widget home) {
   return ProviderScope(
-    overrides: <Override>[
+    overrides: [
       pantryRepositoryProvider.overrideWithValue(repo),
     ],
     child: MaterialApp(theme: AkshayaTheme.light(), home: home),

@@ -1,5 +1,3 @@
-import 'dart:ui' show FontVariation;
-
 import 'package:flutter/material.dart';
 
 /// Font family names. They must match the `fonts:` entries in pubspec.yaml.
