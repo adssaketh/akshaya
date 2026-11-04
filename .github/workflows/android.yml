@@ -41,7 +41,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add android
           git commit -m "ci: bootstrap android platform (com.akshaya.app)"
-          git push
+          # GitHub occasionally answers pushes with a transient 500; retry.
+          for attempt in 1 2 3 4 5; do
+            if git push; then exit 0; fi
+            echo "push failed (attempt $attempt), retrying..."
+            sleep $((attempt * 10))
+            git pull --rebase || true
+          done
+          exit 1
 
   verify:
     needs: bootstrap
