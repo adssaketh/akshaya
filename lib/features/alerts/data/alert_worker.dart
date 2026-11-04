@@ -6,6 +6,7 @@ import '../../pantry/data/database/open_database.dart';
 import '../../pantry/data/drift_pantry_repository.dart';
 import '../../pantry/domain/entities.dart';
 import '../../settings/data/drift_settings_repository.dart';
+import '../../sync/data/household_check.dart';
 import '../../shopping/data/drift_shopping_repository.dart';
 import '../../shopping/domain/shopping_entities.dart';
 import '../domain/alert_scheduler.dart';
@@ -53,7 +54,10 @@ void alertCallbackDispatcher() {
       }
       final AppDatabase db = openAppDatabase();
       try {
-        await refreshAlertsFromDatabase(db, LocalNotificationGateway());
+        final LocalNotificationGateway gateway = LocalNotificationGateway();
+        await refreshAlertsFromDatabase(db, gateway);
+        // Household changes are a bonus: never fail the daily alerts for them.
+        await checkHouseholdChanges(db, gateway);
         return true;
       } on Object catch (error) {
         debugPrint('Alert refresh failed: $error');

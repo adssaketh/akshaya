@@ -91,14 +91,29 @@ class LocalNotificationGateway implements NotificationGateway {
   }
 
   NotificationDetails _details(AlertNotification alert) {
-    final bool expiry = alert.channel == AlertChannelKind.expiry;
+    final String id;
+    final String name;
+    final String description;
+    switch (alert.channel) {
+      case AlertChannelKind.expiry:
+        id = 'akshaya_expiry';
+        name = 'Expiry alerts';
+        description =
+            'Daily reminder about food that has expired or is expiring soon';
+      case AlertChannelKind.stock:
+        id = 'akshaya_stock';
+        name = 'Low-stock alerts';
+        description = 'Daily reminder about items that are running low';
+      case AlertChannelKind.household:
+        id = 'akshaya_household';
+        name = 'Household changes';
+        description = 'When someone in your household changes a shared list';
+    }
     return NotificationDetails(
       android: AndroidNotificationDetails(
-        expiry ? 'akshaya_expiry' : 'akshaya_stock',
-        expiry ? 'Expiry alerts' : 'Low-stock alerts',
-        channelDescription: expiry
-            ? 'Daily reminder about food that has expired or is expiring soon'
-            : 'Daily reminder about items that are running low',
+        id,
+        name,
+        channelDescription: description,
         importance: Importance.high,
         priority: Priority.high,
         icon: _smallIcon,

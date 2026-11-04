@@ -1,0 +1,209 @@
+rules_version = '2';
+
+// Akshaya Patra: household sharing on the Firebase Spark plan.
+//
+//   households/{h}                       name, ownerId, inviteCode, createdAt
+//   households/{h}/members/{uid}         displayName, role, joinedAt
+//   households/{h}/{categories|items|shoppingLists|batches|entries|logs}/{id}
+//   inviteCodes/{code}                   householdId, ownerId
+//   users/{uid}                          householdId (pointer, own account only)
+//
+// Only members of a household can read or write its data. Every synced
+// document must carry updatedBy == the signed-in user and a server-stamped
+// syncedAt, which is what the "changed since last time" queries use.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function isMember(h) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/households/$(h)/members/$(uid()));
+    }
+
+    function isOwner(h) {
+      return signedIn()
+        && get(/databases/$(database)/documents/households/$(h)).data.ownerId == uid();
+    }
+
+    function isText(v, maxLen) {
+      return v is string && v.size() <= maxLen;
+    }
+
+    // ---------------------------------------------------------------
+    // Account pointer: which household this account uses.
+    // ---------------------------------------------------------------
+    match /users/{userId} {
+      allow read, delete: if signedIn() && userId == uid();
+      allow create, update: if signedIn() && userId == uid()
+        && request.resource.data.keys().hasOnly(['householdId'])
+        && isText(request.resource.data.householdId, 64);
+    }
+
+    // ---------------------------------------------------------------
+    // Invite codes. Anyone signed in can look one up by its exact value
+    // (that is how joining works) but cannot list them.
+    // ---------------------------------------------------------------
+    match /inviteCodes/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && code.size() == 8
+        && request.resource.data.keys().hasOnly(['householdId', 'ownerId'])
+        && request.resource.data.ownerId == uid()
+        && getAfter(/databases/$(database)/documents/households/$(request.resource.data.householdId)).data.ownerId == uid()
+        && getAfter(/databases/$(database)/documents/households/$(request.resource.data.householdId)).data.inviteCode == code;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.ownerId == uid();
+    }
+
+    // ---------------------------------------------------------------
+    // Households and members
+    // ---------------------------------------------------------------
+    match /households/{h} {
+      allow get: if isMember(h);
+      allow list: if false;
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['id', 'name', 'ownerId', 'inviteCode', 'createdAt'])
+        && request.resource.data.id == h
+        && request.resource.data.ownerId == uid()
+        && isText(request.resource.data.name, 80)
+        && isText(request.resource.data.inviteCode, 8)
+        && request.resource.data.inviteCode.size() == 8
+        && request.resource.data.createdAt is int;
+
+      // The owner may rename the household or replace the invite code.
+      allow update: if signedIn()
+        && resource.data.ownerId == uid()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'inviteCode'])
+        && isText(request.resource.data.name, 80)
+        && request.resource.data.inviteCode.size() == 8;
+
+      allow delete: if false;
+
+      match /members/{memberId} {
+        allow read: if isMember(h);
+
+        // The owner adds themself while creating the household; anyone else
+        // joins by presenting a valid invite code for this household.
+        allow create: if signedIn()
+          && memberId == uid()
+          && request.resource.data.userId == uid()
+          && isText(request.resource.data.displayName, 80)
+          && request.resource.data.joinedAt is int
+          && (
+            (request.resource.data.role == 'owner'
+              && request.resource.data.keys().hasOnly(['userId', 'displayName', 'role', 'joinedAt'])
+              && getAfter(/databases/$(database)/documents/households/$(h)).data.ownerId == uid())
+            ||
+            (request.resource.data.role == 'member'
+              && request.resource.data.keys().hasOnly(['userId', 'displayName', 'role', 'inviteCode', 'joinedAt'])
+              && get(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.householdId == h)
+          );
+
+        allow update: if false;
+
+        // A member can leave; the owner can remove anyone else.
+        allow delete: if signedIn()
+          && ((memberId == uid() && resource.data.role != 'owner')
+              || (isOwner(h) && memberId != uid()));
+      }
+
+      // -------------------------------------------------------------
+      // Synced data
+      // -------------------------------------------------------------
+      function syncedBase(h, id) {
+        let d = request.resource.data;
+        return d.id == id
+          && d.householdId == h
+          && d.updatedBy == uid()
+          && d.syncedAt == request.time
+          && d.createdAt is int
+          && d.updatedAt is int
+          && d.isDeleted is bool
+          && isText(d.id, 64);
+      }
+
+      // Members may read everything and may delete only documents that were
+      // soft-deleted first (the client purges them after 30 days).
+
+      match /categories/{id} {
+        allow read: if isMember(h);
+        allow create, update: if isMember(h) && syncedBase(h, id)
+          && isText(request.resource.data.name, 120)
+          && isText(request.resource.data.iconKey, 64)
+          && request.resource.data.sortOrder is int;
+        allow delete: if isMember(h) && resource.data.isDeleted == true;
+      }
+
+      match /items/{id} {
+        allow read: if isMember(h);
+        allow create, update: if isMember(h) && syncedBase(h, id)
+          && isText(request.resource.data.name, 200)
+          && isText(request.resource.data.categoryId, 64)
+          && isText(request.resource.data.defaultUnit, 32)
+          && isText(request.resource.data.defaultStorageLocation, 32)
+          && request.resource.data.isEssential is bool
+          && request.resource.data.aliases is list
+          && request.resource.data.aliases.size() <= 100
+          && request.resource.data.barcodes is list
+          && request.resource.data.barcodes.size() <= 20;
+        allow delete: if isMember(h) && resource.data.isDeleted == true;
+      }
+
+      match /shoppingLists/{id} {
+        allow read: if isMember(h);
+        allow create, update: if isMember(h) && syncedBase(h, id)
+          && isText(request.resource.data.name, 120)
+          && request.resource.data.sortOrder is int;
+        allow delete: if isMember(h) && resource.data.isDeleted == true;
+      }
+
+      match /batches/{id} {
+        allow read: if isMember(h);
+        allow create, update: if isMember(h) && syncedBase(h, id)
+          && isText(request.resource.data.itemId, 64)
+          && request.resource.data.quantityBought is number
+          && request.resource.data.quantityRemaining is number
+          && request.resource.data.quantityRemaining >= 0
+          && isText(request.resource.data.unit, 32)
+          && isText(request.resource.data.purchaseDate, 10)
+          && isText(request.resource.data.storageLocation, 32);
+        allow delete: if isMember(h) && resource.data.isDeleted == true;
+      }
+
+      match /entries/{id} {
+        allow read: if isMember(h);
+        allow create, update: if isMember(h) && syncedBase(h, id)
+          && isText(request.resource.data.listId, 64)
+          && isText(request.resource.data.name, 200)
+          && request.resource.data.quantity is number
+          && isText(request.resource.data.unit, 32)
+          && request.resource.data.isChecked is bool
+          && isText(request.resource.data.addedReason, 32)
+          && isText(request.resource.data.priority, 32)
+          && isText(request.resource.data.recurrence, 32);
+        allow delete: if isMember(h) && resource.data.isDeleted == true;
+      }
+
+      match /logs/{id} {
+        allow read: if isMember(h);
+        allow create, update: if isMember(h) && syncedBase(h, id)
+          && isText(request.resource.data.batchId, 64)
+          && isText(request.resource.data.itemId, 64)
+          && request.resource.data.quantityUsed is number
+          && isText(request.resource.data.unit, 32)
+          && request.resource.data.date is int
+          && isText(request.resource.data.type, 32);
+        allow delete: if isMember(h) && resource.data.isDeleted == true;
+      }
+    }
+  }
+}

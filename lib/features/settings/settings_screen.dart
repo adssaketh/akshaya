@@ -8,6 +8,7 @@ import '../ai/presentation/ai_voice_section.dart';
 import '../alerts/presentation/alerts_section.dart';
 import '../commands/presentation/voice_mic_button.dart';
 import '../pantry/presentation/providers.dart';
+import '../sync/presentation/sync_section.dart';
 
 /// Temporary Settings tab: the daily alert settings (Phase 4), sample data and
 /// the design gallery. The full settings (theme, AI, usage and so on) arrive
@@ -24,6 +25,8 @@ class SettingsScreen extends ConsumerWidget {
           const AlertsSection(),
           const Divider(),
           const AiVoiceSection(),
+          const Divider(),
+          const SyncSection(),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.science_outlined),

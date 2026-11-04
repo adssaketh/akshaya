@@ -11,7 +11,13 @@ enum AlertTarget {
   pantryExpiring('pantry:expiring'),
 
   /// The Shopping tab, whose top shows the restock suggestions.
-  shoppingSuggestions('shopping:suggestions');
+  shoppingSuggestions('shopping:suggestions'),
+
+  /// The Shopping tab, after another household member changed a list.
+  householdShopping('household:shopping'),
+
+  /// The Pantry tab, after another household member added stock.
+  householdPantry('household:pantry');
 
   const AlertTarget(this.payload);
 
@@ -30,7 +36,7 @@ enum AlertTarget {
 
 /// The Android notification channel an alert belongs to, so each kind can be
 /// muted on its own in system settings.
-enum AlertChannelKind { expiry, stock }
+enum AlertChannelKind { expiry, stock, household }
 
 /// One notification to show.
 final class AlertNotification {

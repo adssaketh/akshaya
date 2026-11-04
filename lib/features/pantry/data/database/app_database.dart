@@ -11,6 +11,8 @@ import '../../../shopping/data/database/shopping_tables.dart';
 import '../../../shopping/domain/shopping_entities.dart'
     show kDefaultListId, kDefaultListName;
 import '../../../shopping/domain/shopping_enums.dart';
+import '../../../sync/data/database/sync_tables.dart';
+import '../../../sync/data/database/sync_triggers.dart';
 import '../../domain/consumption_type.dart';
 import '../../domain/default_categories.dart';
 import '../../domain/storage_location.dart';
@@ -30,6 +32,9 @@ part 'app_database.g.dart';
 ///  - v3 (Phase 3): item_barcodes (existing `items.barcode` values are copied
 ///    in), product_cache (Open Food Facts answers).
 ///  - v4 (Phase 4): app_settings (local key/value settings, never synced).
+///  - v5 (Phase 6): sync_state, sync_cursors, sync_batch_bases,
+///    household_members (all local only) and the triggers that mark edited
+///    rows as waiting to be synced.
 ///
 /// Later phases add tables through migrations in [migration]; never edit a
 /// released version in place.
@@ -45,13 +50,17 @@ part 'app_database.g.dart';
     ItemBarcodes,
     ProductCache,
     AppSettings,
+    SyncState,
+    SyncCursors,
+    SyncBatchBases,
+    HouseholdMembers,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -60,6 +69,7 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
         await _seedCategories();
         await _seedDefaultList();
+        await _installSync();
       },
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 2) {
@@ -101,8 +111,24 @@ class AppDatabase extends _$AppDatabase {
           // this must be safe to run twice (createTable is IF NOT EXISTS).
           await m.createTable(appSettings);
         }
+        if (from < 5) {
+          await m.createTable(syncState);
+          await m.createTable(syncCursors);
+          await m.createTable(syncBatchBases);
+          await m.createTable(householdMembers);
+          await _installSync();
+        }
       },
     );
+  }
+
+  /// The sync bookkeeping row and the triggers that capture edits. Safe to run
+  /// twice.
+  Future<void> _installSync() async {
+    await customStatement(SyncTriggers.seedState);
+    for (final String statement in SyncTriggers.statements()) {
+      await customStatement(statement);
+    }
   }
 
   /// The list every install starts with (fixed id, so synced devices agree).

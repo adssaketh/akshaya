@@ -10,9 +10,10 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 1 Data model, database, pantry CRUD, add/use items | Done. CI green, APK installed and checklist passed. |
 | 2 Shopping list + auto-suggestions | Done. CI green (180 tests), APK installed and checklist passed. |
 | 3 Barcode scanning + Open Food Facts | Done. CI green, APK installed and checked on device. |
-| 4 Local notifications and background checks | Done. CI green (verify + build-apk), APK installed and checklist passed. |
+| 4 Local notifications and background checks | Done. CI green, APK installed and checklist passed. |
 | 5 Multilingual input (offline parser, then Gemini with daily cap) | Done. CI green after fix rounds, APK installed and checklist passed. |
-| 6 to 8 | Not started |
+| 6 Firebase auth, household sharing, sync, security rules | Built, not yet compiled (CI is the first compile). Device checklist pending. |
+| 7 to 8 | Not started |
 
 ## Phase 2: what is built
 
@@ -372,7 +373,78 @@ With AI (secret set, notice accepted):
 - Recipes and Home are still placeholders (mic button is there; "Recipes" and "Home" commands arrive with Phases 7 and 8).
 - Phase 4 device checklist: passed (confirmed after this phase).
 
-## Next: Phase 6 (Firebase auth, household sharing, sync, security rules)
+## Phase 6: what is built
+
+Optional sign-in (Google, email/password), households (create, join by 8-character code or QR, owner removes members, new code, leave), two-way Firestore sync with Drift as the UI source, household change alerts, security rules with emulator tests. The app is fully usable without signing in or without a Firebase config.
+
+### Files (new or changed in Phase 6)
+
+```
+pubspec.yaml                                       + firebase_auth, cloud_firestore, google_sign_in, qr_flutter
+firestore.rules / firestore.indexes.json / firebase.json
+firebase/                                          rules tests (@firebase/rules-unit-testing, node --test)
+docs/FIREBASE_SETUP.md                             Spark-only setup, SHA-1, rules deploy, quota notes
+.github/workflows/android.yml                      web client id define, stable debug keystore, rules-tests job
+lib/app.dart                                       starts sync coordinator; pause/resume listeners with the app
+lib/core/design/tokens/layout_tokens.dart          + qrCode, qrScanFrame sizes
+lib/features/ai/data/firebase_runtime.dart         + FIREBASE_WEB_CLIENT_ID
+lib/features/pantry/data/database/app_database.dart schema v5 (4 sync tables + triggers)
+lib/features/alerts/...                            household channel + 2 targets; worker also checks household changes
+lib/features/shell/app_shell.dart                  opens Shopping/Pantry for household alerts
+lib/features/settings/settings_screen.dart         + SyncSection
+lib/features/sync/domain/                          schema, documents, merge rules, models, gateways, invite code, digest, settings
+lib/features/sync/data/                            store, engine, Firestore remote/household/auth gateways, background check
+lib/features/sync/data/database/                   sync tables and change-capture triggers
+lib/features/sync/presentation/                    providers + controller + coordinator, sign-in, household screens, QR join, settings section
+test/features/sync/                                merge, documents, invite code, digest, triggers, engine (fake remote), controller, v4->v5 migration, section widget
+```
+
+### Key decisions (Phase 6)
+
+- **Schema v5, no change to existing tables.** Four new tables (`sync_state`, `sync_cursors`, `sync_batch_bases`, `household_members`) plus SQL triggers: any update to a synced row marks it `pending` unless `sync_state.suppress = 1`, so existing repositories needed no edits.
+- **Delta queries use a server `syncedAt`** (not the client `updatedAt`, which is used for last-write-wins), so clock skew between phones cannot hide changes.
+- **Batch quantity merge by difference:** `remote + (local - base)`, floored at 0. Two people using the same stock both count. Everything else is last-write-wins on `updatedAt`.
+- **Transactions for pushes** (chunks of 20): they fail cleanly offline and keep rows pending; backoff 30 s to 15 min, 1 h on quota.
+- **No Cloud Functions / FCM.** Alerts come from listeners while the app is open and a one-shot check in the existing WorkManager task.
+- **Joining uses an invite-code document** that rules check; codes cannot be listed. Owner cannot leave (remove others instead).
+- **Sign out keeps local data** unless "Clear data" is chosen. Joining a different household asks: add my data or start fresh.
+- **Firebase starts only when someone is in a household.**
+
+### Spec notes to be aware of
+
+- Categories are synced too (not in the spec list) because items point at them.
+- `image_path` is not synced (local path, no Storage uploads).
+- The QR code is drawn black on white in every theme so it scans (the one hard-coded colour).
+
+## Test checklist (you), Phase 6
+
+Set up first: `docs/FIREBASE_SETUP.md` (Google + Email providers, Firestore, rules + indexes, SHA-1 matching the CI keystore, secrets). CI must be green, including the `rules-tests` job.
+
+1. Install the APK with no Firebase secret: Settings shows "Sync is not set up in this build"; everything else works.
+2. With the secret: Settings > Household & sync > sign in with email (register). Cancel mid-way: app still works.
+3. Sign in with Google (needs SHA-1 registered and a fresh google-services.json).
+4. Create a household: invite code and QR shown; your pantry uploads (watch Firestore console, collection `households/<id>/items`).
+5. On a second phone/account: Join with the code, then with the QR. Choose "Add my data" once and "Start fresh" once.
+6. Add an item on phone A: it appears on B within seconds. Check off a shopping entry on B: A updates.
+7. Use 1 of the same batch on both phones, one offline then online: the total drops by 2, not 1.
+8. Edit the same item name on both: the later edit wins.
+9. Airplane mode: edit, then reconnect: status goes Offline -> Synced; "Sync now" works.
+10. Household alert: with A in the background, add 3 shopping entries on B: A shows "<B's name> added 3 items to <list>". Tap it: Shopping tab opens.
+11. Owner removes B: B's status shows "No longer a member"; B's pantry stays on B. Owner "New code" invalidates the old code.
+12. Member leaves; sign out with "Keep data" then "Clear data".
+13. Delete an item, wait/sync: it disappears on both (soft delete).
+14. Settings shows today's estimated reads/writes.
+
+## Known issues (Phase 6)
+
+- Not compiled or run locally (no Flutter SDK in my sandbox). Firebase package APIs (`google_sign_in` v7 in particular) are written from memory; if CI complains, send me the errors. Versions are `^` lower bounds; send the resolved versions to pin.
+- Two simultaneous alert sources: if two collections deliver at once, a change in the older one can be treated as already seen and skip its alert (sync itself is unaffected).
+- The background check cannot tell a new document from an edited one, so another member's edit to an entry can read as "added".
+- A member removed while offline learns about it on the next connection.
+- Usage numbers are an estimate of this phone only (other members' usage counts against the same project quota).
+- Rules tests were written but not run here; the CI `rules-tests` job is their first run.
+
+## Next: Phase 7 (recipe suggestions)
 
 Start in a new chat when you say so.
 

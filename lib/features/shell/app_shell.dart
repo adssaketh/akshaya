@@ -72,7 +72,11 @@ class _AppShellState extends ConsumerState<AppShell> {
           ..setStatus(StatusKind.expiring);
         setState(() => _index = _pantryTab);
       case AlertTarget.shoppingSuggestions:
+      case AlertTarget.householdShopping:
         setState(() => _index = _shoppingTab);
+      case AlertTarget.householdPantry:
+        query.clearFilters();
+        setState(() => _index = _pantryTab);
     }
     ref.read(alertTargetProvider.notifier).clear();
   }

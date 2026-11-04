@@ -48,6 +48,8 @@ abstract final class AppSizes {
   static const double scanFrameWidth = 280;
   static const double scanFrameHeight = 160;
   static const double scanFrameBorder = 3;
+  static const double qrScanFrame = 240;
+  static const double qrCode = 180;
 
   static const double navBarHeight = 72;
   static const double fab = 56;

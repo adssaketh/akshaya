@@ -14,6 +14,11 @@ abstract final class FirebaseBuildConfig {
   static const String projectId = String.fromEnvironment('FIREBASE_PROJECT_ID');
   static const String senderId = String.fromEnvironment('FIREBASE_SENDER_ID');
 
+  /// The OAuth web client id Google sign-in needs (Phase 6). Optional: without
+  /// it email/password sign-in still works.
+  static const String webClientId =
+      String.fromEnvironment('FIREBASE_WEB_CLIENT_ID');
+
   static bool get isConfigured =>
       apiKey.isNotEmpty &&
       appId.isNotEmpty &&
