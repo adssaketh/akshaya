@@ -1,5 +1,3 @@
-import 'package:drift/drift.dart';
-
 import '../../pantry/data/database/app_database.dart';
 import '../domain/settings_repository.dart';
 
