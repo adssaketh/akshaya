@@ -48,10 +48,9 @@ final class ScanNewProduct extends ScanOutcome {
 /// pantry item it already belongs to, or product details to prefill a new one.
 class ScanService {
   const ScanService({
-    required PantryRepository pantry,
-    required ProductLookup lookup,
-  })  : _pantry = pantry,
-        _lookup = lookup;
+    required this._pantry,
+    required this._lookup,
+  });
 
   final PantryRepository _pantry;
   final ProductLookup _lookup;

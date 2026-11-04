@@ -209,15 +209,14 @@ class DriftPantryRepository implements PantryRepository {
     if (excludeId != null) {
       condition = condition & _db.items.id.equals(excludeId).not();
     }
-    final JoinedSelectStatement<$ItemsTable, ItemRow> query =
-        _db.select(_db.items).join([
+    final query = _db.select(_db.items).join([
       innerJoin(
         _db.itemBarcodes,
         _db.itemBarcodes.itemId.equalsExp(_db.items.id),
       ),
     ])
-          ..where(condition)
-          ..limit(1);
+      ..where(condition)
+      ..limit(1);
     final List<TypedResult> rows = await query.get();
     return rows.isEmpty ? null : rows.first.readTable(_db.items);
   }

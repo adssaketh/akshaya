@@ -15,14 +15,12 @@ import 'open_food_facts_client.dart';
 /// - Failures are never cached and never thrown.
 class CachedProductLookup implements ProductLookup {
   CachedProductLookup({
-    required AppDatabase db,
-    required OpenFoodFactsClient remote,
+    required this._db,
+    required this._remote,
     DateTime Function()? clock,
     this.foundTtl = const Duration(days: 30),
     this.notFoundTtl = const Duration(days: 1),
-  })  : _db = db,
-        _remote = remote,
-        _clock = clock ?? DateTime.now;
+  }) : _clock = clock ?? DateTime.now;
 
   final AppDatabase _db;
   final OpenFoodFactsClient _remote;
