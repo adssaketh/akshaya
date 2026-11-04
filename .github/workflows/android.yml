@@ -61,6 +61,19 @@ jobs:
           cache: true
       - run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
       - run: flutter pub get
+      - name: Commit pubspec.lock once (freezes dependency versions)
+        run: |
+          if [ -z "$(git ls-files pubspec.lock)" ] && [ -f pubspec.lock ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add pubspec.lock
+            git commit -m "ci: commit pubspec.lock to freeze dependency versions"
+            for attempt in 1 2 3 4 5; do
+              if git push; then break; fi
+              sleep $((attempt * 10))
+              git pull --rebase || true
+            done
+          fi
       - run: dart run build_runner build --delete-conflicting-outputs
       - run: flutter analyze
       - run: flutter test
