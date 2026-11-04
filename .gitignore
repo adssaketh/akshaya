@@ -1,0 +1,25 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+coverage/
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/google-services.json
+*.jks
+*.keystore
+
+# Firebase secrets: never commit. CI injects google-services.json from a GitHub secret.
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart.local
