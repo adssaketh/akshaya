@@ -22,6 +22,12 @@ enum CommandIntent {
     needsItem: true,
     usesQuantity: false,
   ),
+  setStock(
+    'set_stock',
+    'Set how much is in the pantry',
+    needsItem: true,
+    usesQuantity: true,
+  ),
   addToShoppingList(
     'add_to_shopping_list',
     'Add to shopping list',

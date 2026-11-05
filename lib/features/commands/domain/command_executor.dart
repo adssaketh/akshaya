@@ -5,6 +5,7 @@ import '../../pantry/domain/default_categories.dart';
 import '../../pantry/domain/entities.dart';
 import '../../pantry/domain/failures.dart';
 import '../../pantry/domain/pantry_repository.dart';
+import '../../pantry/domain/stock_count.dart';
 import '../../pantry/domain/stock_logic.dart';
 import '../../pantry/domain/unit.dart';
 import '../../shopping/domain/shopping_entities.dart';
@@ -122,6 +123,8 @@ final class CommandExecutor {
         return _useStock(action, state, learn: learn);
       case CommandIntent.markFinished:
         return _markFinished(action, state);
+      case CommandIntent.setStock:
+        return _setStock(action, state, learn: learn);
       case CommandIntent.addToShoppingList:
         return _addToList(action, state, listId: listId);
       case CommandIntent.removeFromShoppingList:
@@ -273,6 +276,50 @@ final class CommandExecutor {
       succeeded: true,
       message: '${item.name} marked as finished.',
       undo: () => pantry.undoUse(result),
+    );
+  }
+
+  /// "rice inka 3 kilo undi": makes the pantry hold exactly that much. Less
+  /// lowers the oldest batches, more adds a batch; both are logged as an
+  /// adjustment (never as use or waste).
+  Future<ActionOutcome> _setStock(
+    CommandAction action,
+    _Pantry state, {
+    required bool learn,
+  }) async {
+    Item? item = state.find(action);
+    if (item == null) {
+      return _notInPantry(action);
+    }
+    final double? quantity = action.quantity;
+    if (quantity == null || quantity < 0) {
+      throw InvalidInputFailure(
+        'Say how much ${item.name} there is, for example 3 ${item.defaultUnit.symbol}.',
+      );
+    }
+    final Unit unit = action.unit ?? item.defaultUnit;
+    if (learn) {
+      item = await _learnAlias(item, action, state);
+    }
+    final CountResult result = await pantry.setStock(
+      itemId: item.id,
+      quantity: roundQty(quantity),
+      unit: unit,
+    );
+    final Unit base = item.defaultUnit;
+    if (!result.changed) {
+      return ActionOutcome(
+        action: action,
+        succeeded: true,
+        message: '${item.name} already shows ${base.format(result.after)}.',
+      );
+    }
+    return ActionOutcome(
+      action: action,
+      succeeded: true,
+      message: '${item.name} set to ${base.format(result.after)} '
+          '(was ${base.format(result.before)}).',
+      undo: () => pantry.undoCount(result),
     );
   }
 

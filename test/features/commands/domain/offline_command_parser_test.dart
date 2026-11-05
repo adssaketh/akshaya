@@ -56,6 +56,52 @@ void main() {
     });
   });
 
+  group('set stock', () {
+    test('Tenglish: rice inka 3 kilo undi', () {
+      expectParsed('rice inka 3 kilo undi', <String>['set_stock:Rice 3 kg']);
+    });
+
+    test('Telugu script: బియ్యం ఇంకా 3 కిలోలు ఉంది', () {
+      expectParsed(
+        'బియ్యం ఇంకా 3 కిలోలు ఉంది',
+        <String>['set_stock:Rice 3 kg'],
+      );
+    });
+
+    test('Hinglish: chawal abhi 3 kilo hai', () {
+      expectParsed('chawal abhi 3 kilo hai', <String>['set_stock:Rice 3 kg']);
+    });
+
+    test('Hindi script: चावल अभी 3 किलो है', () {
+      expectParsed('चावल अभी 3 किलो है', <String>['set_stock:Rice 3 kg']);
+    });
+
+    test('English: I have 2 litres of milk', () {
+      expectParsed('I have 2 litres of milk', <String>['set_stock:Milk 2 L']);
+    });
+
+    test('English: set rice to 3 kg', () {
+      expectParsed('set rice to 3 kg', <String>['set_stock:Rice 3 kg']);
+    });
+
+    test('an amount with "left" says how much is there', () {
+      expectParsed('3 kg rice left', <String>['set_stock:Rice 3 kg']);
+    });
+
+    test('a question without an amount stays a question', () {
+      expectParsed('dahi kitna hai', <String>['query_stock:Curd']);
+      expectParsed('how much rice is left', <String>['query_stock:Rice']);
+    });
+
+    test('adding with an amount is still adding', () {
+      expectParsed('add 2 kg rice', <String>['add_stock:Rice 2 kg']);
+    });
+
+    test('"set rice" with no amount is flagged for the card', () {
+      expectParsed('set rice', <String>['set_stock:Rice'], confident: false);
+    });
+  });
+
   group('Telugu', () {
     test('native script', () {
       expectParsed(

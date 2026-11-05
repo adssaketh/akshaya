@@ -64,6 +64,9 @@ final class OfflineCommandParser {
     for (int i = 0; i < infos.length; i++) {
       final _ClauseInfo info = infos[i];
       CommandIntent? intent = finalIntents[i];
+      if (_statesStock(info, intent)) {
+        intent = CommandIntent.setStock;
+      }
       if (info.unknown.isNotEmpty) {
         confident = false;
       }
@@ -100,6 +103,10 @@ final class OfflineCommandParser {
       }
       for (final _ItemRef ref in info.items) {
         final LexiconItem match = ref.match;
+        if (intent == CommandIntent.setStock && ref.quantity == null) {
+          // "set rice" with no amount: the card asks for one.
+          confident = false;
+        }
         actions.add(
           CommandAction(
             intent: intent,
@@ -284,6 +291,7 @@ final class OfflineCommandParser {
         for (final _Piece p in pieces)
           if (p.kind == _Kind.unknown) p.text,
       ],
+      presence: tokens.any(kPresenceWords.contains),
     );
   }
 
@@ -374,6 +382,21 @@ final class OfflineCommandParser {
 
   // ----------------------------------------------------------------- intent
 
+  /// "rice inka 3 kilo undi", "3 kg chawal bacha hai": an amount together with
+  /// words that say it is there now (or left) sets the stock instead of adding
+  /// to it. Questions never carry an amount, so a "how much" word with one
+  /// also means the stock is that much.
+  static bool _statesStock(_ClauseInfo info, CommandIntent? intent) {
+    final bool hasAmount = info.items.any((_ItemRef r) => r.quantity != null);
+    if (!hasAmount) {
+      return false;
+    }
+    if (intent == CommandIntent.queryStock) {
+      return true;
+    }
+    return info.presence && info.intents.isEmpty;
+  }
+
   static _Decision _decideIntent(
     Set<IntentWord> intents,
     bool hasList,
@@ -416,6 +439,8 @@ final class OfflineCommandParser {
         return const _Decision(CommandIntent.queryExpiring);
       case 'queryStock':
         return const _Decision(CommandIntent.queryStock);
+      case 'setStock':
+        return const _Decision(CommandIntent.setStock);
     }
     return const _Decision(null);
   }
@@ -448,10 +473,14 @@ final class _ClauseInfo {
     required this.hasList,
     required this.items,
     required this.unknown,
+    required this.presence,
   });
 
   final Set<IntentWord> intents;
   final bool hasList;
+
+  /// The clause has a word that says something is there now ("undi", "hai").
+  final bool presence;
   final List<_ItemRef> items;
   final List<String> unknown;
 }

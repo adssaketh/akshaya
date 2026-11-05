@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:workmanager/workmanager.dart';
 
+import '../../count/domain/count_settings.dart';
 import '../../pantry/data/database/app_database.dart';
 import '../../pantry/data/database/open_database.dart';
 import '../../pantry/data/drift_pantry_repository.dart';
@@ -30,6 +31,7 @@ Future<List<ScheduledAlert>> refreshAlertsFromDatabase(
 ) async {
   final Map<String, String> stored = await DriftSettingsRepository(db).readAll();
   final AlertSettings settings = AlertSettings.fromMap(stored);
+  final CountSettings counts = CountSettings.fromMap(stored);
 
   final DriftPantryRepository pantry = DriftPantryRepository(db);
   final DriftShoppingRepository shopping = DriftShoppingRepository(db, pantry);
@@ -41,6 +43,7 @@ Future<List<ScheduledAlert>> refreshAlertsFromDatabase(
     settings: settings,
     items: items,
     entries: entries,
+    counts: counts,
   );
 }
 

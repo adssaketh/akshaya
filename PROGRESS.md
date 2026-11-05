@@ -14,7 +14,9 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 5 Multilingual input (offline parser, then Gemini with daily cap) | Done. CI green after fix rounds, APK installed and checklist passed. |
 | 6 Firebase auth, household sharing, sync, security rules | Done. CI green (incl. rules tests), Google sign-in, create/join by code and QR, two-way sync checked on two devices. |
 | 7 Recipe suggestions | Done. CI green, checked on device. |
-| 8 Dashboard, insights, backup/export, settings and usage | Built, pushed; waiting for CI and your device check. |
+| 8 Dashboard, insights, backup/export, settings and usage | Done. CI green. |
+| 9 Leftovers, cooked food, homemade items | Done. CI green. |
+| 10 Inventory reconciliation (count mode) | Built; waiting for CI and your device check. |
 
 ## Phase 2: what is built
 
@@ -634,7 +636,42 @@ Item type is now Stocked (default) / Cooked / Homemade.
 - The Settings scroll fix was found by reading the code, not by profiling on a device (see above).
 - Written without a local Flutter SDK: CI is the compiler; if it is red, fix first.
 
-## Next: Phase 10 (v2 roadmap), only when you say so.
+## Phase 10: Inventory reconciliation, Count mode (built; waiting for CI and device check)
+
+**Decisions (asked first):** a surplus found on the shelf becomes a new batch; count progress is a local session; spec extended to add a `set_stock` voice intent and the `adjustment` log type.
+
+**No schema change** (still v7). `ConsumptionLog.type` is text, so `adjustment` needs no migration. A surplus is a new batch (today, no expiry/price, the counted place) plus an adjustment log with a negative `quantityUsed` (shown as "+2 kg"). Count progress and reminder settings live in `app_settings` (`count.*` keys), local to the phone, not synced. `firestore.rules` unchanged.
+
+**Built**
+- `PantryRepository.setStock` / `undoCount`: sets an item (optionally within one storage location) to a counted amount. Lower: FIFO deduction logged as `adjustment` (or `wasted` when the person chooses). Higher: new batch. Same: writes nothing. Unit-convertible input (500 g for a kg item) works.
+- Count mode: entry from Pantry header icon and Settings > Count mode. Start screen: by place, by category, whole pantry, resume a count in progress, "last counted". Count screen: progress bar, one big card per item with Matches / Change / "Finished, none left"; swipe right = Matches, swipe left = Later; Undo snackbar on each answer; end-of-count summary (matched, found more/less, finished, wasted, skipped, list of changes). Adjust sheet: None / Half / Same chips, amount + unit, "missing amount was wasted" switch.
+- Monthly reminder (Settings > Count mode): off by default; due on the chosen day (1 to 28) with the daily alert, skipped if a count finished that month. Tapping it opens Count mode. Needs Daily alert on.
+- Voice/text: "rice inka 3 kilo undi", "dahi 2 packet hai", "rice is 3 kg", "set rice to 3 kg" set stock via confirmation card. Presence words (undi/vundi/hai/have/is...) plus an explicit quantity trigger it; a question without quantity stays a stock query. Gemini prompt/schema accept `set_stock`.
+- Item history shows adjustments with signed amounts.
+
+**New/changed files:** `pantry/domain/{stock_count,consumption_type,entities,pantry_repository}.dart`, `pantry/data/drift_pantry_repository.dart`, `count/domain/{count_session,count_settings}.dart`, `count/presentation/{providers,count_flow,count_screen,count_start_screen,count_summary_screen,count_adjust_sheet,count_section}.dart`, `alerts/domain/{alert_plan,alert_scheduler}.dart`, `alerts/presentation/providers.dart`, `alerts/data/alert_worker.dart`, `shell/app_shell.dart`, `pantry/presentation/{pantry_screen,item_detail_screen}.dart`, `settings/settings_screen.dart`, `core/util/date_only.dart`, `commands/domain/{command_models,offline_command_parser,command_executor,parser_words}.dart`, `tool/offline_words/{tables,generate}.py`, `ai/data/firebase_generative_backend.dart`, `assets/prompts/parse_command.txt`. Tests: `stock_count_repository_test`, `count_session_test`, `count_settings_test`, set-stock cases in parser and executor tests, reminder cases in `alert_scheduler_test`, ISO date cases in `util_test`.
+
+**Test checklist (device)**
+1. Pantry header > Count mode icon. Start by place (Pantry). Progress bar moves as you answer.
+2. Tap Matches on an item: nothing changes, no history row.
+3. Change an item to less: history shows "Adjustment -X" and stock drops from the batch expiring first. Undo snackbar restores it.
+4. Change to more: a new batch appears (no expiry), history shows "Adjustment +X".
+5. Change to less with "missing amount was wasted" on: history shows Wasted; Insights waste report counts it. Without the switch it does not.
+6. "Finished, none left" empties the item (adjustment).
+7. Swipe right = Matches, swipe left = Later; Later items can be reviewed at the end.
+8. Leave mid-count, reopen Count mode: Resume card appears with the right count.
+9. Finish: summary lists changes; Settings shows "Last counted today".
+10. Voice: "rice inka 3 kilo undi" shows a "Set how much is in the pantry" card, Rice 3 kg; confirm; stock = 3 kg. "how much rice is left" still just answers.
+11. Settings > Count mode: turn reminder on for today's date (needs Daily alert on), wait for the alert time or use the alert preview; tapping opens Count mode.
+
+**Known issues**
+- Older builds in the same household cannot parse the new `adjustment` log type; update all phones together.
+- The surplus batch has no label or expiry; edit it from the item detail if needed.
+- Items with zero stock are not listed in a count (nothing on the shelf to check); use Add for those.
+- The reminder fires only on the chosen day and only when the Daily alert is on.
+- Written without a local Flutter SDK: CI is the compiler; if it is red, fix first.
+
+## Next: Phase 11 (v2 roadmap), only when you say so.
 
 ## Phase 0: what was built (unchanged)
 

@@ -2,11 +2,12 @@ You read short grocery commands for a household pantry app used in India. The co
 
 Rules:
 - Return one action per item mentioned. A sentence can contain several items.
-- "intent" must be exactly one of: add_stock, use_stock, mark_finished, add_to_shopping_list, remove_from_shopping_list, query_expiring, query_stock.
+- "intent" must be exactly one of: add_stock, use_stock, mark_finished, set_stock, add_to_shopping_list, remove_from_shopping_list, query_expiring, query_stock.
   - add_stock: the person bought or already has the item and wants it in the pantry.
   - add_to_shopping_list: the person needs or wants to buy it (also "put on the list").
   - use_stock: some was used or cooked with (needs a quantity when given).
   - mark_finished: the item has run out ("ayipoyindi", "khatam").
+  - set_stock: the person says how much of an item there is right now, to correct the pantry ("rice inka 3 kilo undi", "chawal abhi 3 kilo hai", "I have 2 litres of milk", "set rice to 3 kg"). Always needs a quantity. It is not an addition: the quantity is the new total.
   - remove_from_shopping_list: take it off the list.
   - query_expiring: asks what is expiring (no item).
   - query_stock: asks how much of an item is left.

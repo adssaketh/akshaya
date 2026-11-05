@@ -1,3 +1,4 @@
+import '../../count/domain/count_settings.dart';
 import '../../pantry/domain/entities.dart';
 import '../../shopping/domain/shopping_entities.dart';
 import 'alert_digest.dart';
@@ -19,10 +20,15 @@ class AlertScheduler {
 
   /// Replaces the scheduled alerts. With alerts off, schedules nothing.
   /// Returns what was scheduled (empty when off or nothing to say).
+  ///
+  /// With [counts], the monthly "time to count" reminder joins the alert of
+  /// its day (at the same time) unless a count was already finished that
+  /// month.
   Future<List<ScheduledAlert>> refresh({
     required AlertSettings settings,
     required List<ItemWithBatches> items,
     required List<ShoppingEntry> entries,
+    CountSettings counts = const CountSettings(),
   }) async {
     if (!settings.enabled) {
       await _gateway.cancelScheduled();
@@ -43,8 +49,11 @@ class AlertScheduler {
         today: AlertSchedule.dateOf(times[day]),
         settings: settings,
       );
-      final List<AlertNotification> plan =
-          AlertPlanner.plan(digest, dayOffset: day);
+      final List<AlertNotification> plan = <AlertNotification>[
+        ...AlertPlanner.plan(digest, dayOffset: day),
+        if (counts.reminderDueOn(AlertSchedule.dateOf(times[day])))
+          AlertPlanner.countReminder(dayOffset: day),
+      ];
       if (plan.isNotEmpty) {
         alerts.add(ScheduledAlert(fireAt: times[day], notifications: plan));
       }

@@ -55,3 +55,26 @@ String formatDate(DateTime d) {
 String formatDateShort(DateTime d) {
   return '${d.day} ${_monthNames[d.month - 1]}';
 }
+
+/// "2026-11-04": the calendar date as stored in settings.
+String formatIsoDate(DateTime d) {
+  final String month = d.month.toString().padLeft(2, '0');
+  final String day = d.day.toString().padLeft(2, '0');
+  return '${d.year.toString().padLeft(4, '0')}-$month-$day';
+}
+
+/// Reads "2026-11-04" back; null when [text] is not a real calendar date.
+DateTime? parseIsoDate(String text) {
+  final RegExpMatch? m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(text);
+  if (m == null) {
+    return null;
+  }
+  final int year = int.parse(m.group(1)!);
+  final int month = int.parse(m.group(2)!);
+  final int day = int.parse(m.group(3)!);
+  final DateTime d = DateTime(year, month, day);
+  if (d.year != year || d.month != month || d.day != day) {
+    return null;
+  }
+  return d;
+}

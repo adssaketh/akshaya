@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/clock.dart';
+import '../../count/domain/count_settings.dart';
+import '../../count/presentation/providers.dart';
 import '../../pantry/domain/entities.dart';
 import '../../pantry/presentation/providers.dart';
 import '../../settings/presentation/providers.dart';
@@ -82,6 +84,7 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
       final Map<String, String> stored =
           await ref.read(settingsRepositoryProvider).readAll();
       final AlertSettings settings = AlertSettings.fromMap(stored);
+      final CountSettings counts = CountSettings.fromMap(stored);
       final AlertScheduler scheduler = ref.read(alertSchedulerProvider);
       final BackgroundWork work = ref.read(backgroundWorkProvider);
 
@@ -109,6 +112,7 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
         settings: settings,
         items: items,
         entries: entries,
+        counts: counts,
       );
       if (!workRegistered) {
         await work.ensureAlertRefreshRegistered();
@@ -145,6 +149,12 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
     (previous, next) => queue(),
   );
   ref.listen<DateTime>(todayProvider, (previous, next) => queue());
+  // The monthly count reminder: switching it on or off, picking another day,
+  // or finishing a count changes what is scheduled.
+  ref.listen<CountSettings>(
+    countSettingsProvider,
+    (previous, next) => queue(),
+  );
 
   final StreamSubscription<AlertTarget> taps = gateway.taps.listen(
     (AlertTarget target) =>

@@ -440,7 +440,7 @@ class _UsageHistory extends ConsumerWidget {
                   children: <Widget>[
                     Expanded(
                       child: Text(
-                        '${e.type.label} ${e.unit.format(e.quantityUsed)}',
+                        '${e.type.label} ${e.amountLabel}',
                         style: context.akText.bodyMedium,
                       ),
                     ),

@@ -17,7 +17,10 @@ enum AlertTarget {
   householdShopping('household:shopping'),
 
   /// The Pantry tab, after another household member added stock.
-  householdPantry('household:pantry');
+  householdPantry('household:pantry'),
+
+  /// Count mode's start screen, from the monthly "time to count" reminder.
+  countMode('count:start');
 
   const AlertTarget(this.payload);
 
@@ -70,6 +73,7 @@ abstract final class AlertPlanner {
   static const int _expiredSlot = 1;
   static const int _expiringSlot = 2;
   static const int _lowStockSlot = 3;
+  static const int _countSlot = 4;
 
   /// The id of an alert on day [dayOffset] (0 is the first alert day).
   static int idFor(int dayOffset, int slot) => _baseId + dayOffset * 10 + slot;
@@ -157,6 +161,17 @@ abstract final class AlertPlanner {
     }
 
     return result;
+  }
+
+  /// The monthly reminder to check the shelf against the app.
+  static AlertNotification countReminder({int dayOffset = 0}) {
+    return AlertNotification(
+      id: idFor(dayOffset, _countSlot),
+      target: AlertTarget.countMode,
+      channel: AlertChannelKind.stock,
+      title: 'Time to count your pantry',
+      body: 'Check the shelf against the app. A few minutes keeps it right.',
+    );
   }
 
   /// "Milk, Curd, Rice, Atta, +3 more".

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/ui/feedback.dart';
 import '../../commands/domain/command_models.dart';
 import '../../commands/presentation/voice_mic_button.dart';
+import '../../count/presentation/count_flow.dart';
 import '../domain/entities.dart';
 import '../domain/item_kind.dart';
 import '../domain/pantry_query.dart';
@@ -77,9 +80,18 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            const AkshayaHeader(
+            AkshayaHeader(
               actions: <Widget>[
-                VoiceMicButton(commandContext: CommandContext.pantry),
+                IconButton(
+                  tooltip: 'Count mode',
+                  constraints: const BoxConstraints(
+                    minWidth: AppSizes.touchTarget,
+                    minHeight: AppSizes.touchTarget,
+                  ),
+                  icon: const Icon(Icons.fact_check_outlined),
+                  onPressed: () => unawaited(openCountMode(context)),
+                ),
+                const VoiceMicButton(commandContext: CommandContext.pantry),
               ],
             ),
             Padding(

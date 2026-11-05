@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../alerts/domain/alert_plan.dart';
 import '../alerts/presentation/first_run_prompt.dart';
 import '../alerts/presentation/providers.dart';
+import '../count/presentation/count_flow.dart';
 import '../home/presentation/home_screen.dart';
 import '../pantry/presentation/pantry_screen.dart';
 import '../pantry/presentation/providers.dart';
@@ -79,6 +80,9 @@ class _AppShellState extends ConsumerState<AppShell> {
       case AlertTarget.householdPantry:
         query.clearFilters();
         setState(() => _index = _pantryTab);
+      case AlertTarget.countMode:
+        setState(() => _index = _pantryTab);
+        unawaited(openCountMode(context));
     }
     ref.read(alertTargetProvider.notifier).clear();
   }

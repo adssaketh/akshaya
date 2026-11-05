@@ -2,6 +2,7 @@ import 'package:akshaya/features/alerts/domain/alert_plan.dart';
 import 'package:akshaya/features/alerts/domain/alert_scheduler.dart';
 import 'package:akshaya/features/alerts/domain/alert_settings.dart';
 import 'package:akshaya/features/alerts/domain/notification_gateway.dart';
+import 'package:akshaya/features/count/domain/count_settings.dart';
 import 'package:akshaya/features/pantry/domain/entities.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -152,6 +153,46 @@ void main() {
       );
       expect(shown, isEmpty);
       expect(gateway.shown, isEmpty);
+    });
+  });
+
+  group('monthly count reminder', () {
+    test('joins the alert of the chosen day only', () async {
+      await scheduler.refresh(
+        settings: const AlertSettings(),
+        items: items,
+        entries: const [],
+        counts: const CountSettings(reminderEnabled: true, reminderDay: 6),
+      );
+      bool hasCount(int day) => gateway.scheduled[day].notifications
+          .any((n) => n.title == 'Time to count your pantry');
+      expect(hasCount(0), isFalse);
+      expect(hasCount(1), isTrue);
+      expect(hasCount(2), isFalse);
+    });
+
+    test('is left out once counted that month, and when off', () async {
+      await scheduler.refresh(
+        settings: const AlertSettings(),
+        items: items,
+        entries: const [],
+        counts: CountSettings(
+          reminderEnabled: true,
+          reminderDay: 6,
+          lastCompletedOn: DateTime(2026, 11, 2),
+        ),
+      );
+      await scheduler.refresh(
+        settings: const AlertSettings(),
+        items: items,
+        entries: const [],
+      );
+      expect(
+        gateway.scheduled.expand((s) => s.notifications).where(
+              (n) => n.title == 'Time to count your pantry',
+            ),
+        isEmpty,
+      );
     });
   });
 }

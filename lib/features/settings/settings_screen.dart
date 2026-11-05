@@ -8,6 +8,7 @@ import '../ai/presentation/ai_voice_section.dart';
 import '../alerts/presentation/alerts_section.dart';
 import '../commands/presentation/voice_mic_button.dart';
 import '../backup/presentation/backup_section.dart';
+import '../count/presentation/count_section.dart';
 import '../pantry/presentation/providers.dart';
 import 'presentation/general_section.dart';
 import '../sync/presentation/sync_section.dart';
@@ -26,6 +27,8 @@ class SettingsScreen extends ConsumerWidget {
           const GeneralSection(),
           const Divider(),
           const AlertsSection(),
+          const Divider(),
+          const CountSection(),
           const Divider(),
           const AiVoiceSection(),
           const Divider(),

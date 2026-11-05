@@ -89,7 +89,19 @@ INTENT_WORDS = table([
     ('queryExpiring', 'expiring, expire, expires, expiry, expired, expiries, spoil, spoiling, spoilt, spoiled, gaduvu, గడువు'),
     ('queryStock', 'stock, left, remaining, how, much, many, kitna, kitni, kitne, entha, enta, enni, ఎంత, ఎన్ని, कितना, कितनी, कितने, baki, baaki, bacha, bachi, migilindi, migilina, మిగిలింది, మిగిలిన, बाकी, बचा, बची'),
     ('list', 'list, lists, shopping, cart, లిస్ట్, లిస్టు, लिस्ट, सूची'),
+    ('setStock', 'set, update, adjust, correct, recount'),
 ])
+
+# Words that say how much is there right now ("rice inka 3 kilo undi"). A
+# clause with an amount and one of these, and no other intent word, sets the
+# stock. Every word here is also a stop word.
+PRESENCE_WORDS = set(words(
+    'have, has, is, are, '
+    'undi, vundi, unnayi, unnai, vunnayi, '
+    'hai, hain, '
+    'ఉంది, ఉన్నాయి, వుంది, '
+    'है, हैं'
+))
 
 SEPARATOR_WORDS = set(words('and, aur, mariyu, plus, then, tatha, और, మరియు'))
 

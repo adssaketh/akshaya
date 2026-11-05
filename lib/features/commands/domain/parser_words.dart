@@ -34,6 +34,9 @@ enum IntentWord {
 
   /// "list", "shopping": names the shopping list.
   list,
+
+  /// "set", "update": says the amount in the pantry should now be this much.
+  setStock,
 }
 
 /// Number words in English, Telugu and Hindi (script and romanised).
@@ -476,6 +479,11 @@ const Map<String, IntentWord> kIntentWords = <String, IntentWord>{
   'లిస్టు': IntentWord.list,
   'लिस्ट': IntentWord.list,
   'सूची': IntentWord.list,
+  'set': IntentWord.setStock,
+  'update': IntentWord.setStock,
+  'adjust': IntentWord.setStock,
+  'correct': IntentWord.setStock,
+  'recount': IntentWord.setStock,
 };
 
 /// Words that join two items or two commands ("and", "aur", "mariyu").
@@ -488,6 +496,26 @@ const Set<String> kSeparatorWords = <String>{
   'then',
   'और',
   'మరియు',
+};
+
+/// Words that say how much is there right now ("undi", "hai", "have").
+const Set<String> kPresenceWords = <String>{
+  'are',
+  'hai',
+  'hain',
+  'has',
+  'have',
+  'is',
+  'undi',
+  'unnai',
+  'unnayi',
+  'vundi',
+  'vunnayi',
+  'है',
+  'हैं',
+  'ఉంది',
+  'ఉన్నాయి',
+  'వుంది',
 };
 
 /// Filler words that carry no meaning for the parser.

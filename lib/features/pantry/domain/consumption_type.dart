@@ -4,7 +4,12 @@ enum ConsumptionType {
   wasted('Wasted'),
   expired('Expired'),
   givenAway('Given away'),
-  cookedInRecipe('Cooked in recipe');
+  cookedInRecipe('Cooked in recipe'),
+
+  /// A correction made by Count mode or a spoken "set to" command. The amount
+  /// is signed: positive when stock was lowered, negative when it was raised.
+  /// It never counts as use or as waste.
+  adjustment('Adjustment');
 
   const ConsumptionType(this.label);
 

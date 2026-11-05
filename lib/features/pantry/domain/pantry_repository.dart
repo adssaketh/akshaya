@@ -1,5 +1,7 @@
 import 'consumption_type.dart';
 import 'entities.dart';
+import 'stock_count.dart';
+import 'storage_location.dart';
 import 'unit.dart';
 
 /// Everything the pantry features need from storage. The local database is
@@ -82,6 +84,28 @@ abstract interface class PantryRepository {
 
   /// Reverses a [useStock] or [discardBatch].
   Future<void> undoUse(UseResult result);
+
+  /// Sets what the item holds to [quantity] (any unit that converts to the
+  /// item's own), as found in a count or a spoken "set to" command.
+  ///
+  /// With [location], only batches kept there are compared and changed, and a
+  /// surplus is added there. Less than expected lowers the batches first
+  /// expiring first and logs an `adjustment` (or `wasted` when [asWaste]).
+  /// More than expected adds a new batch (today, no expiry, no price) and logs
+  /// a negative `adjustment`. An equal count writes nothing.
+  ///
+  /// Throws `InvalidInputFailure` for a negative or non-numeric amount and
+  /// `UnitMismatchFailure` when the unit does not convert.
+  Future<CountResult> setStock({
+    required String itemId,
+    required double quantity,
+    required Unit unit,
+    StorageLocation? location,
+    bool asWaste = false,
+  });
+
+  /// Reverses a [setStock]. Does nothing when it changed nothing.
+  Future<void> undoCount(CountResult result);
 
   /// Adds the ten sample items (skipping names that exist). Returns how many
   /// were added.

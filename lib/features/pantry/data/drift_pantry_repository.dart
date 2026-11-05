@@ -13,6 +13,7 @@ import '../domain/item_kind.dart';
 import '../domain/pantry_repository.dart';
 import '../domain/sample_data.dart';
 import '../domain/shelf_life.dart';
+import '../domain/stock_count.dart';
 import '../domain/storage_location.dart';
 import '../domain/unit.dart';
 import 'database/app_database.dart';
@@ -1161,6 +1162,172 @@ class DriftPantryRepository implements PantryRepository {
           ),
         );
       }
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Counting
+  // ---------------------------------------------------------------------
+
+  @override
+  Future<CountResult> setStock({
+    required String itemId,
+    required double quantity,
+    required Unit unit,
+    StorageLocation? location,
+    bool asWaste = false,
+  }) {
+    return _db.transaction<CountResult>(() async {
+      final ItemRow item = await _requireItem(itemId);
+      if (!quantity.isFinite || quantity < 0) {
+        throw const InvalidInputFailure('Enter an amount of zero or more.');
+      }
+      final Unit base = item.defaultUnit;
+      if (!unit.isCompatibleWith(base)) {
+        throw UnitMismatchFailure(unit.symbol, base.symbol);
+      }
+
+      final double target = roundQty(unit.convertTo(quantity, base));
+      final List<StockBatch> scoped = <StockBatch>[
+        for (final BatchRow r in await _activeBatchRows(itemId))
+          if (!isZeroQty(r.quantityRemaining) &&
+              r.unit.isCompatibleWith(base) &&
+              (location == null || r.storageLocation == location))
+            _batch(r),
+      ];
+      double current = 0;
+      for (final StockBatch b in scoped) {
+        current += b.unit.convertTo(b.quantityRemaining, base);
+      }
+      current = roundQty(current);
+
+      final double difference = roundQty(target - current);
+      if (isZeroQty(difference.abs())) {
+        return CountResult(
+          itemId: itemId,
+          before: current,
+          after: current,
+          unit: base,
+        );
+      }
+
+      final DateTime now = _now();
+      if (difference < 0) {
+        final ConsumptionType type =
+            asWaste ? ConsumptionType.wasted : ConsumptionType.adjustment;
+        final double lowered = roundQty(-difference);
+        final FifoPlan plan = Fifo.plan(
+          batches: scoped,
+          quantity: lowered,
+          unit: base,
+        );
+        if (!plan.isComplete) {
+          throw const InvalidInputFailure(
+            'The stock changed while counting. Count this item again.',
+          );
+        }
+        final List<AppliedDeduction> applied = <AppliedDeduction>[];
+        for (final Deduction d in plan.deductions) {
+          applied.add(
+            await _applyDeduction(
+              batchId: d.batchId,
+              itemId: itemId,
+              amount: d.amount,
+              unit: d.unit,
+              type: type,
+              now: now,
+            ),
+          );
+        }
+        return CountResult(
+          itemId: itemId,
+          before: current,
+          after: target,
+          unit: base,
+          deduction: UseResult(
+            itemId: itemId,
+            quantity: lowered,
+            unit: base,
+            type: type,
+            applied: applied,
+          ),
+        );
+      }
+
+      final double added = roundQty(difference);
+      _validateBatch(
+        quantityBought: added,
+        quantityRemaining: added,
+        unit: base,
+        itemUnit: base,
+        price: null,
+        useWithinDays: null,
+      );
+      final String batchId = _newId();
+      await _db.into(_db.stockBatches).insert(
+            StockBatchesCompanion.insert(
+              id: batchId,
+              itemId: itemId,
+              quantityBought: added,
+              quantityRemaining: added,
+              unit: base,
+              purchaseDate: dateOnly(now),
+              storageLocation: location ?? item.defaultStorageLocation,
+              createdAt: now,
+              updatedAt: now,
+              updatedBy: Value<String?>(_userId),
+            ),
+          );
+      final String logId = _newId();
+      await _db.into(_db.consumptionLogs).insert(
+            ConsumptionLogsCompanion.insert(
+              id: logId,
+              batchId: batchId,
+              itemId: itemId,
+              quantityUsed: -added,
+              unit: base,
+              date: now,
+              type: ConsumptionType.adjustment,
+              createdAt: now,
+              updatedAt: now,
+              updatedBy: Value<String?>(_userId),
+            ),
+          );
+      return CountResult(
+        itemId: itemId,
+        before: current,
+        after: target,
+        unit: base,
+        addedBatchId: batchId,
+        addedLogId: logId,
+      );
+    });
+  }
+
+  @override
+  Future<void> undoCount(CountResult result) async {
+    final UseResult? deduction = result.deduction;
+    if (deduction != null) {
+      await undoUse(deduction);
+      return;
+    }
+    final String? batchId = result.addedBatchId;
+    final String? logId = result.addedLogId;
+    if (batchId == null || logId == null) {
+      return;
+    }
+    await _db.transaction<void>(() async {
+      final DateTime now = _now();
+      await _setBatchDeleted(batchId, deleted: true, now: now);
+      await (_db.update(_db.consumptionLogs)..where((t) => t.id.equals(logId)))
+          .write(
+        ConsumptionLogsCompanion(
+          isDeleted: const Value<bool>(true),
+          updatedAt: Value<DateTime>(now),
+          updatedBy: Value<String?>(_userId),
+          syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        ),
+      );
     });
   }
 

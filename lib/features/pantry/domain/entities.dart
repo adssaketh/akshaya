@@ -171,11 +171,23 @@ final class ConsumptionEntry {
   final String batchId;
   final String itemId;
 
-  /// Amount that left the batch, in [unit] (the batch's unit).
+  /// Amount that left the batch, in [unit] (the batch's unit). Negative only
+  /// for an [ConsumptionType.adjustment] that raised the stock.
   final double quantityUsed;
   final Unit unit;
   final DateTime date;
   final ConsumptionType type;
+
+  /// "2 kg" for use and waste; "+1 kg" or "-1 kg" for an adjustment.
+  String get amountLabel {
+    if (type != ConsumptionType.adjustment) {
+      return unit.format(quantityUsed);
+    }
+    if (quantityUsed < 0) {
+      return '+${unit.format(-quantityUsed)}';
+    }
+    return '-${unit.format(quantityUsed)}';
+  }
 }
 
 /// An item together with its active (not deleted) batches.

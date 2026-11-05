@@ -12,7 +12,7 @@ import json
 import os
 from dataclasses import dataclass
 
-from tables import NUMBER_WORDS, UNIT_WORDS, INTENT_WORDS, SEPARATOR_WORDS, STOP_WORDS
+from tables import NUMBER_WORDS, UNIT_WORDS, INTENT_WORDS, SEPARATOR_WORDS, STOP_WORDS, PRESENCE_WORDS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
@@ -101,6 +101,9 @@ enum IntentWord {
 
   /// "list", "shopping": names the shopping list.
   list,
+
+  /// "set", "update": says the amount in the pantry should now be this much.
+  setStock,
 }
 """)
 out.append("/// Number words in English, Telugu and Hindi (script and romanised).\nconst Map<String, double> kNumberWords = <String, double>{")
@@ -117,6 +120,10 @@ for k, v in INTENT_WORDS.items():
 out.append("};\n")
 out.append("/// Words that join two items or two commands (\"and\", \"aur\", \"mariyu\").\nconst Set<String> kSeparatorWords = <String>{")
 for k in sorted(SEPARATOR_WORDS):
+    out.append(f"  {q(k)},")
+out.append("};\n")
+out.append("/// Words that say how much is there right now (\"undi\", \"hai\", \"have\").\nconst Set<String> kPresenceWords = <String>{")
+for k in sorted(PRESENCE_WORDS):
     out.append(f"  {q(k)},")
 out.append("};\n")
 out.append("/// Filler words that carry no meaning for the parser.\nconst Set<String> kStopWords = <String>{")

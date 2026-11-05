@@ -16,6 +16,7 @@ final class FirebaseGenerativeBackend implements GenerativeBackend {
     'add_stock',
     'use_stock',
     'mark_finished',
+    'set_stock',
     'add_to_shopping_list',
     'remove_from_shopping_list',
     'query_expiring',

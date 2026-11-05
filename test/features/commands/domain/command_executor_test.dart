@@ -285,6 +285,74 @@ void main() {
     });
   });
 
+  group('set_stock', () {
+    CommandAction setRice(double? quantity, {Unit? unit}) => CommandAction(
+          intent: CommandIntent.setStock,
+          itemName: 'Rice',
+          quantity: quantity,
+          unit: unit,
+        );
+
+    test('lowers the stock to the spoken amount, and undo restores it',
+        () async {
+      await addRice(kg: 5);
+      final CommandRunResult result =
+          await run(<CommandAction>[setRice(3, unit: Unit.kg)]);
+      expect(result.allSucceeded, isTrue);
+      expect(result.outcomes.single.message, 'Rice set to 3 kg (was 5 kg).');
+      expect(remaining(await record('Rice')), closeTo(3, 0.0001));
+      await result.undoAll();
+      expect(remaining(await record('Rice')), closeTo(5, 0.0001));
+    });
+
+    test('raises the stock with a new batch, and undo removes it', () async {
+      await addRice(kg: 1);
+      final CommandRunResult result =
+          await run(<CommandAction>[setRice(3, unit: Unit.kg)]);
+      expect(result.allSucceeded, isTrue);
+      expect(remaining(await record('Rice')), closeTo(3, 0.0001));
+      expect((await record('Rice')).batches, hasLength(2));
+      await result.undoAll();
+      expect(remaining(await record('Rice')), closeTo(1, 0.0001));
+      expect((await record('Rice')).batches, hasLength(1));
+    });
+
+    test('converts the unit: 500 g on a kg item', () async {
+      await addRice(kg: 2);
+      await run(<CommandAction>[setRice(500, unit: Unit.g)]);
+      expect(remaining(await record('Rice')), closeTo(0.5, 0.0001));
+    });
+
+    test('the same amount changes nothing and has nothing to undo', () async {
+      await addRice(kg: 2);
+      final CommandRunResult result =
+          await run(<CommandAction>[setRice(2, unit: Unit.kg)]);
+      expect(result.allSucceeded, isTrue);
+      expect(result.outcomes.single.message, 'Rice already shows 2 kg.');
+      expect(result.hasUndo, isFalse);
+    });
+
+    test('needs an amount', () async {
+      await addRice(kg: 2);
+      final CommandRunResult result = await run(<CommandAction>[setRice(null)]);
+      expect(result.allSucceeded, isFalse);
+      expect(remaining(await record('Rice')), 2);
+    });
+
+    test('an item that is not in the pantry fails with a clear message',
+        () async {
+      final CommandRunResult result = await run(<CommandAction>[
+        const CommandAction(
+          intent: CommandIntent.setStock,
+          itemName: 'Saffron',
+          quantity: 1,
+        ),
+      ]);
+      expect(result.outcomes.single.succeeded, isFalse);
+      expect(result.outcomes.single.message, 'Saffron is not in your pantry.');
+    });
+  });
+
   group('shopping list', () {
     test('adds an entry linked to the pantry item, marked as voice', () async {
       final Item rice = await addRice();

@@ -79,4 +79,18 @@ void main() {
       expect(parseMoney('Infinity'), isNull);
     });
   });
+
+  group('ISO dates', () {
+    test('format and parse round-trip', () {
+      expect(formatIsoDate(DateTime(2026, 1, 5)), '2026-01-05');
+      expect(parseIsoDate('2026-01-05'), DateTime(2026, 1, 5));
+    });
+
+    test('parse rejects bad text and impossible dates', () {
+      expect(parseIsoDate(''), isNull);
+      expect(parseIsoDate('5 Jan 2026'), isNull);
+      expect(parseIsoDate('2026-13-01'), isNull);
+      expect(parseIsoDate('2026-02-30'), isNull);
+    });
+  });
 }
