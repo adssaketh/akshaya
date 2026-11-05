@@ -19,7 +19,8 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 10 Inventory reconciliation (count mode) | Done. CI green, checked on device. |
 | 11 Consumption forecasting, "What should I buy?" | Done. CI green, checked on device. |
 | 12 Weekly meal planner and prep reminders | Done. CI green, checked on device. |
-| 13 Food rescue, waste cost, actionable notifications | Built on branch `phase-13`. CI green (analyzer, tests, rules, APK); waiting for your device check. |
+| 13 Food rescue, waste cost, actionable notifications | Done. CI green, checked on device. |
+| 14 Home screen widgets, app shortcuts, travel mode | Built in 1.0.1. CI green (analyzer, tests, rules, signed APK); waiting for your device check. Needs a Firestore rules + indexes redeploy (trips). |
 
 ## Phase 2: what is built
 
@@ -836,3 +837,73 @@ PROGRESS.md
 - No hard-coded colours outside `akshaya_colors.dart`: enforced by `no_hardcoded_colors_test.dart` (`Colors.transparent` allowed).
 - Chips ellipsise at 144 dp so large system font sizes never overflow rows.
 - Icons: Material rounded/outlined icons; category icons are chosen per item in Phase 1.
+
+## Releases and housekeeping (after Phase 13)
+
+Version rule: 1.0.0 was the first signed build. Every change or patch bumps the patch number (and the build number after the `+`) in `pubspec.yaml`: 1.0.1+2, 1.0.2+3 and so on.
+
+### 1.0.0
+- Sync no longer fails as a whole when the published rules refuse one collection (for example `mealPlan` before the rules were redeployed). The refused collections are skipped, the rest syncs, and Settings says "Not syncing: ... Publish the latest firestore.rules". Only when every collection is refused does it show "removed from the household".
+- Header: the dot motif was removed (it overlapped the action icon); it stays on empty states.
+- Wallpaper colours (Material 3 Expressive): `dynamic_color` + `ColorScheme.fromSeed(dynamicSchemeVariant: expressive)` from the wallpaper colour, rebuilt into the same `AkshayaColors` tokens. Status colours keep their meaning. Switch in Settings (on by default; Android 12+ only).
+- Settings builds its sections lazily, each in its own repaint layer (scroll lag).
+- Release signing: `android/app/build.gradle.kts` signs `release` with the key from `RELEASE_KEYSTORE_PATH` and friends, else the debug key. CI restores the key from the secrets `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD` and uploads `akshayapatra-release.apk` (artifact `akshaya-release-apk`). The keystore (a PKCS12 `.p12`) is only on your devices and in GitHub secrets: back it up.
+- 3D launcher icon and in-app logo (`tool/generate_launcher_icons.py` renders the shaded SVG with rsvg-convert; the logo widget uses gradients from the tokens).
+
+### 1.0.1: Phase 14
+
+#### What is built
+- Widgets (home_widget): "Use these first", Shopping list with check-off (tapping a row ticks it without opening the app, through a background callback) and Quick add (Voice / Scan / Add). Light/dark colours follow the system (`values-night`). They refresh when Food rescue, the shopping list or a trip changes (1 s debounce), with the daily background check and every 30 minutes (`updatePeriodMillis`).
+- App shortcuts (quick_actions): long-press the icon for Voice add, Scan barcode, Shopping list.
+- Travel mode (Settings and Home): trips with leaving and return days. Trips are a synced household table (`trips`, schema v11).
+  - Food that goes off before the return, soonest first, with Use, Cook something, Freeze, Give away (logged as "given away", not waste) and Mark wasted.
+  - Pauses expiry/low-stock alerts and repeating shopping items for the away days (leaving day up to the day before the return); both resume on the return day.
+  - A "Welcome back" summary notification on the return day.
+  - Back home checklist (default Milk 1 L, Bread 1 packet, Vegetables 1 kg, editable per trip) added to the first shopping list the day before the return, once (also done by the background check; up to 3 days late if the phone was off).
+  - Home banner for the trip that is on now or starts within two weeks.
+
+#### Files
+```
+lib/features/travel/domain/trip_models.dart, travel_plan.dart, trip_summary.dart, back_home.dart, trip_repository.dart
+lib/features/travel/data/database/trip_tables.dart, data/drift_trip_repository.dart
+lib/features/travel/presentation/trip_providers.dart, back_home_coordinator.dart, travel_screen.dart,
+  trip_form_screen.dart, trip_detail_screen.dart, travel_actions.dart, trip_banner.dart
+lib/features/widgets/domain/widget_snapshot.dart, widget_gateway.dart (also QuickLaunch)
+lib/features/widgets/data/home_widget_gateway.dart, widget_background.dart
+lib/features/widgets/presentation/widget_providers.dart
+android/app/src/main/kotlin/com/akshaya/akshaya/UseFirstWidgetProvider.kt, ShoppingWidgetProvider.kt, QuickAddWidgetProvider.kt
+android/app/src/main/res/layout/widget_*.xml, xml/widget_*_info.xml, drawable/widget_*.xml, drawable/ic_shortcut_*.xml,
+  values/widget_*.xml, values-night/widget_colors.xml
+changed: app_database.dart (v11), sync_schema/store/triggers, backup_service, firestore.rules, firestore.indexes.json,
+  alerts (planner, scheduler, worker, providers), shopping (recurring pause), home_screen, settings_screen, app_shell, app.dart,
+  AndroidManifest.xml, pubspec.yaml (home_widget, quick_actions)
+tests: test/features/travel/**, test/features/widgets/**
+```
+
+#### Key decisions
+- A trip is "away" from the leaving day up to the day before the return; the return day must be after the leaving day (at most 365 nights).
+- Widget check-off works from the widget (background isolate opens its own database connection, like the alert worker).
+- Shortcuts use `quick_actions`; widget buttons use `akshaya://<voice|scan|add|shopping|use_first>` addresses handed to the app shell.
+- Native widget code can only be compiled in CI, so it was verified there (APK builds); behaviour needs your device check.
+
+#### Before you test: redeploy the Firestore rules and indexes
+```
+cd ~/akshaya && git pull
+firebase deploy --only firestore:rules,firestore:indexes
+```
+(Spark plan, no billing.) Without it, trips will not sync (the app says so and keeps working).
+
+#### Test checklist (you)
+1. Settings > Travel mode > Add trip (leave tomorrow, back in 4 days). Save. It shows on Home as a banner.
+2. Put something expiring in 3 days in the pantry: it appears under "Will not last until you are back" with Use / Freeze / Give away / Mark wasted. Give away, then Undo.
+3. During the trip dates: no daily alerts; repeating shopping items are held back ("back on ...").
+4. The day before the return: Milk, Bread, Vegetables appear on the first shopping list once.
+5. Long-press the Home screen > Widgets > Akshaya: add all three. Shopping widget: tap a row, it ticks without the app opening; open the app, it is ticked there too.
+6. Quick add widget: Voice, Scan and Add open the app on that action. Long-press the app icon: the three shortcuts work.
+7. Switch the phone to dark mode: widgets change colours.
+8. Delete a trip (swipe) and Undo.
+
+#### Known issues
+- Widgets show text only (no item icons) and the shopping widget shows the first six rows of the first list.
+- The widget redraw after a tick in the app can take about a second.
+- Travel mode follows the household's trips: a trip added on one phone shows on the others after sync.
