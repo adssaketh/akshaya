@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../commands/domain/command_models.dart';
 import '../../commands/presentation/command_flow.dart';
 import '../../commands/presentation/voice_mic_button.dart';
+import '../../forecast/domain/what_to_buy.dart';
+import '../../forecast/presentation/providers.dart';
+import '../../forecast/presentation/what_to_buy_screen.dart';
 import '../../insights/presentation/insights_screen.dart';
 import '../../pantry/domain/stock_logic.dart';
 import '../../pantry/presentation/pantry_actions.dart';
@@ -115,6 +118,8 @@ class _Content extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final Map<String, Category> categories = ref.watch(categoriesByIdProvider);
     final List<ItemStock> urgent = useTheseFirst(stocks);
+    final List<BuyRecommendation> runningOut = ref
+        .watch(buyRecommendationsProvider(WhatToBuy.defaultHorizonDays));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,8 +240,31 @@ class _Content extends ConsumerWidget {
             icon: const Icon(Icons.soup_kitchen_rounded),
             label: const Text('Get recipe ideas'),
           ),
+          if (runningOut.isNotEmpty) ...<Widget>[
+            const SizedBox(height: AppSpacing.lg),
+            const SectionHeader(title: 'Running out soon'),
+            for (final BuyRecommendation r in runningOut.take(3))
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: ItemCard(
+                  revealIndex: null,
+                  name: r.item.name,
+                  subtitle: r.reason,
+                  icon: categoryIcon(categories[r.item.categoryId]?.iconKey),
+                  status: StatusKind.lowStock,
+                  statusLabel: 'Buy ${r.quantityLabel}',
+                  onTap: () => openItemDetail(context, r.item.id),
+                ),
+              ),
+          ],
         ],
         const SizedBox(height: AppSpacing.lg),
+        OutlinedButton.icon(
+          onPressed: () => openWhatToBuy(context),
+          icon: const Icon(Icons.auto_graph_rounded),
+          label: const Text('What should I buy?'),
+        ),
+        const SizedBox(height: AppSpacing.sm),
         OutlinedButton.icon(
           onPressed: () => Navigator.of(context).push<void>(
             MaterialPageRoute<void>(

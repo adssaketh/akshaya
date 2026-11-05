@@ -8,6 +8,8 @@ import '../../../core/ui/feedback.dart';
 import '../../commands/domain/command_models.dart';
 import '../../commands/presentation/voice_mic_button.dart';
 import '../../count/presentation/count_flow.dart';
+import '../../forecast/domain/consumption_forecast.dart';
+import '../../forecast/presentation/providers.dart';
 import '../domain/entities.dart';
 import '../domain/item_kind.dart';
 import '../domain/pantry_query.dart';
@@ -302,9 +304,19 @@ class _PantryRow extends ConsumerWidget {
   final IconData icon;
   final int? revealIndex;
 
+  /// The usual line, plus "runs out in ~6 days" when the item is predicted to
+  /// run out soon.
+  String _subtitle(ItemForecast? forecast) {
+    if (forecast == null || !forecast.isSoon) {
+      return stock.summaryLine;
+    }
+    return '${stock.summaryLine} · ${forecast.label.toLowerCase()}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AkshayaColors colors = context.akColors;
+    final ItemForecast? forecast = ref.watch(forecastProvider(stock.item.id));
 
     return Dismissible(
       key: ValueKey<String>('pantry-${stock.item.id}'),
@@ -336,7 +348,7 @@ class _PantryRow extends ConsumerWidget {
         onLongPress: () => showItemActionsSheet(context, ref, stock),
         child: ItemCard(
           name: stock.item.name,
-          subtitle: stock.summaryLine,
+          subtitle: _subtitle(forecast),
           icon: icon,
           status: stock.status,
           statusLabel: stock.statusLabel,

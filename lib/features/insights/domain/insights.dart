@@ -1,8 +1,5 @@
-import '../../../core/util/date_only.dart';
-import '../../../core/util/quantity.dart';
 import '../../pantry/domain/consumption_type.dart';
 import '../../pantry/domain/entities.dart';
-import '../../pantry/domain/unit.dart';
 
 /// First day of the month containing [day].
 DateTime monthOf(DateTime day) => DateTime(day.year, day.month);
@@ -85,29 +82,6 @@ final class WasteReport {
   bool get isEmpty => entries == 0;
 }
 
-/// How fast one item is used, and when it will run out.
-final class RunOutEstimate {
-  const RunOutEstimate({
-    required this.item,
-    required this.perDay,
-    required this.remaining,
-    required this.daysLeft,
-  });
-
-  final Item item;
-
-  /// Average use per day, in the item's default unit.
-  final double perDay;
-
-  /// What is left now, in the item's default unit.
-  final double remaining;
-
-  /// Whole days until it runs out at this rate.
-  final int daysLeft;
-
-  String get label => daysLeft <= 0 ? 'runs out today' : 'runs out in ~$daysLeft days';
-}
-
 /// One price paid for an item.
 final class PricePoint {
   const PricePoint({
@@ -125,16 +99,6 @@ final class PricePoint {
 
 /// Spending, waste, usage and price figures. Pure Dart.
 abstract final class Insights {
-  /// Use entries older than this many days are ignored for the usage rate.
-  static const int rateWindowDays = 60;
-
-  /// An item needs at least this many use entries before a rate is shown;
-  /// before that it is still "learning".
-  static const int minUseEntries = 3;
-
-  /// Spread of the use entries must cover at least this many days.
-  static const int minRateDays = 7;
-
   static double spendInMonth(List<ItemWithBatches> records, DateTime month) {
     double total = 0;
     for (final ItemWithBatches r in records) {
@@ -262,71 +226,6 @@ abstract final class Insights {
       expiredCount: expired,
       topItems: top.take(5).toList(),
     );
-  }
-
-  /// Items whose use is steady enough to predict, soonest to run out first.
-  /// Only real use counts (used, cooked in recipe); waste does not.
-  static List<RunOutEstimate> runOutEstimates(
-    List<ItemWithBatches> records,
-    List<ConsumptionEntry> logs,
-    DateTime today,
-  ) {
-    final Map<String, List<ConsumptionEntry>> byItem =
-        <String, List<ConsumptionEntry>>{};
-    final DateTime since = today.subtract(const Duration(days: rateWindowDays));
-    for (final ConsumptionEntry e in logs) {
-      final bool isUse = e.type == ConsumptionType.used ||
-          e.type == ConsumptionType.cookedInRecipe;
-      if (isUse && !dateOnly(e.date).isBefore(since)) {
-        byItem.putIfAbsent(e.itemId, () => <ConsumptionEntry>[]).add(e);
-      }
-    }
-    final List<RunOutEstimate> out = <RunOutEstimate>[];
-    for (final ItemWithBatches r in records) {
-      final List<ConsumptionEntry>? uses = byItem[r.item.id];
-      if (uses == null || uses.length < minUseEntries) {
-        continue;
-      }
-      final Unit base = r.item.defaultUnit;
-      double used = 0;
-      DateTime first = dateOnly(uses.first.date);
-      for (final ConsumptionEntry e in uses) {
-        if (!e.unit.isCompatibleWith(base)) {
-          continue;
-        }
-        used += e.unit.convertTo(e.quantityUsed, base);
-        final DateTime day = dateOnly(e.date);
-        if (day.isBefore(first)) {
-          first = day;
-        }
-      }
-      final int span = daysBetween(first, today);
-      if (span < minRateDays || isZeroQty(used)) {
-        continue;
-      }
-      double remaining = 0;
-      for (final StockBatch b in r.batches) {
-        if (b.unit.isCompatibleWith(base)) {
-          remaining += b.unit.convertTo(b.quantityRemaining, base);
-        }
-      }
-      if (isZeroQty(remaining)) {
-        continue;
-      }
-      final double perDay = used / span;
-      out.add(
-        RunOutEstimate(
-          item: r.item,
-          perDay: perDay,
-          remaining: remaining,
-          daysLeft: (remaining / perDay).floor(),
-        ),
-      );
-    }
-    out.sort(
-      (RunOutEstimate a, RunOutEstimate b) => a.daysLeft.compareTo(b.daysLeft),
-    );
-    return out;
   }
 
   /// Every price paid for [record]'s item that can be compared (per default

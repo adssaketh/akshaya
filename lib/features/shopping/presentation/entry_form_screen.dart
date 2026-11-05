@@ -13,6 +13,19 @@ import '../domain/shopping_enums.dart';
 import '../domain/shopping_repository.dart';
 import 'providers.dart';
 
+/// What the Repeat field offers: the built-in repeats plus a number of days.
+enum _RepeatChoice {
+  none('Does not repeat'),
+  daily('Every day'),
+  weekly('Every week'),
+  monthly('Every month'),
+  custom('Every few days...');
+
+  const _RepeatChoice(this.label);
+
+  final String label;
+}
+
 /// Adds an entry to a shopping list, or edits one.
 ///
 /// Type a name: pantry items that match (by name or any alias) are suggested.
@@ -36,11 +49,12 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
   final FocusNode _nameFocus = FocusNode();
   final TextEditingController _quantity = TextEditingController(text: '1');
   final TextEditingController _notes = TextEditingController();
+  final TextEditingController _repeatDays = TextEditingController();
 
   Item? _item;
   Unit _unit = Unit.pcs;
   bool _urgent = false;
-  Recurrence _recurrence = Recurrence.none;
+  _RepeatChoice _repeat = _RepeatChoice.none;
   late String _listId = widget.listId;
   bool _saving = false;
   String? _error;
@@ -55,7 +69,13 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
       _notes.text = entry.notes ?? '';
       _unit = entry.unit;
       _urgent = entry.priority == ShoppingPriority.high;
-      _recurrence = entry.recurrence;
+      final int? customDays = entry.repeatEveryDays;
+      if (entry.recurrence.repeats && customDays != null) {
+        _repeat = _RepeatChoice.custom;
+        _repeatDays.text = customDays.toString();
+      } else {
+        _repeat = _choiceFor(entry.recurrence);
+      }
       _listId = entry.listId;
       _item = _itemById(entry.itemId);
     }
@@ -67,7 +87,42 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     _nameFocus.dispose();
     _quantity.dispose();
     _notes.dispose();
+    _repeatDays.dispose();
     super.dispose();
+  }
+
+  _RepeatChoice _choiceFor(Recurrence recurrence) {
+    switch (recurrence) {
+      case Recurrence.none:
+        return _RepeatChoice.none;
+      case Recurrence.daily:
+        return _RepeatChoice.daily;
+      case Recurrence.weekly:
+        return _RepeatChoice.weekly;
+      case Recurrence.monthly:
+        return _RepeatChoice.monthly;
+    }
+  }
+
+  /// The repeat to save. A custom number of days also stores the closest
+  /// built-in repeat; a number that matches a built-in one is stored as it.
+  ({Recurrence recurrence, int? days}) _resolveRepeat() {
+    switch (_repeat) {
+      case _RepeatChoice.none:
+        return (recurrence: Recurrence.none, days: null);
+      case _RepeatChoice.daily:
+        return (recurrence: Recurrence.daily, days: null);
+      case _RepeatChoice.weekly:
+        return (recurrence: Recurrence.weekly, days: null);
+      case _RepeatChoice.monthly:
+        return (recurrence: Recurrence.monthly, days: null);
+      case _RepeatChoice.custom:
+        final int days = int.tryParse(_repeatDays.text.trim()) ?? 1;
+        final Recurrence nearest = Recurrence.nearestTo(days);
+        return nearest.approxDays == days
+            ? (recurrence: nearest, days: null)
+            : (recurrence: nearest, days: days);
+    }
   }
 
   List<ItemWithBatches> get _allItems {
@@ -175,6 +230,7 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
     final ShoppingPriority priority =
         _urgent ? ShoppingPriority.high : ShoppingPriority.normal;
     final ShoppingEntry? editing = widget.entry;
+    final ({Recurrence recurrence, int? days}) repeat = _resolveRepeat();
 
     try {
       if (editing == null) {
@@ -187,7 +243,8 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             unit: unit,
             priority: priority,
             notes: notes.isEmpty ? null : notes,
-            recurrence: _recurrence,
+            recurrence: repeat.recurrence,
+            repeatEveryDays: repeat.days,
           ),
         );
       } else {
@@ -202,8 +259,10 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
             priority: priority,
             notes: notes,
             clearNotes: notes.isEmpty,
-            recurrence: _recurrence,
-            clearDueOn: !_recurrence.repeats,
+            recurrence: repeat.recurrence,
+            repeatEveryDays: repeat.days,
+            clearRepeatEveryDays: repeat.days == null,
+            clearDueOn: !repeat.recurrence.repeats,
           ),
         );
       }
@@ -319,24 +378,45 @@ class _EntryFormScreenState extends ConsumerState<EntryFormScreen> {
               value: _urgent,
               onChanged: (bool value) => setState(() => _urgent = value),
             ),
-            DropdownButtonFormField<Recurrence>(
-              key: ValueKey<String>('repeat-${_recurrence.name}'),
-              initialValue: _recurrence,
+            DropdownButtonFormField<_RepeatChoice>(
+              key: ValueKey<String>('repeat-${_repeat.name}'),
+              initialValue: _repeat,
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Repeat',
                 helperText: 'Comes back on the list after you buy it',
               ),
-              items: <DropdownMenuItem<Recurrence>>[
-                for (final Recurrence r in Recurrence.values)
-                  DropdownMenuItem<Recurrence>(value: r, child: Text(r.label)),
+              items: <DropdownMenuItem<_RepeatChoice>>[
+                for (final _RepeatChoice r in _RepeatChoice.values)
+                  DropdownMenuItem<_RepeatChoice>(
+                    value: r,
+                    child: Text(r.label),
+                  ),
               ],
-              onChanged: (Recurrence? value) {
+              onChanged: (_RepeatChoice? value) {
                 if (value != null) {
-                  setState(() => _recurrence = value);
+                  setState(() => _repeat = value);
                 }
               },
             ),
+            if (_repeat == _RepeatChoice.custom) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _repeatDays,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Days between purchases',
+                  helperText: '1 to $kMaxRepeatEveryDays',
+                ),
+                validator: (String? text) {
+                  final int? days = int.tryParse((text ?? '').trim());
+                  if (days == null || days < 1 || days > kMaxRepeatEveryDays) {
+                    return 'Enter 1 to $kMaxRepeatEveryDays days';
+                  }
+                  return null;
+                },
+              ),
+            ],
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: _notes,

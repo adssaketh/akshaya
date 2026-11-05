@@ -15,6 +15,34 @@ enum Recurrence {
 
   bool get repeats => this != Recurrence.none;
 
+  /// Length of one cycle in days (a month counts as 30); 0 when it does not
+  /// repeat. Used to compare a built-in repeat with a custom number of days.
+  int get approxDays {
+    switch (this) {
+      case Recurrence.none:
+        return 0;
+      case Recurrence.daily:
+        return 1;
+      case Recurrence.weekly:
+        return 7;
+      case Recurrence.monthly:
+        return 30;
+    }
+  }
+
+  /// The built-in repeat that is closest to "every [days] days". An entry with
+  /// a custom number of days stores this one too, so older app versions in the
+  /// same household still read a sensible repeat.
+  static Recurrence nearestTo(int days) {
+    if (days <= 3) {
+      return Recurrence.daily;
+    }
+    if (days <= 18) {
+      return Recurrence.weekly;
+    }
+    return Recurrence.monthly;
+  }
+
   /// The date an entry bought on [from] is due again. Monthly clamps to the
   /// last day of a shorter month (31 Jan becomes 28 Feb).
   DateTime nextDue(DateTime from) {

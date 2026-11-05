@@ -10,6 +10,10 @@ import '../../pantry/presentation/pantry_icons.dart';
 import '../../pantry/presentation/providers.dart';
 import '../../commands/domain/command_models.dart';
 import '../../commands/presentation/voice_mic_button.dart';
+import '../../forecast/domain/repeat_learning.dart';
+import '../../forecast/presentation/forecast_actions.dart';
+import '../../forecast/presentation/providers.dart';
+import '../../forecast/presentation/what_to_buy_screen.dart';
 import '../domain/shopping_entities.dart';
 import '../domain/shopping_enums.dart';
 import '../domain/shopping_repository.dart';
@@ -66,9 +70,14 @@ class ShoppingScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            const AkshayaHeader(
+            AkshayaHeader(
               actions: <Widget>[
-                VoiceMicButton(commandContext: CommandContext.shopping),
+                IconButton(
+                  tooltip: 'What should I buy?',
+                  icon: const Icon(Icons.auto_graph_rounded),
+                  onPressed: () => openWhatToBuy(context),
+                ),
+                const VoiceMicButton(commandContext: CommandContext.shopping),
               ],
             ),
             if (selected != null) _ListBar(selected: selected),
@@ -203,10 +212,19 @@ class _ListBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final List<ShoppingSuggestion> suggestions =
         ref.watch(suggestionsProvider);
+    final List<ScheduleSuggestion> schedules = <ScheduleSuggestion>[
+      for (final ScheduleSuggestion s in ref.watch(scheduleSuggestionsProvider))
+        if (s.entry.listId == list.id) s,
+    ];
     final DateTime today = ref.watch(todayProvider);
 
     int rowIndex = 0;
     final List<Widget> children = <Widget>[
+      if (schedules.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: _ScheduleSuggestionsCard(suggestions: schedules),
+        ),
       if (suggestions.isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -270,7 +288,7 @@ class _EntryRow extends ConsumerWidget {
       parts.add('Back ${formatDateShort(due)}');
     }
     if (entry.recurrence.repeats) {
-      parts.add(entry.recurrence.label);
+      parts.add(entry.repeatLabel);
     }
     final String? note = entry.notes;
     if (note != null && note.trim().isNotEmpty) {
@@ -394,6 +412,75 @@ class _UpcomingSection extends StatelessWidget {
         for (final ShoppingEntry entry in entries)
           _EntryRow(entry: entry, today: today, index: 99),
       ],
+    );
+  }
+}
+
+/// "Repeat schedules to update": repeating entries whose item is really bought
+/// at a different interval. Nothing changes until the person taps.
+class _ScheduleSuggestionsCard extends ConsumerWidget {
+  const _ScheduleSuggestionsCard({required this.suggestions});
+
+  final List<ScheduleSuggestion> suggestions;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AkshayaColors colors = context.akColors;
+
+    return Material(
+      color: colors.surfaceAlt,
+      borderRadius: AppRadius.cardBorder,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Semantics(
+              header: true,
+              child: Text(
+                'Repeat schedules to update (${suggestions.length})',
+                style: context.akText.titleMedium,
+              ),
+            ),
+            Text(
+              'Based on how often you actually buy these.',
+              style: context.akText.bodySmall!.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            for (final ScheduleSuggestion s in suggestions)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      '${s.entry.name}: you buy it ${s.learnedLabel}, but it '
+                      'repeats ${s.entry.repeatLabel.toLowerCase()}.',
+                      style: context.akText.bodyMedium,
+                    ),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      children: <Widget>[
+                        TextButton(
+                          onPressed: () =>
+                              applyScheduleSuggestion(context, ref, s),
+                          child: Text('Use ${s.learnedLabel}'),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              dismissScheduleSuggestion(context, ref, s),
+                          child: const Text('Keep mine'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

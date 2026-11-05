@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/clock.dart';
 import '../../../core/util/money.dart';
+import '../../forecast/domain/consumption_forecast.dart';
+import '../../forecast/presentation/providers.dart';
 import '../../pantry/domain/entities.dart';
 import '../../pantry/presentation/providers.dart';
 import '../domain/insights.dart';
@@ -48,7 +50,7 @@ class InsightsScreen extends ConsumerWidget {
     final List<Category> categories =
         ref.watch(categoriesProvider).value ?? const <Category>[];
     final DateTime month = ref.watch(insightsMonthProvider);
-    final DateTime today = ref.watch(todayProvider);
+    final Map<String, ItemForecast> forecasts = ref.watch(forecastsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Insights')),
@@ -84,7 +86,7 @@ class InsightsScreen extends ConsumerWidget {
               Reveal(
                 index: 3,
                 child: _RunOutCard(
-                  estimates: Insights.runOutEstimates(records, logs, today),
+                  forecasts: ConsumptionForecast.runningOut(forecasts),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -404,24 +406,24 @@ class _WasteCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _RunOutCard extends StatelessWidget {
-  const _RunOutCard({required this.estimates});
+  const _RunOutCard({required this.forecasts});
 
-  final List<RunOutEstimate> estimates;
+  final List<ItemForecast> forecasts;
 
   @override
   Widget build(BuildContext context) {
-    final List<RunOutEstimate> shown = estimates.take(8).toList();
+    final List<ItemForecast> shown = forecasts.take(8).toList();
     return _Card(
       title: 'Running out',
       child: shown.isEmpty
           ? const _Muted(
-              'Still learning. After an item has been used at least '
-              '${Insights.minUseEntries} times over a week or more, '
-              'Akshaya shows when it will run out.',
+              'Still learning. After an item has been used on at least '
+              '${ConsumptionForecast.minDataPoints} different days over a '
+              'week or more, Akshaya shows when it will run out.',
             )
           : Column(
               children: <Widget>[
-                for (final RunOutEstimate e in shown)
+                for (final ItemForecast e in shown)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                     child: Row(

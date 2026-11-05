@@ -21,6 +21,7 @@ void main() {
     'notes': null,
     'recurrence': 'none',
     'due_on': null,
+    'repeat_every_days': 10,
     'sync_status': 'pending',
   };
 
@@ -56,6 +57,26 @@ void main() {
     expect(row['name'], 'Rice');
     expect(row['quantity'], 2.5);
     expect(row['updated_by'], 'u1');
+  });
+
+  test('the custom repeat interval travels and may be missing', () {
+    final Map<String, Object?> doc = SyncDocuments.toRemote(
+      SyncSchema.entries,
+      entryRow,
+      householdId: 'h1',
+      userId: 'u1',
+    );
+    expect(doc['repeatEveryDays'], 10);
+    expect(
+      SyncDocuments.toLocal(SyncSchema.entries, doc)['repeat_every_days'],
+      10,
+    );
+    // An older build never writes the field.
+    doc.remove('repeatEveryDays');
+    expect(
+      SyncDocuments.toLocal(SyncSchema.entries, doc)['repeat_every_days'],
+      isNull,
+    );
   });
 
   test('toLocal rejects a document missing a required field', () {

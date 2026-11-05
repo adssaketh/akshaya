@@ -1,5 +1,9 @@
+import '../../../core/util/date_only.dart';
 import '../../pantry/domain/unit.dart';
 import 'shopping_enums.dart';
+
+/// The most days a custom repeat can be set to.
+const int kMaxRepeatEveryDays = 365;
 
 /// Id of the list every install starts with. It is a fixed id (not a random
 /// UUID) so devices that sync later agree on it.
@@ -38,6 +42,7 @@ final class ShoppingEntry {
     this.itemId,
     this.notes,
     this.dueOn,
+    this.repeatEveryDays,
   });
 
   final String id;
@@ -60,6 +65,11 @@ final class ShoppingEntry {
   /// For repeating entries: the day the entry shows up again. Null (or today
   /// or earlier) means it is on the list now.
   final DateTime? dueOn;
+
+  /// A custom repeat ("every 10 days"). When set it replaces the length of
+  /// [recurrence], which then holds the closest built-in repeat. Null for the
+  /// built-in repeats and for entries that do not repeat.
+  final int? repeatEveryDays;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -71,6 +81,33 @@ final class ShoppingEntry {
   bool isDueOn(DateTime today) {
     final DateTime? due = dueOn;
     return due == null || !due.isAfter(today);
+  }
+
+  /// Days between purchases: the custom number when there is one, else the
+  /// length of the built-in repeat. Null when the entry does not repeat.
+  int? get intervalDays {
+    if (!recurrence.repeats) {
+      return null;
+    }
+    return repeatEveryDays ?? recurrence.approxDays;
+  }
+
+  /// "Every week", "Every 10 days" or "Does not repeat".
+  String get repeatLabel {
+    final int? days = repeatEveryDays;
+    if (!recurrence.repeats || days == null) {
+      return recurrence.label;
+    }
+    return days == 1 ? 'Every day' : 'Every $days days';
+  }
+
+  /// The day an entry bought on [from] is due again.
+  DateTime nextDueAfter(DateTime from) {
+    final int? days = repeatEveryDays;
+    if (recurrence.repeats && days != null && days >= 1) {
+      return addDays(from, days);
+    }
+    return recurrence.nextDue(from);
   }
 
   ShoppingEntry copyWith({
@@ -88,6 +125,8 @@ final class ShoppingEntry {
     Recurrence? recurrence,
     DateTime? dueOn,
     bool clearDueOn = false,
+    int? repeatEveryDays,
+    bool clearRepeatEveryDays = false,
   }) {
     return ShoppingEntry(
       id: id,
@@ -102,6 +141,9 @@ final class ShoppingEntry {
       notes: clearNotes ? null : (notes ?? this.notes),
       recurrence: recurrence ?? this.recurrence,
       dueOn: clearDueOn ? null : (dueOn ?? this.dueOn),
+      repeatEveryDays: clearRepeatEveryDays
+          ? null
+          : (repeatEveryDays ?? this.repeatEveryDays),
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -120,6 +162,7 @@ final class ShoppingEntryDraft {
     this.priority = ShoppingPriority.normal,
     this.notes,
     this.recurrence = Recurrence.none,
+    this.repeatEveryDays,
   });
 
   final String listId;
@@ -131,6 +174,9 @@ final class ShoppingEntryDraft {
   final ShoppingPriority priority;
   final String? notes;
   final Recurrence recurrence;
+
+  /// A custom repeat in days; only used when [recurrence] repeats.
+  final int? repeatEveryDays;
 }
 
 /// What deleting a list changed, so it can be undone.

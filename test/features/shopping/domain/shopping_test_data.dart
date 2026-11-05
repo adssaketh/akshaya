@@ -19,6 +19,7 @@ ShoppingEntry makeEntry({
   String? notes,
   Recurrence recurrence = Recurrence.none,
   DateTime? dueOn,
+  int? repeatEveryDays,
 }) {
   return ShoppingEntry(
     id: id,
@@ -33,6 +34,7 @@ ShoppingEntry makeEntry({
     notes: notes,
     recurrence: recurrence,
     dueOn: dueOn,
+    repeatEveryDays: repeatEveryDays,
     createdAt: kToday,
     updatedAt: kToday,
   );

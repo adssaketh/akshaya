@@ -108,41 +108,6 @@ void main() {
     expect(report.topItems.single.name, 'Rice');
   });
 
-  test('run-out estimate needs enough history', () {
-    final List<RunOutEstimate> none = Insights.runOutEstimates(
-      <ItemWithBatches>[
-        ItemWithBatches(item: rice, batches: <StockBatch>[
-          batch('b1', 'i1', purchase: DateTime(2026, 11, 1), bought: 5),
-        ]),
-      ],
-      <ConsumptionEntry>[
-        log('l1', 'b1', 'i1', DateTime(2026, 11, 2), 0.5, ConsumptionType.used),
-      ],
-      kToday,
-    );
-    expect(none, isEmpty);
-  });
-
-  test('run-out estimate uses real use over the span', () {
-    final List<RunOutEstimate> out = Insights.runOutEstimates(
-      <ItemWithBatches>[
-        ItemWithBatches(item: rice, batches: <StockBatch>[
-          batch('b1', 'i1', purchase: DateTime(2026, 10, 1), bought: 5),
-        ]),
-      ],
-      <ConsumptionEntry>[
-        log('l1', 'b1', 'i1', DateTime(2026, 10, 20), 0.5, ConsumptionType.used),
-        log('l2', 'b1', 'i1', DateTime(2026, 10, 27), 0.5, ConsumptionType.used),
-        log('l3', 'b1', 'i1', DateTime(2026, 11, 3), 0.5, ConsumptionType.used),
-        log('l4', 'b1', 'i1', DateTime(2026, 11, 3), 2, ConsumptionType.wasted),
-      ],
-      kToday,
-    );
-    expect(out.single.perDay, closeTo(0.1, 0.0001));
-    expect(out.single.daysLeft, 50);
-    expect(out.single.label, contains('50'));
-  });
-
   test('price history lists priced batches by date', () {
     final List<PricePoint> pts = Insights.priceHistory(records.first);
     expect(pts.length, 2);

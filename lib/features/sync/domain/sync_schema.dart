@@ -180,6 +180,8 @@ abstract final class SyncSchema {
       SyncColumn('notes', SyncColumnKind.text),
       SyncColumn('recurrence', SyncColumnKind.text, required: true),
       SyncColumn('due_on', SyncColumnKind.text),
+      // Phase 11. Optional, so documents from older apps still load.
+      SyncColumn('repeat_every_days', SyncColumnKind.integer),
     ],
   );
 

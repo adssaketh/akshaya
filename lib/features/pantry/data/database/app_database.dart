@@ -42,6 +42,8 @@ part 'app_database.g.dart';
 ///  - v7 (Phase 9): items.kind and items.shelf_life_days, stock_batches
 ///    .container_label and .check_by (all nullable, so older rows, backups and
 ///    synced documents stay valid; a missing kind means stocked).
+///  - v8 (Phase 11): shopping_entries.repeat_every_days (nullable: a custom
+///    repeat learned from purchase history; null keeps the built-in repeat).
 ///
 /// Later phases add tables through migrations in [migration]; never edit a
 /// released version in place.
@@ -69,7 +71,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -158,6 +160,16 @@ class AppDatabase extends _$AppDatabase {
             stockBatches,
             stockBatches.checkBy,
             'check_by',
+          );
+        }
+        if (from < 8) {
+          // One nullable column, so existing entries keep their built-in
+          // repeat. Skipped when already there (see the v7 note above).
+          await _addColumnIfMissing(
+            m,
+            shoppingEntries,
+            shoppingEntries.repeatEveryDays,
+            'repeat_every_days',
           );
         }
       },

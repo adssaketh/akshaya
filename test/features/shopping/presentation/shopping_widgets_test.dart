@@ -4,6 +4,7 @@ import 'package:akshaya/core/time/clock.dart';
 import 'package:akshaya/features/pantry/domain/entities.dart';
 import 'package:akshaya/features/pantry/domain/unit.dart';
 import 'package:akshaya/features/pantry/presentation/providers.dart';
+import 'package:akshaya/features/settings/presentation/providers.dart';
 import 'package:akshaya/features/shopping/domain/shopping_entities.dart';
 import 'package:akshaya/features/shopping/domain/shopping_enums.dart';
 import 'package:akshaya/features/shopping/presentation/checkout_screen.dart';
@@ -16,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../pantry/domain/test_data.dart';
 import '../../pantry/presentation/fake_repository.dart';
+import '../../settings/fake_settings_repository.dart';
 import '../domain/shopping_test_data.dart';
 import 'fake_shopping_repository.dart';
 
@@ -29,6 +31,7 @@ Widget host({
     overrides: [
       shoppingRepositoryProvider.overrideWithValue(shopping),
       pantryRepositoryProvider.overrideWithValue(pantry),
+      settingsRepositoryProvider.overrideWithValue(FakeSettingsRepository()),
       clockProvider.overrideWithValue(() => DateTime(2026, 11, 4, 10)),
       if (share != null) shareServiceProvider.overrideWithValue(share),
     ],

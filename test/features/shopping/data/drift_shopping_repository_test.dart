@@ -50,6 +50,7 @@ void main() {
     String listId = kDefaultListId,
     ShoppingPriority priority = ShoppingPriority.normal,
     Recurrence recurrence = Recurrence.none,
+    int? repeatEveryDays,
     String? notes,
   }) {
     return ShoppingEntryDraft(
@@ -60,6 +61,7 @@ void main() {
       unit: unit,
       priority: priority,
       recurrence: recurrence,
+      repeatEveryDays: repeatEveryDays,
       notes: notes,
     );
   }
@@ -449,6 +451,58 @@ void main() {
       expect(milk.isDueOn(DateTime(2026, 11, 11)), isTrue);
     });
 
+    test('a custom interval comes due after that many days', () async {
+      await checked(
+        draft(
+          'Milk',
+          unit: Unit.l,
+          recurrence: Recurrence.weekly,
+          repeatEveryDays: 10,
+        ),
+      );
+
+      await shop.completeShopping(
+        listId: kDefaultListId,
+        lines: const <CheckoutLine>[],
+      );
+
+      final ShoppingEntry milk = (await entries()).single;
+      expect(milk.repeatEveryDays, 10);
+      expect(milk.dueOn, DateTime(2026, 11, 14));
+    });
+
+    test('a custom interval is stored and can be cleared', () async {
+      await shop.addEntry(
+        draft('Milk', recurrence: Recurrence.weekly, repeatEveryDays: 10),
+      );
+      final ShoppingEntry milk = (await entries()).single;
+      expect(milk.repeatEveryDays, 10);
+      await shop.updateEntry(milk.copyWith(clearRepeatEveryDays: true));
+      expect((await entries()).single.repeatEveryDays, isNull);
+    });
+
+    test('an invalid interval is rejected', () async {
+      await expectLater(
+        shop.addEntry(
+          draft('Milk', recurrence: Recurrence.weekly, repeatEveryDays: 0),
+        ),
+        throwsA(isA<InvalidInputFailure>()),
+      );
+    });
+
+    test('days on a non-repeating entry are dropped', () async {
+      await shop.addEntry(draft('Milk', repeatEveryDays: 5));
+      expect((await entries()).single.repeatEveryDays, isNull);
+    });
+
+    test('different intervals are different entries', () async {
+      await shop.addEntry(
+        draft('Milk', recurrence: Recurrence.weekly, repeatEveryDays: 10),
+      );
+      await shop.addEntry(draft('Milk', recurrence: Recurrence.weekly));
+      expect(await entries(), hasLength(2));
+    });
+
     test('nothing checked is an error', () async {
       await shop.addEntry(draft('Rice'));
 
@@ -572,5 +626,29 @@ void main() {
         'shopping_entries_list_idx',
       ]);
     });
+  });
+
+  test('upgrades a version 7 database to 8', () async {
+    final Directory dir = await Directory.systemTemp.createTemp('akshaya_db8');
+    addTearDown(() => dir.delete(recursive: true));
+    final File file = File('${dir.path}/upgrade.db');
+
+    final AppDatabase fresh = AppDatabase(NativeDatabase(file));
+    await fresh.customSelect('SELECT 1').get();
+    await fresh.customStatement(
+      'ALTER TABLE shopping_entries DROP COLUMN repeat_every_days',
+    );
+    await fresh.customStatement('PRAGMA user_version = 7');
+    await fresh.close();
+
+    final AppDatabase upgraded = AppDatabase(NativeDatabase(file));
+    addTearDown(upgraded.close);
+    final List<QueryRow> columns = await upgraded
+        .customSelect('PRAGMA table_info(shopping_entries)')
+        .get();
+    expect(
+      columns.map((QueryRow r) => r.read<String>('name')),
+      contains('repeat_every_days'),
+    );
   });
 }

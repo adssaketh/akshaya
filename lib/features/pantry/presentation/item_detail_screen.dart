@@ -6,6 +6,8 @@ import '../../../core/time/clock.dart';
 import '../../../core/ui/feedback.dart';
 import '../../../core/util/date_only.dart';
 import '../../../core/util/money.dart';
+import '../../forecast/domain/consumption_forecast.dart';
+import '../../forecast/presentation/providers.dart';
 import '../domain/consumption_type.dart';
 import '../domain/entities.dart';
 import '../domain/item_kind.dart';
@@ -75,6 +77,7 @@ class _ItemDetailBody extends ConsumerWidget {
     final DateTime today = ref.watch(todayProvider);
     final int warningDays = ref.watch(expiryWarningDaysProvider);
     final DateTime? nearest = stock.nearestExpiry;
+    final ItemForecast? forecast = ref.watch(forecastProvider(item.id));
 
     final List<StockBatch> batches = List<StockBatch>.of(stock.batches)
       ..sort((StockBatch a, StockBatch b) {
@@ -166,6 +169,27 @@ class _ItemDetailBody extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
+          if (forecast != null) ...<Widget>[
+            if (!forecast.isReady)
+              Text(
+                forecast.learningDetail,
+                style: context.akText.bodyMedium!.copyWith(
+                  color: colors.textSecondary,
+                ),
+              )
+            else ...<Widget>[
+              if (!forecast.isOut)
+                Text(forecast.label, style: context.akText.titleSmall),
+              if (forecast.usageLabel != null)
+                Text(
+                  forecast.usageLabel!,
+                  style: context.akText.bodyMedium!.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+            ],
+            const SizedBox(height: AppSpacing.xs),
+          ],
           if (nearest != null)
             Text(
               'Nearest expiry: ${formatDate(nearest)}',

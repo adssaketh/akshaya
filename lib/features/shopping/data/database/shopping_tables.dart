@@ -50,6 +50,10 @@ class ShoppingEntries extends Table with SyncColumns {
   TextColumn get dueOn =>
       text().map(const DateOnlyConverter()).nullable()();
 
+  /// A custom repeat in days (added in schema v8). Null for the built-in
+  /// repeats, which [recurrence] describes.
+  IntColumn get repeatEveryDays => integer().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

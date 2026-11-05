@@ -10,8 +10,13 @@ import '../domain/test_data.dart';
 /// In-memory repository for widget tests. Only the methods the screens under
 /// test call are implemented; anything else throws via [Fake].
 class FakePantryRepository extends Fake implements PantryRepository {
-  FakePantryRepository({List<ItemWithBatches> items = const <ItemWithBatches>[]})
-      : _items = List<ItemWithBatches>.of(items);
+  FakePantryRepository({
+    List<ItemWithBatches> items = const <ItemWithBatches>[],
+    this.history = const <ConsumptionEntry>[],
+  }) : _items = List<ItemWithBatches>.of(items);
+
+  /// The use log answered by [watchAllHistory].
+  final List<ConsumptionEntry> history;
 
   final List<ItemWithBatches> _items;
   final List<ItemDraft> addedItems = <ItemDraft>[];
@@ -36,6 +41,10 @@ class FakePantryRepository extends Fake implements PantryRepository {
   @override
   Stream<List<ItemWithBatches>> watchItems() =>
       Stream<List<ItemWithBatches>>.value(List<ItemWithBatches>.of(_items));
+
+  @override
+  Stream<List<ConsumptionEntry>> watchAllHistory() =>
+      Stream<List<ConsumptionEntry>>.value(List<ConsumptionEntry>.of(history));
 
   @override
   Stream<List<Category>> watchCategories() =>

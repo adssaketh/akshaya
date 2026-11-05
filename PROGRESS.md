@@ -671,7 +671,38 @@ Item type is now Stocked (default) / Cooked / Homemade.
 - The reminder fires only on the chosen day and only when the Daily alert is on.
 - Written without a local Flutter SDK: CI is the compiler; if it is red, fix first.
 
-## Next: Phase 11 (v2 roadmap), only when you say so.
+## Phase 11: Consumption forecasting and "What should I buy?" (built; waiting for CI and device check)
+
+All on-device, no AI. Schema v8 adds nullable `shopping_entries.repeat_every_days` (synced, optional; older builds ignore it and read the nearest built-in repeat).
+
+### Files
+- New `lib/features/forecast/`: `domain/consumption_forecast.dart`, `purchase_history.dart`, `what_to_buy.dart`, `repeat_learning.dart`; `presentation/providers.dart`, `forecast_actions.dart`, `what_to_buy_screen.dart`.
+- Changed: `shopping_enums.dart` (`approxDays`, `nearestTo`), `shopping_entities.dart` (`repeatEveryDays`, `repeatLabel`, `nextDueAfter`), `shopping_tables.dart`, `app_database.dart` (v8), `sync_schema.dart`, `drift_shopping_repository.dart`, `shopping_screen.dart` (What-should-I-buy button, schedule suggestion card), `entry_form_screen.dart` ("Every few days" custom interval), `insights.dart` + `insights_screen.dart` (now use the shared forecast), `pantry_screen.dart` and `item_detail_screen.dart` (runs-out text), `home_screen.dart` ("Running out soon", What-should-I-buy button).
+- Tests: `test/features/forecast/**`, plus additions to the shopping repository, sync documents and Insights tests; `FakePantryRepository` gained `history`.
+
+### Key decisions
+- Only "used" and "cooked in recipe" logs count. Waste, expiry, given away and count-mode adjustments never do.
+- Rate: last 56 completed days from the first logged use, recency-weighted (half-life 21 days), zero-use days included, days above 3x the median dropped (needs 5+ use days). "Learning" until 3 use days spanning 7+ days.
+- Expired batches are not usable stock. Cooked/homemade items get no forecast.
+- What to buy: horizon 3/7/14/30 days (default 7); quantity covers max(14, horizon+7) days in whole usual packs (most common of the last 5 purchases, count-mode batches excluded). Items already on any list are skipped. Added with reason "low stock".
+- Repeat learning: 3+ purchase days, median of the last 5 gaps, all gaps within 0.5x-2x; suggested when it differs by max(2 days, 25%). Dismissals are stored locally in `app_settings`.
+
+### Test checklist (you)
+1. Log use of one item (Use button) on 3+ different days across a week or more: Pantry row and item detail show "runs out in ~N days"; before that "Learning: x of 3 days".
+2. Shopping tab: tap the graph icon -> What should I buy?; change the horizon, untick one item, change an amount with +/-, add. They land on the list; reopening no longer shows them.
+3. Home: "Running out soon" shows up to 3 items; the What should I buy? button opens the screen.
+4. Insights "runs out" card matches the Pantry numbers.
+5. Add a repeating entry with "Every few days..." (e.g. 10): label shows "Every 10 days"; Done shopping brings it due 10 days later.
+6. Buy an item on 3 different days ~14 days apart with a weekly repeat entry: Shopping tab suggests "every 14 days"; Use it (try Undo) and Keep mine.
+7. Upgrade over an existing install: data intact, nothing lost.
+
+### Known issues
+- A forecast needs real use logs; items you only "count" or waste never get one.
+- Cooked/homemade items have no forecast. Schedule suggestions need 3+ purchase days.
+- Older builds in a household read only the nearest built-in repeat of a custom interval.
+- Count-mode surplus batches are excluded from purchase habits.
+
+## Next: Phase 12 (v2 roadmap), only when you say so.
 
 ## Phase 0: what was built (unchanged)
 

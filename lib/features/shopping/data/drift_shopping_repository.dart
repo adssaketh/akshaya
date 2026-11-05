@@ -63,6 +63,7 @@ class DriftShoppingRepository implements ShoppingRepository {
       notes: r.notes,
       recurrence: r.recurrence,
       dueOn: r.dueOn,
+      repeatEveryDays: r.repeatEveryDays,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     );
@@ -158,6 +159,24 @@ class DriftShoppingRepository implements ShoppingRepository {
     if (!quantity.isFinite || isZeroQty(quantity)) {
       throw const InvalidInputFailure('Enter a quantity greater than zero.');
     }
+  }
+
+  /// A custom repeat only makes sense for an entry that repeats, and must be
+  /// a sensible number of days.
+  void _validateRepeat(Recurrence recurrence, int? days) {
+    if (days == null || !recurrence.repeats) {
+      return;
+    }
+    if (days < 1 || days > kMaxRepeatEveryDays) {
+      throw const InvalidInputFailure(
+        'Repeat every 1 to $kMaxRepeatEveryDays days.',
+      );
+    }
+  }
+
+  /// The custom repeat to store: null unless the entry repeats.
+  int? _repeatToStore(Recurrence recurrence, int? days) {
+    return recurrence.repeats ? days : null;
   }
 
   Future<void> _requireListNameFree(String name, {String? excludeId}) async {
@@ -322,11 +341,14 @@ class DriftShoppingRepository implements ShoppingRepository {
   Future<ShoppingEntry> _insertOrMerge(ShoppingEntryDraft draft) async {
     final String name = _cleanName(draft.name);
     _validateEntry(name: name, quantity: draft.quantity);
+    _validateRepeat(draft.recurrence, draft.repeatEveryDays);
     await _requireList(draft.listId);
 
     final DateTime now = _now();
     final String? notes = _cleanOptional(draft.notes);
     final double quantity = roundQty(draft.quantity);
+    final int? repeatDays =
+        _repeatToStore(draft.recurrence, draft.repeatEveryDays);
 
     final ShoppingEntryRow? target = await _mergeTarget(
       listId: draft.listId,
@@ -334,6 +356,7 @@ class DriftShoppingRepository implements ShoppingRepository {
       name: name,
       unit: draft.unit,
       recurrence: draft.recurrence,
+      repeatEveryDays: repeatDays,
       today: dateOnly(now),
     );
 
@@ -373,6 +396,7 @@ class DriftShoppingRepository implements ShoppingRepository {
             priority: Value<ShoppingPriority>(draft.priority),
             notes: Value<String?>(notes),
             recurrence: Value<Recurrence>(draft.recurrence),
+            repeatEveryDays: Value<int?>(repeatDays),
             updatedBy: Value<String?>(_userId),
           ),
         );
@@ -388,6 +412,7 @@ class DriftShoppingRepository implements ShoppingRepository {
       priority: draft.priority,
       notes: notes,
       recurrence: draft.recurrence,
+      repeatEveryDays: repeatDays,
       createdAt: now,
       updatedAt: now,
     );
@@ -401,6 +426,7 @@ class DriftShoppingRepository implements ShoppingRepository {
     required String name,
     required Unit unit,
     required Recurrence recurrence,
+    required int? repeatEveryDays,
     required DateTime today,
   }) async {
     final List<ShoppingEntryRow> rows = await (_db.select(_db.shoppingEntries)
@@ -418,6 +444,7 @@ class DriftShoppingRepository implements ShoppingRepository {
           (itemId != null && r.itemId == itemId) || r.name.toLowerCase() == key;
       if (!sameThing ||
           r.recurrence != recurrence ||
+          r.repeatEveryDays != repeatEveryDays ||
           !r.unit.isCompatibleWith(unit)) {
         continue;
       }
@@ -434,6 +461,7 @@ class DriftShoppingRepository implements ShoppingRepository {
   Future<ShoppingEntry> updateEntry(ShoppingEntry entry) {
     final String name = _cleanName(entry.name);
     _validateEntry(name: name, quantity: entry.quantity);
+    _validateRepeat(entry.recurrence, entry.repeatEveryDays);
 
     return _db.transaction<ShoppingEntry>(() async {
       final ShoppingEntryRow row = await _requireEntry(entry.id);
@@ -453,6 +481,9 @@ class DriftShoppingRepository implements ShoppingRepository {
           priority: Value<ShoppingPriority>(entry.priority),
           notes: Value<String?>(_cleanOptional(entry.notes)),
           recurrence: Value<Recurrence>(entry.recurrence),
+          repeatEveryDays: Value<int?>(
+            _repeatToStore(entry.recurrence, entry.repeatEveryDays),
+          ),
           dueOn: Value<DateTime?>(
             entry.recurrence.repeats ? _dateOrNull(entry.dueOn) : null,
           ),
@@ -591,7 +622,7 @@ class DriftShoppingRepository implements ShoppingRepository {
               .write(
             ShoppingEntriesCompanion(
               isChecked: const Value<bool>(false),
-              dueOn: Value<DateTime?>(entry.recurrence.nextDue(today)),
+              dueOn: Value<DateTime?>(entry.nextDueAfter(today)),
               addedReason: const Value<AddedReason>(AddedReason.recurring),
               updatedAt: Value<DateTime>(now),
               updatedBy: Value<String?>(_userId),
