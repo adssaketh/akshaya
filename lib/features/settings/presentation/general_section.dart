@@ -150,6 +150,16 @@ class GeneralSection extends ConsumerWidget {
           onChanged: (bool v) => _write(ref, AppSettingKeys.animations, '$v'),
         ),
         SwitchListTile(
+          secondary: const Icon(Icons.wallpaper_rounded),
+          title: const Text('Wallpaper colours'),
+          subtitle: const Text(
+            'Match your wallpaper (Material 3 Expressive, Android 12+)',
+          ),
+          value: settings.wallpaperTheme,
+          onChanged: (bool v) =>
+              _write(ref, AppSettingKeys.wallpaperTheme, '$v'),
+        ),
+        SwitchListTile(
           secondary: const Icon(Icons.fingerprint_rounded),
           title: const Text('App lock'),
           subtitle: const Text('Ask for fingerprint, face or screen lock'),

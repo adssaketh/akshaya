@@ -8,9 +8,35 @@ import '../typography/akshaya_text.dart';
 /// Builds the Material 3 [ThemeData] for Akshaya from the colour, spacing,
 /// radius and text tokens. Requires Flutter 3.27 or newer.
 abstract final class AkshayaTheme {
-  static ThemeData light() => _build(AkshayaColors.light, Brightness.light);
+  static ThemeData light({AkshayaColors? colors}) =>
+      _build(colors ?? AkshayaColors.light, Brightness.light);
 
-  static ThemeData dark() => _build(AkshayaColors.dark, Brightness.dark);
+  static ThemeData dark({AkshayaColors? colors}) =>
+      _build(colors ?? AkshayaColors.dark, Brightness.dark);
+
+  /// Light and dark themes whose brand colours follow [wallpaper] (the
+  /// phone's wallpaper colour), using the Material 3 Expressive palette.
+  static ThemeData lightFromSeed(Color wallpaper) => light(
+        colors: AkshayaColors.fromScheme(
+          _expressive(wallpaper, Brightness.light),
+          AkshayaColors.light,
+        ),
+      );
+
+  static ThemeData darkFromSeed(Color wallpaper) => dark(
+        colors: AkshayaColors.fromScheme(
+          _expressive(wallpaper, Brightness.dark),
+          AkshayaColors.dark,
+        ),
+      );
+
+  static ColorScheme _expressive(Color seed, Brightness brightness) {
+    return ColorScheme.fromSeed(
+      seedColor: seed,
+      brightness: brightness,
+      dynamicSchemeVariant: DynamicSchemeVariant.expressive,
+    );
+  }
 
   static ThemeData _build(AkshayaColors c, Brightness brightness) {
     final ColorScheme scheme = ColorScheme(

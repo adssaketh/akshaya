@@ -200,7 +200,7 @@ void main() {
       );
       expect(find.text('Akshaya Patra'), findsOneWidget);
       expect(find.byType(AkshayaLogo), findsOneWidget);
-      expect(find.byType(SarukuluMotif), findsOneWidget);
+      expect(find.byType(SarukuluMotif), findsNothing);
       expect(find.byIcon(Icons.notifications_none_rounded), findsOneWidget);
     });
   });

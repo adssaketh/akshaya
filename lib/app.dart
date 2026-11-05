@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:akshaya/core/design/design.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,6 +30,20 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
   // wasted work.
   final ThemeData _lightTheme = AkshayaTheme.light();
   final ThemeData _darkTheme = AkshayaTheme.dark();
+
+  // Wallpaper themes, rebuilt only when the wallpaper colour changes.
+  Color? _wallpaperSeed;
+  ThemeData? _wallpaperLight;
+  ThemeData? _wallpaperDark;
+
+  void _updateWallpaper(Color seed) {
+    if (_wallpaperSeed == seed) {
+      return;
+    }
+    _wallpaperSeed = seed;
+    _wallpaperLight = AkshayaTheme.lightFromSeed(seed);
+    _wallpaperDark = AkshayaTheme.darkFromSeed(seed);
+  }
 
   @override
   void initState() {
@@ -81,15 +96,24 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
     currentCurrencySymbol = settings.currencySymbol;
     // Motion everywhere follows the Settings switch.
     AppMotion.userEnabled = settings.animations;
-    return MaterialApp(
-      title: 'Akshaya Patra',
-      debugShowCheckedModeBanner: false,
-      theme: _lightTheme,
-      darkTheme: _darkTheme,
-      themeMode: _mode(settings.theme),
-      builder: (BuildContext context, Widget? child) =>
-          AppLockGate(child: child ?? const SizedBox.shrink()),
-      home: const AppShell(),
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? _) {
+        // Only phones that expose wallpaper colours (Android 12+) get them.
+        final bool wallpaper = settings.wallpaperTheme && lightDynamic != null;
+        if (wallpaper) {
+          _updateWallpaper(lightDynamic.primary);
+        }
+        return MaterialApp(
+          title: 'Akshaya Patra',
+          debugShowCheckedModeBanner: false,
+          theme: wallpaper ? _wallpaperLight! : _lightTheme,
+          darkTheme: wallpaper ? _wallpaperDark! : _darkTheme,
+          themeMode: _mode(settings.theme),
+          builder: (BuildContext context, Widget? child) =>
+              AppLockGate(child: child ?? const SizedBox.shrink()),
+          home: const AppShell(),
+        );
+      },
     );
   }
 }

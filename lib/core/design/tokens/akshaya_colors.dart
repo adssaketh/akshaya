@@ -144,6 +144,24 @@ class AkshayaColors extends ThemeExtension<AkshayaColors> {
     ),
   );
 
+  /// Brand colours taken from a Material [scheme] (such as one made from the
+  /// phone's wallpaper); the status colours keep their fixed meaning from
+  /// [base] so "expired" is always red and "fresh" always green.
+  static AkshayaColors fromScheme(ColorScheme scheme, AkshayaColors base) {
+    return base.copyWith(
+      background: scheme.surface,
+      surface: scheme.surfaceContainerLow,
+      surfaceAlt: scheme.secondaryContainer,
+      primary: scheme.primary,
+      onPrimary: scheme.onPrimary,
+      accent: scheme.tertiary,
+      onAccent: scheme.onTertiary,
+      textPrimary: scheme.onSurface,
+      textSecondary: scheme.onSurfaceVariant,
+      outline: scheme.outlineVariant,
+    );
+  }
+
   /// Colours for a status kind.
   StatusColors forStatus(StatusKind kind) {
     return switch (kind) {

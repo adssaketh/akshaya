@@ -7,6 +7,7 @@ abstract final class AppSettingKeys {
   static const String defaultUnit = 'app.default_unit';
   static const String appLock = 'app.lock';
   static const String animations = 'app.animations';
+  static const String wallpaperTheme = 'app.wallpaper_theme';
 }
 
 /// Light, dark, or follow the phone.
@@ -41,6 +42,7 @@ final class AppSettings {
     this.defaultUnit = Unit.pcs,
     this.appLock = false,
     this.animations = true,
+    this.wallpaperTheme = true,
   });
 
   factory AppSettings.fromMap(Map<String, String> values) {
@@ -51,6 +53,7 @@ final class AppSettings {
       defaultUnit: _unitFromSymbol(values[AppSettingKeys.defaultUnit]),
       appLock: values[AppSettingKeys.appLock] == 'true',
       animations: values[AppSettingKeys.animations] != 'false',
+      wallpaperTheme: values[AppSettingKeys.wallpaperTheme] != 'false',
     );
   }
 
@@ -64,6 +67,10 @@ final class AppSettings {
   /// Whether the app plays its transitions and animations.
   final bool animations;
 
+  /// Whether colours follow the phone's wallpaper (Material 3 Expressive)
+  /// when the phone offers wallpaper colours.
+  final bool wallpaperTheme;
+
   // Value equality matters: every write to the settings table (including the
   // usage counters that sync and AI bump) rebuilds this object, and without
   // equality the whole app would rebuild each time.
@@ -74,12 +81,20 @@ final class AppSettings {
         other.currencySymbol == currencySymbol &&
         other.defaultUnit == defaultUnit &&
         other.appLock == appLock &&
-        other.animations == animations;
+        other.animations == animations &&
+        other.wallpaperTheme == wallpaperTheme;
   }
 
   @override
   int get hashCode =>
-      Object.hash(theme, currencySymbol, defaultUnit, appLock, animations);
+      Object.hash(
+        theme,
+        currencySymbol,
+        defaultUnit,
+        appLock,
+        animations,
+        wallpaperTheme,
+      );
 
   static Unit _unitFromSymbol(String? symbol) {
     for (final Unit u in Unit.values) {

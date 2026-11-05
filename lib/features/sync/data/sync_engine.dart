@@ -58,6 +58,11 @@ class SyncEngine {
   bool _busy = false;
   bool _runAgain = false;
   int _failures = 0;
+
+  /// Collections the published security rules refuse for this account (for
+  /// example one added by a newer app version whose rules were not deployed).
+  /// They are skipped so the rest keeps syncing; cleared on each [syncNow].
+  final Set<String> _refused = <String>{};
   Timer? _retry;
   bool _disposed = false;
 
@@ -164,6 +169,9 @@ class SyncEngine {
     }
     _listening = true;
     for (final SyncTableSpec spec in SyncSchema.tables) {
+      if (_refused.contains(spec.collection)) {
+        continue;
+      }
       final int since = await store.cursor(spec.collection);
       if (!_listening || _householdId != household) {
         return;
@@ -172,7 +180,7 @@ class SyncEngine {
         remote.watch(household, spec.collection, since).listen(
               (List<RemoteDoc> docs) => unawaited(_enqueue(spec, docs)),
               onError: (Object error, StackTrace stack) =>
-                  unawaited(_onListenError(error)),
+                  unawaited(_onListenError(error, spec.collection)),
             ),
       );
     }
@@ -188,9 +196,14 @@ class SyncEngine {
     }
   }
 
-  Future<void> _onListenError(Object error) async {
+  Future<void> _onListenError(Object error, String collection) async {
     if (error is SyncException && error.kind == SyncErrorKind.denied) {
-      await _handleDenied();
+      // One refused collection must not stop the others; syncNow decides
+      // whether the whole account is refused.
+      _refused.add(collection);
+      if (_refused.length >= SyncSchema.tables.length) {
+        await _handleDenied();
+      }
     } else if (error is SyncException && error.kind == SyncErrorKind.quota) {
       _setPhase(SyncPhase.quotaReached, message: error.message);
     }
@@ -297,6 +310,7 @@ class SyncEngine {
     _retry?.cancel();
     _setPhase(SyncPhase.syncing);
     bool ok = false;
+    _refused.clear();
     try {
       await store.assignHousehold(household);
       await _pushAll(household, user);
@@ -304,11 +318,23 @@ class SyncEngine {
       await _purgeIfDue(household);
       _failures = 0;
       ok = true;
+      if (_refused.length >= SyncSchema.tables.length) {
+        // Every collection refused: the account is no longer a member.
+        await _onFailure(
+          const SyncException(
+            SyncErrorKind.denied,
+            'The server refused the sync. You may have been removed from the '
+            'household.',
+          ),
+        );
+        return;
+      }
       _setInfo(
         SyncStatusInfo(
           phase: SyncPhase.synced,
           lastSyncedAt: _clock(),
           pending: await store.pendingCount(),
+          message: refusedCollectionsMessage(_refused),
         ),
       );
     } on SyncException catch (error) {
@@ -334,6 +360,9 @@ class SyncEngine {
 
   Future<void> _pushAll(String household, String user) async {
     for (final SyncTableSpec spec in SyncSchema.tables) {
+      if (_refused.contains(spec.collection)) {
+        continue;
+      }
       for (int pass = 0; pass < 50; pass++) {
         final List<PendingRow> rows =
             await store.pendingRows(spec, household, limit: 100);
@@ -344,12 +373,21 @@ class SyncEngine {
           for (final PendingRow row in rows)
             store.toPushDoc(row, household, user),
         ];
-        final List<PushOutcome> outcomes = await remote.push(
-          household,
-          spec.collection,
-          docs,
-          isBatch: spec.isBatch,
-        );
+        final List<PushOutcome> outcomes;
+        try {
+          outcomes = await remote.push(
+            household,
+            spec.collection,
+            docs,
+            isBatch: spec.isBatch,
+          );
+        } on SyncException catch (error) {
+          if (error.kind != SyncErrorKind.denied) {
+            rethrow;
+          }
+          _refused.add(spec.collection);
+          break;
+        }
         final Map<String, PushOutcome> byId = <String, PushOutcome>{
           for (final PushOutcome outcome in outcomes) outcome.id: outcome,
         };
@@ -375,14 +413,26 @@ class SyncEngine {
 
   Future<void> _pullAll(String household) async {
     for (final SyncTableSpec spec in SyncSchema.tables) {
+      if (_refused.contains(spec.collection)) {
+        continue;
+      }
       for (int page = 0; page < 100; page++) {
         final int since = await store.cursor(spec.collection);
-        final List<RemoteDoc> docs = await remote.fetchSince(
-          household,
-          spec.collection,
-          since,
-          limit: _pageSize,
-        );
+        final List<RemoteDoc> docs;
+        try {
+          docs = await remote.fetchSince(
+            household,
+            spec.collection,
+            since,
+            limit: _pageSize,
+          );
+        } on SyncException catch (error) {
+          if (error.kind != SyncErrorKind.denied) {
+            rethrow;
+          }
+          _refused.add(spec.collection);
+          break;
+        }
         if (docs.isEmpty) {
           break;
         }
@@ -409,6 +459,9 @@ class SyncEngine {
     final int cutoff = now - 30 * Duration.millisecondsPerDay;
     try {
       for (final SyncTableSpec spec in SyncSchema.tables) {
+        if (_refused.contains(spec.collection)) {
+          continue;
+        }
         final int removed =
             await remote.purgeDeleted(household, spec.collection, cutoff);
         onUsage?.call(reads: removed, writes: removed);
@@ -491,4 +544,28 @@ class SyncEngine {
       ),
     );
   }
+}
+
+/// Plain-English note for collections the cloud rules refuse, or null when
+/// none were. Shown next to the sync status.
+String? refusedCollectionsMessage(Set<String> refused) {
+  if (refused.isEmpty) {
+    return null;
+  }
+  const Map<String, String> names = <String, String>{
+    'categories': 'categories',
+    'items': 'items',
+    'batches': 'stock batches',
+    'shoppingLists': 'shopping lists',
+    'entries': 'shopping entries',
+    'logs': 'usage history',
+    'recipes': 'saved recipes',
+    'mealPlan': 'meal plan',
+    'trips': 'trips',
+  };
+  final List<String> labels = <String>[
+    for (final String c in refused) names[c] ?? c,
+  ]..sort();
+  return 'Not syncing: ${labels.join(', ')}. Publish the latest '
+      'firestore.rules to fix this.';
 }

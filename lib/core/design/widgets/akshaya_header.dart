@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import '../tokens/layout_tokens.dart';
 import '../theme/design_context.dart';
 import 'akshaya_logo.dart';
-import 'sarukulu_motif.dart';
 
-/// Top-of-screen brand header: basket mark, "Akshaya Patra" wordmark, a faint
-/// dot motif and optional trailing [actions] (for example a notifications
-/// button).
+/// Top-of-screen brand header: basket mark, "Akshaya Patra" wordmark and
+/// optional trailing [actions] (for example a notifications button).
 class AkshayaHeader extends StatelessWidget {
   const AkshayaHeader({super.key, this.actions = const <Widget>[]});
 
@@ -20,33 +18,26 @@ class AkshayaHeader extends StatelessWidget {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.sm,
       ),
-      child: Stack(
-        alignment: Alignment.centerLeft,
-        children: <Widget>[
-          Positioned(
-            right: AppSizes.touchTarget + AppSpacing.lg,
-            child: const SarukuluMotif(),
-          ),
-          Row(
-            children: <Widget>[
-              const AkshayaLogo(),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text(
-                    'Akshaya Patra',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.akText.titleLarge,
-                  ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppSizes.touchTarget),
+        child: Row(
+          children: <Widget>[
+            const AkshayaLogo(),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(
+                  'Akshaya Patra',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.akText.titleLarge,
                 ),
               ),
-              ...actions,
-            ],
-          ),
-          const SizedBox(height: AppSizes.touchTarget),
-        ],
+            ),
+            ...actions,
+          ],
+        ),
       ),
     );
   }
