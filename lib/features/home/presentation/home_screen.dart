@@ -8,6 +8,7 @@ import '../../commands/presentation/voice_mic_button.dart';
 import '../../forecast/domain/what_to_buy.dart';
 import '../../forecast/presentation/providers.dart';
 import '../../forecast/presentation/what_to_buy_screen.dart';
+import '../../guide/presentation/guide_button.dart';
 import '../../insights/presentation/insights_screen.dart';
 import '../../pantry/domain/stock_logic.dart';
 import '../../pantry/presentation/pantry_actions.dart';
@@ -67,7 +68,9 @@ class HomeScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
         children: <Widget>[
-          const AkshayaHeader(actions: <Widget>[VoiceMicButton()]),
+          const AkshayaHeader(
+            actions: <Widget>[GuideButton(), VoiceMicButton()],
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: stocks.when(

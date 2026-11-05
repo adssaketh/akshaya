@@ -9,6 +9,7 @@ import '../alerts/presentation/alerts_section.dart';
 import '../commands/presentation/voice_mic_button.dart';
 import '../backup/presentation/backup_section.dart';
 import '../count/presentation/count_section.dart';
+import '../guide/presentation/guide_screen.dart';
 import '../pantry/presentation/providers.dart';
 import '../rescue/presentation/freeze_rules_screen.dart';
 import '../travel/presentation/travel_screen.dart';
@@ -25,6 +26,12 @@ class SettingsScreen extends ConsumerWidget {
     // Sections are built lazily (only the ones near the screen) and each one
     // paints into its own layer, so scrolling does not repaint the whole page.
     final List<WidgetBuilder> sections = <WidgetBuilder>[
+      (BuildContext context) => ListTile(
+            leading: const Icon(Icons.menu_book_rounded),
+            title: const Text('User guide'),
+            subtitle: const Text('How every feature works, with search'),
+            onTap: () => openGuide(context),
+          ),
       (BuildContext _) => const GeneralSection(),
       (BuildContext _) => const AlertsSection(),
       (BuildContext _) => const CountSection(),

@@ -21,6 +21,7 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 12 Weekly meal planner and prep reminders | Done. CI green, checked on device. |
 | 13 Food rescue, waste cost, actionable notifications | Done. CI green, checked on device. |
 | 14 Home screen widgets, app shortcuts, travel mode | Built in 1.0.1. CI green (analyzer, tests, rules, signed APK); waiting for your device check. Needs a Firestore rules + indexes redeploy (trips). |
+| In-app user guide with search (1.0.3) | Built. Waiting for CI and your device check. No schema change, no new packages, no rules redeploy. |
 
 ## Phase 2: what is built
 
@@ -849,6 +850,55 @@ Version rule: 1.0.0 was the first signed build. Every change or patch bumps the 
 - Settings builds its sections lazily, each in its own repaint layer (scroll lag).
 - Release signing: `android/app/build.gradle.kts` signs `release` with the key from `RELEASE_KEYSTORE_PATH` and friends, else the debug key. CI restores the key from the secrets `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD` and uploads `akshayapatra-release.apk` (artifact `akshaya-release-apk`). The keystore (a PKCS12 `.p12`) is only on your devices and in GitHub secrets: back it up.
 - 3D launcher icon and in-app logo (`tool/generate_launcher_icons.py` renders the shaded SVG with rsvg-convert; the logo widget uses gradients from the tokens).
+
+### 1.0.3: In-app user guide
+
+#### What is built
+- **User guide** with a search box, 11 area chips and 52 pages (what the feature is for, a small picture, where to find it, numbered steps, tips, "Read next" links). Pages cover every feature from the five tabs to travel mode, widgets, backup and household sharing.
+- Opened from a **? icon at the top of Home, just before the microphone**, and from **Settings > User guide** (first row).
+- Search matches titles, steps, tips, hidden keywords and everyday synonyms (mic = voice, throw = wasted, qr = household, expiry = expiring). Every word must match; if no page has all the words, pages with some of them are shown. A light stemmer makes "scanning", "expires" and "recipes" match their base words.
+- **Pictures** are live mini-previews drawn with the design system's own widgets (`ItemCard`, `StatusChip`, `SummaryTile`, `ChecklistCard`) and colour tokens, not screenshots. They follow light/dark/wallpaper colours and font scale, add no image files, and are hidden from screen readers behind a one-line description. Each is captioned "Example picture. Your screen may look a little different."
+
+#### Files
+```
+pubspec.yaml                                     1.0.3+4
+lib/features/guide/domain/guide_models.dart      GuideArea (11), GuidePreview (49 pictures), GuideTopic
+lib/features/guide/domain/guide_content.dart     the 52 pages + guideTopicById
+lib/features/guide/domain/guide_search.dart      pure search, synonyms, stemmer
+lib/features/guide/presentation/guide_previews.dart   one drawing per GuidePreview
+lib/features/guide/presentation/guide_screen.dart     search + chips + topic cards, openGuide()
+lib/features/guide/presentation/guide_topic_screen.dart  one page, openGuideTopic()
+lib/features/guide/presentation/guide_button.dart     the ? icon
+lib/features/home/presentation/home_screen.dart  header: GuideButton before VoiceMicButton
+lib/features/settings/settings_screen.dart       User guide row
+test/features/guide/domain/guide_content_test.dart    ids, links, areas, pictures, label drift guard
+test/features/guide/domain/guide_search_test.dart     stemmer and ranking
+test/features/guide/presentation/guide_screen_test.dart  screens, search, button, every page at 1x and 2x text, light and dark
+```
+
+#### Key decisions
+- Live previews instead of real screenshots (chosen by you): this environment cannot run the app, and drawn previews never go stale in colour or theme.
+- English only (chosen by you).
+- Guide text lives in `guide_content.dart` as plain const data. To document a new feature, add a `GuideTopic` there (pick or add a `GuidePreview`); the tests check ids, links and that every picture is used.
+- **Label drift guard:** `guide_content_test.dart` lists the button and screen names the guide quotes and fails if one no longer appears in `lib/` outside the guide. If you rename a button in the app, update the guide text too.
+- No providers, database or network: the guide works offline and cannot affect your data.
+
+#### Test checklist (you)
+1. Home: a ? icon sits just left of the microphone. Tap it: User guide opens with the search box, chips and "New here?" card.
+2. Settings: first row "User guide" opens the same screen.
+3. Search "barcode", "mic", "whatsapp", "expiry", "throw", "telugu", "dark mode", "how do I share my list": the right page is first or near the top. Search nonsense: "Nothing found". The x clears the search.
+4. Tap an area chip (for example Alerts): only that area is listed. Tap All to return.
+5. Open several pages: picture, Where to find it, numbered steps, Good to know, Read next (tap one).
+6. Compare a few pictures with the real screens (Home tiles, Shopping list, Count card, Food rescue) and tell me anything that reads wrongly.
+7. Dark mode and system font 200%: no overflow on the list or a page.
+8. TalkBack (optional): each picture reads "Example picture: ..." once; steps read as "Step n: ...".
+
+#### Known issues
+- Written without a Flutter SDK here (the proxy blocks Flutter hosts), so CI is the compiler. Paste any red log and I will fix it.
+- Pictures are drawings with example values, not captures of your screens. Example numbers (3 of 50 AI calls, "Goa" trip, 1,250) are illustrative.
+- Pages describe the app as of 1.0.2. They do not deep-link into the app ("Take me there" buttons would need shell navigation hooks).
+- Guide text is English only. Telugu and Hindi would triple the text and need your proofreading.
+- A first-run swipe tour was not requested and was not built.
 
 ### 1.0.2: theme fixes
 - Wallpaper colours now use the phone's own dynamic palette (`DynamicColorBuilder` light and dark schemes) directly via `AkshayaTheme.fromSystemScheme`, so Akshaya matches other apps (blue wallpaper gives blue). 1.0.1 re-derived an Expressive scheme from the seed, which shifted hues to green and maroon.
