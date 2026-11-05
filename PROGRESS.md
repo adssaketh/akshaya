@@ -18,7 +18,8 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 9 Leftovers, cooked food, homemade items | Done. CI green. |
 | 10 Inventory reconciliation (count mode) | Done. CI green, checked on device. |
 | 11 Consumption forecasting, "What should I buy?" | Done. CI green, checked on device. |
-| 12 Weekly meal planner and prep reminders | Built on branch `phase-12`. CI green (analyzer, tests, rules, APK); waiting for your device check. |
+| 12 Weekly meal planner and prep reminders | Done. CI green, checked on device. |
+| 13 Food rescue, waste cost, actionable notifications | Built on branch `phase-13`. CI green (analyzer, tests, rules, APK); waiting for your device check. |
 
 ## Phase 2: what is built
 
@@ -743,7 +744,45 @@ Schema v9 adds one synced table, `meal_plan_entries` (Firestore collection `meal
 - Prep reminders are scheduled only 7 days ahead and re-planned on each refresh.
 - Plan my week needs the network and AI quota; the offline path is picking meals by hand.
 
-## Next: Phase 13 (v2 roadmap), only when you say so.
+## Phase 13: Food rescue, waste cost and actionable notifications (built, CI green; waiting for device check)
+
+Schema v10 adds one nullable column, `consumption_logs.waste_reason`, which syncs with the log. It is an optional field, so **no rules redeploy is needed**; older app versions in a household ignore it.
+
+### Files
+- New `lib/features/rescue/`: `domain/` (`freeze_rules.dart`, `food_rescue.dart`), `presentation/` (`providers.dart`, `food_rescue_section.dart`, `rescue_actions.dart`, `waste_reason_sheet.dart`, `freeze_rules_screen.dart`).
+- New `pantry/domain/waste_reason.dart`, `insights/domain/waste_cost.dart`.
+- New in `alerts/`: `domain/alert_action.dart`, `alert_snoozes.dart`, `quiet_hours.dart`, `notification_action_runner.dart`, `data/notification_background_handler.dart`.
+- Changed: `app_database.dart` (v10), `tables.dart`, `entities.dart`, `pantry_repository.dart`, `drift_pantry_repository.dart`, `sync_schema.dart`, `insights.dart` and `insights_screen.dart` (reasons, Money saved), `backup_csv.dart` (Reason column), `home_screen.dart` (Food rescue), `settings_screen.dart`, `item_detail_screen.dart` (reason when marking wasted), `shopping_suggestions.dart`, alerts (`alert_plan.dart`, `alert_settings.dart`, `alert_digest.dart`, `alert_scheduler.dart`, `notification_gateway.dart`, `local_notification_gateway.dart`, `alert_worker.dart`, `alerts_section.dart`, `presentation/providers.dart`), `app_shell.dart` (Recipes target), `app.dart`, `household_check.dart`, `sync/presentation/providers.dart`.
+- Tests: `test/features/rescue/**`, `insights/waste_cost_test.dart`, `alerts/domain/phase13_alerts_test.dart`, plus fake gateway updates.
+
+### Key decisions
+- Food rescue works per batch (so the expiring batch is acted on). Groups: Already expired, Expires today, Expiring soon, Leftovers, Opened. It replaces the Home "Use these first" list. Actions: Use, Cook something, Freeze, Mark wasted.
+- Freeze moves the batch to the freezer and sets expiry to the later of the printed date and today + the category days (defaults editable in Settings > Freezing rules; 0 = not offered). Never offered for expired batches. Clears "use within days after opening".
+- Waste reasons: Expired, Spoiled, Forgot about it, Bought too much, Other. Old expired logs report as Expired; other old waste as Not recorded.
+- Money saved = batch price share of uses (and recipe cooking) done within the warning window before expiry, from history.
+- Digest notifications are kept. Buttons: expired [Add to list, Snooze], one expiring item [Used it, Snooze, Show recipes], several [Show recipes, Add to list, Snooze], low stock [Add to list, Snooze]. Buttons recompute from current data when tapped.
+- Snooze hides the item from alerts through tomorrow.
+- Per-type switches (expired, expiring, low stock, prep, household) and quiet hours. Quiet hours shift scheduled alerts to the end of the window and drop household alerts that arrive inside it.
+- Closed-app buttons run in a background isolate with its own DB connection; the app re-runs its queries on resume.
+
+### Test checklist (you)
+1. Home: Food rescue shows groups with items; Use opens the sheet, Cook something opens Recipes, Freeze moves the item to the freezer with a later date (Undo restores), Mark wasted asks for a reason (Undo works).
+2. Expired item: Mark wasted preselects Expired; Freeze is not offered.
+3. Settings > Freezing rules: change a category, reset it, set "not offered"; Freeze follows.
+4. Insights: Waste card shows "Why" by reason; Money saved shows after using an expiring item with a price.
+5. Alerts > Preview: notification shows buttons. With the app closed: Add to list adds to your default list; Snooze hides the item from the next preview; Used it (single item) deducts it. Show recipes opens the Recipes tab.
+6. Settings > Alerts: switch each type off and preview; turn quiet hours on and check the next daily alert time.
+7. Household: with household alerts off or in quiet hours, no notification, data still syncs.
+8. Item detail > batch menu > Mark as wasted asks for a reason.
+9. Upgrade over an existing install: data intact; export CSV has a Reason column.
+
+### Known issues
+- Notification buttons cannot show feedback; check the app to see the result. Closed-app buttons need the phone to allow background work.
+- "Used it" is offered only for single-item digests.
+- Use sheet "Wasted" (from the swipe/Use screen) does not ask for a reason yet; it is recorded as Not recorded.
+- Quiet hours drop (not defer) household alerts.
+
+## Next: Phase 14 (v2 roadmap), only when you say so.
 
 ## Phase 0: what was built (unchanged)
 
