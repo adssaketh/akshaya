@@ -1,7 +1,7 @@
 name: akshaya
 description: Akshaya Patra, a grocery and pantry manager.
 publish_to: none
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.12.0
@@ -22,6 +22,8 @@ dependencies:
   # flutter_local_notifications 22.x uses timezone 0.10.x.
   timezone: ">=0.10.1 <0.12.0"
   workmanager: ^0.10.10
+  home_widget: ">=0.8.0 <1.0.0"
+  quick_actions: ^1.1.0
   # Phase 5: AI through Firebase AI Logic (Gemini Developer API, Spark plan),
   # App Check and Remote Config. Lower bounds only; pin after the first
   # successful CI build (see PROGRESS.md).

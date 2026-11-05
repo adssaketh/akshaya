@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_use_first_description">The food to use first</string>
+    <string name="widget_shopping_description">Your shopping list, tap to tick</string>
+    <string name="widget_quick_add_description">Voice, Scan and Add buttons</string>
+</resources>

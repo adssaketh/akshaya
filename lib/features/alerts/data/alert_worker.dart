@@ -16,6 +16,7 @@ import '../../shopping/domain/shopping_entities.dart';
 import '../../travel/data/drift_trip_repository.dart';
 import '../../travel/domain/back_home.dart';
 import '../../travel/domain/trip_models.dart';
+import '../../widgets/data/widget_background.dart';
 import '../domain/alert_scheduler.dart';
 import '../domain/alert_settings.dart';
 import '../domain/alert_snoozes.dart';
@@ -88,6 +89,12 @@ void alertCallbackDispatcher() {
       try {
         final LocalNotificationGateway gateway = LocalNotificationGateway();
         await refreshAlertsFromDatabase(db, gateway);
+        // The home screen widgets are redrawn with the daily check too.
+        try {
+          await refreshWidgetsFromDatabase(db);
+        } on Object catch (error) {
+          debugPrint('Widget refresh failed: $error');
+        }
         // Household changes are a bonus: never fail the daily alerts for them.
         await checkHouseholdChanges(db, gateway);
         return true;

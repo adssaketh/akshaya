@@ -7,14 +7,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../alerts/domain/alert_plan.dart';
 import '../alerts/presentation/first_run_prompt.dart';
 import '../alerts/presentation/providers.dart';
+import '../commands/domain/command_models.dart';
+import '../commands/presentation/command_flow.dart';
 import '../count/presentation/count_flow.dart';
 import '../home/presentation/home_screen.dart';
+import '../pantry/presentation/pantry_actions.dart';
 import '../pantry/presentation/pantry_screen.dart';
 import '../planner/presentation/meal_planner_screen.dart';
 import '../pantry/presentation/providers.dart';
 import '../recipes/presentation/recipes_screen.dart';
 import '../settings/settings_screen.dart';
 import '../travel/presentation/travel_screen.dart';
+import '../widgets/domain/widget_gateway.dart';
+import '../widgets/presentation/widget_providers.dart';
 import '../shopping/presentation/shopping_screen.dart';
 
 /// Bottom navigation: Home, Pantry, Shopping, Recipes, Settings.
@@ -41,6 +46,12 @@ class _AppShellState extends ConsumerState<AppShell> {
         _openAlertTarget(next);
       }
     });
+    // Widget buttons and app shortcuts (Voice, Scan, Add, Shopping).
+    ref.listenManual<QuickLaunch?>(quickLaunchProvider, (previous, next) {
+      if (next != null) {
+        _openQuickLaunch(next);
+      }
+    });
     // Providers cannot be changed while the first frame builds, so anything
     // pending from start-up (an alert that launched the app) waits for it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,7 +59,10 @@ class _AppShellState extends ConsumerState<AppShell> {
         return;
       }
       final AlertTarget? pending = ref.read(alertTargetProvider);
-      if (pending != null) {
+      final QuickLaunch? launch = ref.read(quickLaunchProvider);
+      if (launch != null) {
+        _openQuickLaunch(launch);
+      } else if (pending != null) {
         _openAlertTarget(pending);
       } else {
         unawaited(askForNotificationsOnFirstRun(context, ref));
@@ -98,6 +112,35 @@ class _AppShellState extends ConsumerState<AppShell> {
         );
     }
     ref.read(alertTargetProvider.notifier).clear();
+  }
+
+  /// Opens what a widget button or app shortcut asked for.
+  void _openQuickLaunch(QuickLaunch target) {
+    if (!mounted) {
+      return;
+    }
+    // Back to the tabs if a form or detail screen is open.
+    Navigator.of(context).popUntil((Route<dynamic> route) => route.isFirst);
+    switch (target) {
+      case QuickLaunch.voice:
+        unawaited(
+          runCommandFlow(
+            context,
+            ref,
+            commandContext: CommandContext.general,
+          ),
+        );
+      case QuickLaunch.scan:
+        unawaited(openScanToAdd(context, ref));
+      case QuickLaunch.add:
+        openAddItem(context);
+      case QuickLaunch.shopping:
+        setState(() => _index = _shoppingTab);
+      case QuickLaunch.useFirst:
+        ref.read(pantryQueryProvider.notifier).clearFilters();
+        setState(() => _index = 0);
+    }
+    ref.read(quickLaunchProvider.notifier).clear();
   }
 
   /// Opens the Pantry tab, filtered to [status] (or unfiltered when null).
