@@ -33,18 +33,20 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
   final ThemeData _lightTheme = AkshayaTheme.light();
   final ThemeData _darkTheme = AkshayaTheme.dark();
 
-  // Wallpaper themes, rebuilt only when the wallpaper colour changes.
-  Color? _wallpaperSeed;
+  // Wallpaper themes, rebuilt only when the wallpaper palette changes.
+  ColorScheme? _wallpaperLightScheme;
+  ColorScheme? _wallpaperDarkScheme;
   ThemeData? _wallpaperLight;
   ThemeData? _wallpaperDark;
 
-  void _updateWallpaper(Color seed) {
-    if (_wallpaperSeed == seed) {
+  void _updateWallpaper(ColorScheme light, ColorScheme dark) {
+    if (_wallpaperLightScheme == light && _wallpaperDarkScheme == dark) {
       return;
     }
-    _wallpaperSeed = seed;
-    _wallpaperLight = AkshayaTheme.lightFromSeed(seed);
-    _wallpaperDark = AkshayaTheme.darkFromSeed(seed);
+    _wallpaperLightScheme = light;
+    _wallpaperDarkScheme = dark;
+    _wallpaperLight = AkshayaTheme.fromSystemScheme(light);
+    _wallpaperDark = AkshayaTheme.fromSystemScheme(dark);
   }
 
   @override
@@ -103,11 +105,13 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
     // Motion everywhere follows the Settings switch.
     AppMotion.userEnabled = settings.animations;
     return DynamicColorBuilder(
-      builder: (ColorScheme? lightDynamic, ColorScheme? _) {
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         // Only phones that expose wallpaper colours (Android 12+) get them.
-        final bool wallpaper = settings.wallpaperTheme && lightDynamic != null;
+        final bool wallpaper = settings.wallpaperTheme &&
+            lightDynamic != null &&
+            darkDynamic != null;
         if (wallpaper) {
-          _updateWallpaper(lightDynamic.primary);
+          _updateWallpaper(lightDynamic, darkDynamic);
         }
         return MaterialApp(
           title: 'Akshaya Patra',

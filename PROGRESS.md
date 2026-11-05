@@ -845,10 +845,15 @@ Version rule: 1.0.0 was the first signed build. Every change or patch bumps the 
 ### 1.0.0
 - Sync no longer fails as a whole when the published rules refuse one collection (for example `mealPlan` before the rules were redeployed). The refused collections are skipped, the rest syncs, and Settings says "Not syncing: ... Publish the latest firestore.rules". Only when every collection is refused does it show "removed from the household".
 - Header: the dot motif was removed (it overlapped the action icon); it stays on empty states.
-- Wallpaper colours (Material 3 Expressive): `dynamic_color` + `ColorScheme.fromSeed(dynamicSchemeVariant: expressive)` from the wallpaper colour, rebuilt into the same `AkshayaColors` tokens. Status colours keep their meaning. Switch in Settings (on by default; Android 12+ only).
+- Wallpaper colours (Material 3 Expressive): superseded in 1.0.2, see below. `dynamic_color` supplied the wallpaper colour, rebuilt into the same `AkshayaColors` tokens. Status colours keep their meaning. Switch in Settings (on by default; Android 12+ only).
 - Settings builds its sections lazily, each in its own repaint layer (scroll lag).
 - Release signing: `android/app/build.gradle.kts` signs `release` with the key from `RELEASE_KEYSTORE_PATH` and friends, else the debug key. CI restores the key from the secrets `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD` and uploads `akshayapatra-release.apk` (artifact `akshaya-release-apk`). The keystore (a PKCS12 `.p12`) is only on your devices and in GitHub secrets: back it up.
 - 3D launcher icon and in-app logo (`tool/generate_launcher_icons.py` renders the shaded SVG with rsvg-convert; the logo widget uses gradients from the tokens).
+
+### 1.0.2: theme fixes
+- Wallpaper colours now use the phone's own dynamic palette (`DynamicColorBuilder` light and dark schemes) directly via `AkshayaTheme.fromSystemScheme`, so Akshaya matches other apps (blue wallpaper gives blue). 1.0.1 re-derived an Expressive scheme from the seed, which shifted hues to green and maroon.
+- Appearance picker (Follow phone / Light / Dark) is now three icon cards (`theme_choice_picker.dart`) instead of a segmented button.
+- Test: tap the three cards; with a blue wallpaper the FAB, nav indicator and chips should be blue, status chips still green/amber/red/blue.
 
 ### 1.0.1: Phase 14
 

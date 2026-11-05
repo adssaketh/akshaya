@@ -14,28 +14,14 @@ abstract final class AkshayaTheme {
   static ThemeData dark({AkshayaColors? colors}) =>
       _build(colors ?? AkshayaColors.dark, Brightness.dark);
 
-  /// Light and dark themes whose brand colours follow [wallpaper] (the
-  /// phone's wallpaper colour), using the Material 3 Expressive palette.
-  static ThemeData lightFromSeed(Color wallpaper) => light(
-        colors: AkshayaColors.fromScheme(
-          _expressive(wallpaper, Brightness.light),
-          AkshayaColors.light,
-        ),
-      );
-
-  static ThemeData darkFromSeed(Color wallpaper) => dark(
-        colors: AkshayaColors.fromScheme(
-          _expressive(wallpaper, Brightness.dark),
-          AkshayaColors.dark,
-        ),
-      );
-
-  static ColorScheme _expressive(Color seed, Brightness brightness) {
-    return ColorScheme.fromSeed(
-      seedColor: seed,
-      brightness: brightness,
-      dynamicSchemeVariant: DynamicSchemeVariant.expressive,
-    );
+  /// A theme whose brand colours are the phone's own wallpaper palette
+  /// ([system], from Android 12+ dynamic colour), so Akshaya matches every
+  /// other app on the phone. Status colours keep their fixed meaning.
+  static ThemeData fromSystemScheme(ColorScheme system) {
+    final bool isDark = system.brightness == Brightness.dark;
+    return isDark
+        ? dark(colors: AkshayaColors.fromScheme(system, AkshayaColors.dark))
+        : light(colors: AkshayaColors.fromScheme(system, AkshayaColors.light));
   }
 
   static ThemeData _build(AkshayaColors c, Brightness brightness) {

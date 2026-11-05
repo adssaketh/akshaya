@@ -5,15 +5,29 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('wallpaper theme changes brand colours but keeps status meaning', () {
-    final ThemeData themed = AkshayaTheme.lightFromSeed(Colors.teal);
+    final ThemeData themed = AkshayaTheme.fromSystemScheme(
+      ColorScheme.fromSeed(seedColor: Colors.blue),
+    );
     final AkshayaColors colors = themed.extension<AkshayaColors>()!;
     expect(colors.primary, isNot(AkshayaColors.light.primary));
     expect(colors.expired.foreground, AkshayaColors.light.expired.foreground);
     expect(colors.fresh.background, AkshayaColors.light.fresh.background);
   });
 
+  test('wallpaper primary is exactly the system primary', () {
+    final ColorScheme system = ColorScheme.fromSeed(seedColor: Colors.blue);
+    final AkshayaColors colors =
+        AkshayaTheme.fromSystemScheme(system).extension<AkshayaColors>()!;
+    expect(colors.primary, system.primary);
+  });
+
   test('dark wallpaper theme is dark', () {
-    final ThemeData themed = AkshayaTheme.darkFromSeed(Colors.indigo);
+    final ThemeData themed = AkshayaTheme.fromSystemScheme(
+      ColorScheme.fromSeed(
+        seedColor: Colors.indigo,
+        brightness: Brightness.dark,
+      ),
+    );
     expect(themed.brightness, Brightness.dark);
   });
 

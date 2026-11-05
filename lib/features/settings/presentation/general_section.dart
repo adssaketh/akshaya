@@ -12,6 +12,7 @@ import '../../recipes/presentation/providers.dart';
 import '../domain/app_settings.dart';
 import 'categories_screen.dart';
 import 'providers.dart';
+import 'theme_choice_picker.dart';
 
 /// Appearance, currency, default unit, diet preferences, categories, app
 /// lock and the Insights shortcut.
@@ -74,15 +75,10 @@ class GeneralSection extends ConsumerWidget {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: SegmentedButton<AppThemeChoice>(
-            segments: <ButtonSegment<AppThemeChoice>>[
-              for (final AppThemeChoice c in AppThemeChoice.values)
-                ButtonSegment<AppThemeChoice>(value: c, label: Text(c.label)),
-            ],
-            selected: <AppThemeChoice>{settings.theme},
-            showSelectedIcon: false,
-            onSelectionChanged: (Set<AppThemeChoice> v) =>
-                _write(ref, AppSettingKeys.theme, v.first.key),
+          child: ThemeChoicePicker(
+            selected: settings.theme,
+            onChanged: (AppThemeChoice v) =>
+                _write(ref, AppSettingKeys.theme, v.key),
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
