@@ -1,8 +1,12 @@
 import '../../../core/util/quantity.dart';
 import '../../pantry/domain/consumption_type.dart';
 import '../../pantry/domain/entities.dart';
+import '../../pantry/domain/default_categories.dart';
 import '../../pantry/domain/failures.dart';
+import '../../pantry/domain/item_kind.dart';
 import '../../pantry/domain/pantry_repository.dart';
+import '../../pantry/domain/shelf_life.dart';
+import '../../pantry/domain/storage_location.dart';
 import '../../pantry/domain/unit.dart';
 import 'recipe_matcher.dart';
 import 'recipe_models.dart';
@@ -116,9 +120,40 @@ final class CookRequest {
   final Unit unit;
 }
 
+/// Food left over from cooking, to be stored as a Cooked pantry item.
+final class LeftoverPlan {
+  const LeftoverPlan({required this.portions, required this.location});
+
+  /// Positive number of portions.
+  final double portions;
+  final StorageLocation location;
+}
+
+/// The Cooked item and batch made for leftovers, so they can be undone.
+final class LeftoverOutcome {
+  const LeftoverOutcome({
+    required this.itemId,
+    required this.batchId,
+    required this.createdItem,
+  });
+
+  final String itemId;
+  final String batchId;
+
+  /// True when the item did not exist before and is removed again on undo.
+  final bool createdItem;
+}
+
 /// What cooking changed, so it can be undone.
 final class CookOutcome {
-  const CookOutcome({required this.results, required this.failures});
+  const CookOutcome({
+    required this.results,
+    required this.failures,
+    this.leftover,
+  });
+
+  /// The leftovers that were stored, if any.
+  final LeftoverOutcome? leftover;
 
   /// One entry per item that was used.
   final List<UseResult> results;
@@ -133,10 +168,16 @@ final class CookOutcome {
 /// recipe". One item that cannot be used (not enough left) never stops the
 /// others.
 abstract final class CookExecutor {
+  ///
+  /// With a [leftover] plan the leftovers are stored as a Cooked item once the
+  /// ingredients are taken out, named after [recipeTitle] and dated [today].
   static Future<CookOutcome> run(
     PantryRepository pantry,
-    List<CookRequest> requests,
-  ) async {
+    List<CookRequest> requests, {
+    LeftoverPlan? leftover,
+    String recipeTitle = '',
+    DateTime? today,
+  }) async {
     final List<UseResult> results = <UseResult>[];
     final List<String> failures = <String>[];
     for (final CookRequest request in requests) {
@@ -155,7 +196,75 @@ abstract final class CookExecutor {
         failures.add('${request.itemName}: Something went wrong.');
       }
     }
-    return CookOutcome(results: results, failures: failures);
+    LeftoverOutcome? stored;
+    if (leftover != null && today != null) {
+      try {
+        stored = await saveLeftover(
+          pantry,
+          title: recipeTitle,
+          plan: leftover,
+          today: today,
+        );
+      } on PantryFailure catch (failure) {
+        failures.add('Leftovers: ${failure.message}');
+      } on Object {
+        failures.add('Leftovers: Something went wrong.');
+      }
+    }
+    return CookOutcome(results: results, failures: failures, leftover: stored);
+  }
+
+  /// Stores [plan] as a Cooked batch dated [today] with the shelf life of its
+  /// location. Adds to the existing Cooked item of that name if there is one;
+  /// a Stocked item that already has the recipe's name is left alone.
+  static Future<LeftoverOutcome> saveLeftover(
+    PantryRepository pantry, {
+    required String title,
+    required LeftoverPlan plan,
+    required DateTime today,
+  }) async {
+    final String name = title.trim().isEmpty ? 'Leftovers' : title.trim();
+    Item? item = await pantry.findItemByName(name);
+    bool created = false;
+    if (item == null || item.kind != ItemKind.cooked) {
+      final String alt = '$name (leftover)';
+      final Item? other = item == null ? null : await pantry.findItemByName(alt);
+      if (other != null && other.kind == ItemKind.cooked) {
+        item = other;
+      } else {
+        item = await pantry.addItem(
+          ItemDraft(
+            name: item == null ? name : alt,
+            categoryId: kDefaultCategoryId,
+            defaultUnit: Unit.portion,
+            kind: ItemKind.cooked,
+            defaultStorageLocation: plan.location,
+          ),
+        );
+        created = true;
+      }
+    }
+    final StockBatch batch = await pantry.addBatch(
+      BatchDraft(
+        itemId: item.id,
+        quantityBought: plan.portions,
+        unit: Unit.portion,
+        purchaseDate: today,
+        storageLocation: plan.location,
+        expiryDate: ShelfLife.expiryFor(
+          kind: ItemKind.cooked,
+          location: plan.location,
+          madeOn: today,
+          own: item.shelfLifeDays,
+          usualLocation: item.defaultStorageLocation,
+        ),
+      ),
+    );
+    return LeftoverOutcome(
+      itemId: item.id,
+      batchId: batch.id,
+      createdItem: created,
+    );
   }
 
   /// Puts back everything [outcome] took, last first.
@@ -163,6 +272,13 @@ abstract final class CookExecutor {
     PantryRepository pantry,
     CookOutcome outcome,
   ) async {
+    final LeftoverOutcome? leftover = outcome.leftover;
+    if (leftover != null) {
+      await pantry.deleteBatch(leftover.batchId);
+      if (leftover.createdItem) {
+        await pantry.deleteItem(leftover.itemId);
+      }
+    }
     for (final UseResult result in outcome.results.reversed) {
       await pantry.undoUse(result);
     }

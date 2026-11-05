@@ -35,7 +35,9 @@ class StockFieldsController extends ChangeNotifier {
         store = TextEditingController(text: batch?.store ?? ''),
         useWithinDays = TextEditingController(
           text: batch?.useWithinDaysAfterOpening?.toString() ?? '',
-        );
+        ),
+        container = TextEditingController(text: batch?.containerLabel ?? ''),
+        checkBy = batch?.checkBy;
 
   final DateTime today;
 
@@ -44,6 +46,7 @@ class StockFieldsController extends ChangeNotifier {
   final TextEditingController price;
   final TextEditingController store;
   final TextEditingController useWithinDays;
+  final TextEditingController container;
 
   Unit unit;
   StorageLocation location;
@@ -51,6 +54,7 @@ class StockFieldsController extends ChangeNotifier {
   DateTime? expiryDate;
   bool opened;
   DateTime? openedDate;
+  DateTime? checkBy;
 
   double? get quantityValue => parseQuantity(quantity.text);
 
@@ -80,6 +84,16 @@ class StockFieldsController extends ChangeNotifier {
   void setExpiryDate(DateTime? value) {
     expiryDate = value;
     notifyListeners();
+  }
+
+  void setCheckBy(DateTime? value) {
+    checkBy = value;
+    notifyListeners();
+  }
+
+  String? get _containerText {
+    final String text = container.text.trim();
+    return text.isEmpty ? null : text;
   }
 
   void setOpened(bool value) {
@@ -119,6 +133,8 @@ class StockFieldsController extends ChangeNotifier {
       price: priceValue,
       store: _storeText,
       storageLocation: location,
+      containerLabel: _containerText,
+      checkBy: checkBy,
     );
   }
 
@@ -138,6 +154,8 @@ class StockFieldsController extends ChangeNotifier {
       price: priceValue,
       store: _storeText,
       storageLocation: location,
+      containerLabel: _containerText,
+      checkBy: checkBy,
       createdAt: original.createdAt,
     );
   }
@@ -149,6 +167,7 @@ class StockFieldsController extends ChangeNotifier {
     price.dispose();
     store.dispose();
     useWithinDays.dispose();
+    container.dispose();
     super.dispose();
   }
 }
@@ -162,6 +181,8 @@ class StockFields extends StatelessWidget {
     required this.allowedUnits,
     this.showRemaining = false,
     this.quantityRequired = true,
+    this.madeAtHome = false,
+    this.madeOnLabel = 'Made on',
   });
 
   final StockFieldsController controller;
@@ -174,6 +195,13 @@ class StockFields extends StatelessWidget {
 
   /// When false, an empty quantity is accepted (item added without stock).
   final bool quantityRequired;
+
+  /// Cooked or homemade food: shows the container and check-by fields and
+  /// labels the date "made on" instead of "purchased on".
+  final bool madeAtHome;
+
+  /// Label of the date field for made-at-home food ("Cooked on", "Made on").
+  final String madeOnLabel;
 
   static const List<({String label, int days, int months})> _shortcuts =
       <({String label, int days, int months})>[
@@ -298,7 +326,7 @@ class StockFields extends StatelessWidget {
             ],
             const SizedBox(height: AppSpacing.md),
             DateField(
-              label: 'Purchased on',
+              label: madeAtHome ? madeOnLabel : 'Purchased on',
               value: controller.purchaseDate,
               onChanged: controller.setPurchaseDate,
             ),
@@ -372,6 +400,24 @@ class StockFields extends StatelessWidget {
                 }
               },
             ),
+            if (madeAtHome) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: controller.container,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Container (optional)',
+                  helperText: 'For example "steel dabba" or "blue box"',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              DateField(
+                label: 'Check by (optional)',
+                value: controller.checkBy,
+                clearable: true,
+                onChanged: controller.setCheckBy,
+              ),
+            ],
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Already opened'),

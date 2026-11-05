@@ -51,6 +51,40 @@ final class ItemStock {
   /// "2.5 kg".
   String get remainingLabel => item.defaultUnit.format(totalRemaining);
 
+  /// The batch to use first: the in-stock batch with the earliest effective
+  /// expiry, or the first one when none has a date. Null when nothing is left.
+  StockBatch? get nextBatch {
+    StockBatch? best;
+    for (final StockBatch b in inStock) {
+      if (best == null) {
+        best = b;
+        continue;
+      }
+      final DateTime? expiry = b.effectiveExpiry;
+      final DateTime? bestExpiry = best.effectiveExpiry;
+      if (expiry != null && (bestExpiry == null || expiry.isBefore(bestExpiry))) {
+        best = b;
+      }
+    }
+    return best;
+  }
+
+  /// What the next batch is kept in ("steel dabba"), if recorded.
+  String? get containerLabel => nextBatch?.containerLabel;
+
+  /// One line for lists: "Fridge · 2 kg left". Cooked and homemade food gets
+  /// its kind first and its container last: "Cooked · Fridge · 2 portions
+  /// left · steel dabba".
+  String get summaryLine {
+    final String? container = containerLabel;
+    return <String>[
+      if (item.kind.isMadeAtHome) item.kind.label,
+      primaryLocation.label,
+      '$remainingLabel left',
+      if (container != null && container.isNotEmpty) container,
+    ].join(' · ');
+  }
+
   /// Replacement for the status chip text when more detail helps
   /// ("In 2 days", "Expired 3d ago"); null keeps the default label.
   String? get statusLabel {

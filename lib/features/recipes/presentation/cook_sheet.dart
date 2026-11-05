@@ -2,17 +2,27 @@ import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/util/quantity.dart';
+import '../../pantry/domain/storage_location.dart';
 import '../domain/cook_plan.dart';
 import '../domain/recipe_models.dart';
 
+/// What the cook sheet confirmed: the amounts to take out and, optionally,
+/// leftovers to store.
+final class CookSheetResult {
+  const CookSheetResult({required this.requests, this.leftover});
+
+  final List<CookRequest> requests;
+  final LeftoverPlan? leftover;
+}
+
 /// Shows what cooking would take from the pantry and lets the person tick,
-/// untick and correct each amount. Returns the confirmed deductions, or null
-/// when closed without confirming.
-Future<List<CookRequest>?> showCookSheet(
+/// untick and correct each amount, and optionally record leftovers. Returns
+/// the confirmation, or null when closed without confirming.
+Future<CookSheetResult?> showCookSheet(
   BuildContext context,
   CookPlan plan,
 ) {
-  return showModalBottomSheet<List<CookRequest>>(
+  return showModalBottomSheet<CookSheetResult>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -33,6 +43,9 @@ class _CookSheet extends StatefulWidget {
 class _CookSheetState extends State<_CookSheet> {
   late final List<bool> _checked;
   late final List<TextEditingController> _controllers;
+  final TextEditingController _portions = TextEditingController(text: '1');
+  bool _hasLeftover = false;
+  StorageLocation _leftoverLocation = StorageLocation.fridge;
 
   @override
   void initState() {
@@ -53,6 +66,7 @@ class _CookSheetState extends State<_CookSheet> {
     for (final TextEditingController c in _controllers) {
       c.dispose();
     }
+    _portions.dispose();
     super.dispose();
   }
 
@@ -65,7 +79,19 @@ class _CookSheetState extends State<_CookSheet> {
     return value;
   }
 
+  double? get _portionsValue {
+    final double? value =
+        double.tryParse(_portions.text.trim().replaceAll(',', '.'));
+    if (value == null || !value.isFinite || value <= 0) {
+      return null;
+    }
+    return value;
+  }
+
   bool get _canConfirm {
+    if (_hasLeftover && _portionsValue == null) {
+      return false;
+    }
     bool any = false;
     for (int i = 0; i < _checked.length; i++) {
       if (_checked[i]) {
@@ -94,7 +120,15 @@ class _CookSheetState extends State<_CookSheet> {
         );
       }
     }
-    Navigator.of(context).pop(out);
+    final double? portions = _portionsValue;
+    Navigator.of(context).pop(
+      CookSheetResult(
+        requests: out,
+        leftover: _hasLeftover && portions != null
+            ? LeftoverPlan(portions: portions, location: _leftoverLocation)
+            : null,
+      ),
+    );
   }
 
   String? _hint(CookLine line) {
@@ -195,6 +229,54 @@ class _CookSheetState extends State<_CookSheet> {
                 style: text.bodySmall?.copyWith(color: colors.textSecondary),
               ),
             ],
+            const SizedBox(height: AppSpacing.sm),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Some food is left over'),
+              subtitle: const Text('Keep it in your pantry as cooked food'),
+              value: _hasLeftover,
+              onChanged: (bool v) => setState(() => _hasLeftover = v),
+            ),
+            if (_hasLeftover)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(
+                    child: TextField(
+                      controller: _portions,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        labelText: 'Portions left',
+                        errorText:
+                            _portionsValue == null ? 'Enter portions' : null,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: DropdownButtonFormField<StorageLocation>(
+                      initialValue: _leftoverLocation,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Stored in'),
+                      items: <DropdownMenuItem<StorageLocation>>[
+                        for (final StorageLocation l in StorageLocation.values)
+                          DropdownMenuItem<StorageLocation>(
+                            value: l,
+                            child: Text(l.label),
+                          ),
+                      ],
+                      onChanged: (StorageLocation? v) {
+                        if (v != null) {
+                          setState(() => _leftoverLocation = v);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: AppSpacing.lg),
             SizedBox(
               width: double.infinity,

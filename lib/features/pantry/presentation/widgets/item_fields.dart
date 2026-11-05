@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/util/quantity.dart';
 import '../../domain/default_categories.dart';
 import '../../domain/entities.dart';
+import '../../domain/item_kind.dart';
+import '../../domain/shelf_life.dart';
 import '../../domain/storage_location.dart';
 import '../../domain/unit.dart';
 import '../providers.dart';
@@ -12,8 +14,12 @@ import '../providers.dart';
 /// Form state for an item definition (everything except its name, which each
 /// screen handles itself).
 class ItemFieldsController extends ChangeNotifier {
-  ItemFieldsController({Item? item, Unit fallbackUnit = Unit.pcs})
-      : categoryId = item?.categoryId ?? kDefaultCategoryId,
+  ItemFieldsController({
+    Item? item,
+    Unit fallbackUnit = Unit.pcs,
+    ItemKind initialKind = ItemKind.stocked,
+  })  : kind = item?.kind ?? initialKind,
+        categoryId = item?.categoryId ?? kDefaultCategoryId,
         unit = item?.defaultUnit ?? fallbackUnit,
         location = item?.defaultStorageLocation ?? StorageLocation.pantry,
         essential = item?.isEssential ?? false,
@@ -26,14 +32,19 @@ class ItemFieldsController extends ChangeNotifier {
               ? ''
               : formatNumber(item!.lowStockThreshold!),
         ),
+        shelfLife = TextEditingController(
+          text: item?.shelfLifeDays?.toString() ?? '',
+        ),
         aliasInput = TextEditingController();
 
+  final TextEditingController shelfLife;
   final TextEditingController brand;
   final TextEditingController barcode;
   final TextEditingController notes;
   final TextEditingController threshold;
   final TextEditingController aliasInput;
 
+  ItemKind kind;
   String categoryId;
   Unit unit;
   StorageLocation location;
@@ -41,6 +52,16 @@ class ItemFieldsController extends ChangeNotifier {
   final List<String> aliases;
 
   double? get thresholdValue => parseQuantity(threshold.text);
+
+  /// Own shelf life in days; null when empty (the default for the kind and
+  /// place is used).
+  int? get shelfLifeValue =>
+      kind.isStocked ? null : int.tryParse(shelfLife.text.trim());
+
+  void setKind(ItemKind value) {
+    kind = value;
+    notifyListeners();
+  }
 
   void setCategory(String id) {
     categoryId = id;
@@ -119,6 +140,8 @@ class ItemFieldsController extends ChangeNotifier {
       lowStockThreshold: thresholdValue,
       isEssential: essential,
       defaultStorageLocation: location,
+      kind: kind,
+      shelfLifeDays: shelfLifeValue,
     );
   }
 
@@ -137,6 +160,8 @@ class ItemFieldsController extends ChangeNotifier {
       lowStockThreshold: thresholdValue,
       isEssential: essential,
       defaultStorageLocation: location,
+      kind: kind,
+      shelfLifeDays: shelfLifeValue,
       createdAt: original.createdAt,
       updatedAt: original.updatedAt,
     );
@@ -148,6 +173,7 @@ class ItemFieldsController extends ChangeNotifier {
     barcode.dispose();
     notes.dispose();
     threshold.dispose();
+    shelfLife.dispose();
     aliasInput.dispose();
     super.dispose();
   }
@@ -172,6 +198,18 @@ class ItemFields extends ConsumerWidget {
     return null;
   }
 
+  String? _validateShelfLife(String? text) {
+    final String value = (text ?? '').trim();
+    if (value.isEmpty || controller.kind.isStocked) {
+      return null;
+    }
+    final int? parsed = int.tryParse(value);
+    if (parsed == null || parsed < 1 || parsed > ShelfLife.maxDays) {
+      return 'Enter whole days, 1 to ${ShelfLife.maxDays}';
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final List<Category> categories =
@@ -186,6 +224,17 @@ class ItemFields extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
+            SegmentedButton<ItemKind>(
+              segments: <ButtonSegment<ItemKind>>[
+                for (final ItemKind k in ItemKind.values)
+                  ButtonSegment<ItemKind>(value: k, label: Text(k.label)),
+              ],
+              selected: <ItemKind>{controller.kind},
+              showSelectedIcon: false,
+              onSelectionChanged: (Set<ItemKind> v) =>
+                  controller.setKind(v.first),
+            ),
+            const SizedBox(height: AppSpacing.md),
             DropdownButtonFormField<String>(
               key: ValueKey<String>(
                 'cat-${controller.categoryId}-${categories.length}',
@@ -250,6 +299,19 @@ class ItemFields extends ConsumerWidget {
                 ),
               ],
             ),
+            if (!controller.kind.isStocked) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: controller.shelfLife,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Keeps for (days, optional)',
+                  helperText: 'Default where it is usually kept: '
+                      '${ShelfLife.label(ShelfLife.defaultDays(controller.kind, controller.location)!)}',
+                ),
+                validator: _validateShelfLife,
+              ),
+            ],
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: controller.brand,

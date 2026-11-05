@@ -8,6 +8,7 @@ import '../../../core/util/date_only.dart';
 import '../../../core/util/money.dart';
 import '../domain/consumption_type.dart';
 import '../domain/entities.dart';
+import '../domain/item_kind.dart';
 import '../domain/pantry_repository.dart';
 import '../domain/stock_logic.dart';
 import 'pantry_actions.dart';
@@ -93,6 +94,7 @@ class _ItemDetailBody extends ConsumerWidget {
       );
 
     final String subtitle = <String>[
+      if (item.kind.isMadeAtHome) item.kind.label,
       if (category != null) category.name,
       if (item.brand != null) item.brand!,
     ].join(' · ');
@@ -318,10 +320,16 @@ class _BatchCard extends ConsumerWidget {
     final DateTime? expiry = batch.effectiveExpiry;
     final bool hasStock = batch.quantityRemaining > 0;
 
+    final String madeVerb = item.kind == ItemKind.cooked ? 'Cooked' : 'Made';
     final List<String> lines = <String>[
-      'Bought ${formatDate(batch.purchaseDate)}'
-          '${batch.store != null ? ' · ${batch.store}' : ''}',
-      'Kept in ${batch.storageLocation.label}',
+      if (item.kind.isMadeAtHome)
+        '$madeVerb ${formatDate(batch.purchaseDate)}'
+      else
+        'Bought ${formatDate(batch.purchaseDate)}'
+            '${batch.store != null ? ' · ${batch.store}' : ''}',
+      'Kept in ${batch.storageLocation.label}'
+          '${batch.containerLabel != null ? ' · ${batch.containerLabel}' : ''}',
+      if (batch.checkBy != null) 'Check by ${formatDate(batch.checkBy!)}',
       if (expiry != null) 'Expires ${formatDate(expiry)}',
       if (batch.openedDate != null)
         'Opened ${formatDate(batch.openedDate!)}'

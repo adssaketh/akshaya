@@ -1,4 +1,5 @@
 import 'package:akshaya/features/pantry/domain/entities.dart';
+import 'package:akshaya/features/pantry/domain/item_kind.dart';
 import 'package:akshaya/features/pantry/domain/storage_location.dart';
 import 'package:akshaya/features/pantry/domain/unit.dart';
 
@@ -12,6 +13,8 @@ Item makeItem({
   List<String> aliases = const <String>[],
   String? brand,
   String categoryId = 'cat_grains',
+  ItemKind kind = ItemKind.stocked,
+  int? shelfLifeDays,
 }) {
   return Item(
     id: id,
@@ -23,6 +26,8 @@ Item makeItem({
     lowStockThreshold: threshold,
     isEssential: false,
     defaultStorageLocation: StorageLocation.pantry,
+    kind: kind,
+    shelfLifeDays: shelfLifeDays,
     createdAt: kToday,
     updatedAt: kToday,
   );
@@ -40,6 +45,8 @@ StockBatch makeBatch({
   DateTime? purchase,
   StorageLocation location = StorageLocation.pantry,
   DateTime? createdAt,
+  String? container,
+  DateTime? checkBy,
 }) {
   return StockBatch(
     id: id,
@@ -52,6 +59,8 @@ StockBatch makeBatch({
     openedDate: opened,
     useWithinDaysAfterOpening: within,
     storageLocation: location,
+    containerLabel: container,
+    checkBy: checkBy,
     createdAt: createdAt ?? DateTime(2026, 10, 1),
   );
 }

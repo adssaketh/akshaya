@@ -6,6 +6,7 @@ import '../../scanning/domain/scan_service.dart';
 import '../../scanning/presentation/barcode_scan_screen.dart';
 import '../../scanning/presentation/scan_flow.dart';
 import '../domain/entities.dart';
+import '../domain/item_kind.dart';
 import '../domain/pantry_repository.dart';
 import '../domain/stock_logic.dart';
 import 'add_item_screen.dart';
@@ -16,11 +17,51 @@ import 'providers.dart';
 import 'use_stock_sheet.dart';
 
 /// Opens the add-item screen. Pass [existing] to add stock to that item.
-void openAddItem(BuildContext context, {Item? existing}) {
+void openAddItem(
+  BuildContext context, {
+  Item? existing,
+  ItemKind kind = ItemKind.stocked,
+}) {
   Navigator.of(context).push<void>(
     MaterialPageRoute<void>(
-      builder: (BuildContext _) => AddItemScreen(initialItem: existing),
+      builder: (BuildContext _) =>
+          AddItemScreen(initialItem: existing, initialKind: kind),
     ),
+  );
+}
+
+/// Asks whether to add cooked food or a homemade item, then opens the add
+/// screen for that kind.
+Future<void> showQuickAddMadeAtHome(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    builder: (BuildContext sheetContext) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.soup_kitchen_rounded),
+              title: const Text('Cooked food'),
+              subtitle: const Text('Leftovers: curry, rice, batter, chutney'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                openAddItem(context, kind: ItemKind.cooked);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.rice_bowl_rounded),
+              title: const Text('Homemade item'),
+              subtitle: const Text('Pickle, ghee, podi, masala, papad'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                openAddItem(context, kind: ItemKind.homemade);
+              },
+            ),
+          ],
+        ),
+      );
+    },
   );
 }
 

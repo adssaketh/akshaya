@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/time/clock.dart';
 import '../../../core/ui/feedback.dart';
 import '../domain/entities.dart';
+import '../domain/item_kind.dart';
 import '../domain/pantry_repository.dart';
 import 'providers.dart';
 import 'widgets/stock_fields.dart';
@@ -103,6 +104,10 @@ class _BatchFormScreenState extends ConsumerState<BatchFormScreen> {
               controller: _fields,
               allowedUnits: widget.item.defaultUnit.compatibleUnits,
               showRemaining: true,
+              madeAtHome: widget.item.kind.isMadeAtHome,
+              madeOnLabel: widget.item.kind == ItemKind.cooked
+                  ? 'Cooked on'
+                  : 'Made on',
             ),
             if (_error != null) ...<Widget>[
               const SizedBox(height: AppSpacing.md),

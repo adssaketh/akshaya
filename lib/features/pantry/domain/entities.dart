@@ -1,5 +1,6 @@
 import '../../../core/util/date_only.dart';
 import 'consumption_type.dart';
+import 'item_kind.dart';
 import 'storage_location.dart';
 import 'unit.dart';
 
@@ -38,6 +39,8 @@ final class Item {
     this.imagePath,
     this.notes,
     this.lowStockThreshold,
+    this.kind = ItemKind.stocked,
+    this.shelfLifeDays,
   });
 
   final String id;
@@ -60,6 +63,16 @@ final class Item {
   final StorageLocation defaultStorageLocation;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Stocked (bought), cooked (leftovers) or homemade.
+  final ItemKind kind;
+
+  /// Days the food keeps in [defaultStorageLocation], for cooked and homemade
+  /// items. Null uses the default for the kind (see `ShelfLife`).
+  final int? shelfLifeDays;
+
+  /// Cooked food that is eaten within days.
+  bool get isLeftover => kind == ItemKind.cooked;
 }
 
 /// One purchase of an item. Each purchase is a separate batch so expiry and
@@ -79,6 +92,8 @@ final class StockBatch {
     this.useWithinDaysAfterOpening,
     this.price,
     this.store,
+    this.containerLabel,
+    this.checkBy,
   });
 
   final String id;
@@ -98,6 +113,12 @@ final class StockBatch {
   final String? store;
   final StorageLocation storageLocation;
   final DateTime createdAt;
+
+  /// What the food is kept in ("steel dabba", "blue box"), if recorded.
+  final String? containerLabel;
+
+  /// A day to look at homemade food again, if the person asked for one.
+  final DateTime? checkBy;
 
   /// The earlier of the printed expiry and "opened date + use within days".
   DateTime? get effectiveExpiry {
@@ -179,6 +200,8 @@ final class ItemDraft {
     this.lowStockThreshold,
     this.isEssential = false,
     this.defaultStorageLocation = StorageLocation.pantry,
+    this.kind = ItemKind.stocked,
+    this.shelfLifeDays,
   });
 
   final String name;
@@ -192,6 +215,8 @@ final class ItemDraft {
   final double? lowStockThreshold;
   final bool isEssential;
   final StorageLocation defaultStorageLocation;
+  final ItemKind kind;
+  final int? shelfLifeDays;
 }
 
 /// Everything needed to record a purchase.
@@ -208,6 +233,8 @@ final class BatchDraft {
     this.useWithinDaysAfterOpening,
     this.price,
     this.store,
+    this.containerLabel,
+    this.checkBy,
   });
 
   final String itemId;
@@ -223,6 +250,8 @@ final class BatchDraft {
   final double? price;
   final String? store;
   final StorageLocation storageLocation;
+  final String? containerLabel;
+  final DateTime? checkBy;
 }
 
 /// What a deletion changed, so it can be undone.

@@ -11,8 +11,11 @@ import '../../scanning/presentation/barcode_scan_screen.dart';
 import '../../scanning/presentation/scan_flow.dart';
 import '../../settings/presentation/providers.dart';
 import '../domain/entities.dart';
+import '../domain/item_kind.dart';
 import '../domain/pantry_query.dart';
 import '../domain/pantry_repository.dart';
+import '../domain/shelf_life.dart';
+import '../domain/storage_location.dart';
 import '../domain/unit.dart';
 import 'providers.dart';
 import 'widgets/item_fields.dart';
@@ -25,7 +28,15 @@ import 'widgets/stock_fields.dart';
 /// expiry shortcuts make adding fast. The scan button reads a barcode and
 /// fills the form from the pantry or from Open Food Facts.
 class AddItemScreen extends ConsumerStatefulWidget {
-  const AddItemScreen({super.key, this.initialItem, this.initialScan});
+  const AddItemScreen({
+    super.key,
+    this.initialItem,
+    this.initialScan,
+    this.initialKind = ItemKind.stocked,
+  });
+
+  /// Kind of a new item (quick-add of cooked or homemade food).
+  final ItemKind initialKind;
 
   /// Item to add stock to (opened from an item's detail screen).
   final Item? initialItem;
@@ -54,6 +65,27 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   String? _scannedBarcode;
   ScanNotice? _scanNotice;
 
+  late ItemKind _lastKind;
+
+  /// Cooked food is counted in portions and kept in the fridge; homemade food
+  /// keeps in the pantry. The user can change both afterwards.
+  void _applyKindDefaults(ItemKind kind) {
+    switch (kind) {
+      case ItemKind.stocked:
+        return;
+      case ItemKind.cooked:
+        _itemFields.unit = Unit.portion;
+        _itemFields.location = StorageLocation.fridge;
+      case ItemKind.homemade:
+        if (_itemFields.unit == Unit.portion) {
+          _itemFields.unit = Unit.pcs;
+        }
+        _itemFields.location = StorageLocation.pantry;
+    }
+  }
+
+  ItemKind get _kind => _existing?.kind ?? _itemFields.kind;
+
   @override
   void initState() {
     super.initState();
@@ -64,7 +96,12 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     _itemFields = ItemFieldsController(
       item: initial,
       fallbackUnit: ref.read(appSettingsProvider).defaultUnit,
+      initialKind: widget.initialKind,
     );
+    _lastKind = _itemFields.kind;
+    if (initial == null && _lastKind != ItemKind.stocked) {
+      _applyKindDefaults(_lastKind);
+    }
     _stock = StockFieldsController(
       today: today,
       unit: initial?.defaultUnit ?? _itemFields.unit,
@@ -132,6 +169,16 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   void _syncStockWithItemFields() {
     if (_existing != null) {
       return;
+    }
+    if (_itemFields.kind != _lastKind) {
+      _lastKind = _itemFields.kind;
+      if (_lastKind == ItemKind.stocked) {
+        if (_itemFields.unit == Unit.portion) {
+          _itemFields.unit = Unit.pcs;
+        }
+      } else {
+        _applyKindDefaults(_lastKind);
+      }
     }
     if (!_stock.unit.isCompatibleWith(_itemFields.unit)) {
       _stock.setUnit(_itemFields.unit);
@@ -245,6 +292,15 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
       item ??= await repo.addItem(_itemFields.toDraft(name));
 
       if (quantity != null) {
+        if (item.kind.isMadeAtHome && _stock.expiryDate == null) {
+          _stock.expiryDate = ShelfLife.expiryFor(
+            kind: item.kind,
+            location: _stock.location,
+            madeOn: _stock.purchaseDate,
+            own: item.shelfLifeDays,
+            usualLocation: item.defaultStorageLocation,
+          );
+        }
         await repo.addBatch(_stock.toDraft(item.id));
       }
 
@@ -275,7 +331,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(existing == null ? 'Add item' : 'Add stock'),
+        title: Text(_title(existing)),
         actions: <Widget>[
           IconButton(
             tooltip: 'Scan barcode',
@@ -320,8 +376,20 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
             StockFields(
               controller: _stock,
               allowedUnits: baseUnit.compatibleUnits,
-              quantityRequired: existing != null,
+              quantityRequired: existing != null || _kind.isMadeAtHome,
+              madeAtHome: _kind.isMadeAtHome,
+              madeOnLabel:
+                  _kind == ItemKind.cooked ? 'Cooked on' : 'Made on',
             ),
+            if (_kind.isMadeAtHome) ...<Widget>[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                _shelfLifeHint(),
+                style: context.akText.bodySmall!.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ],
             if (_error != null) ...<Widget>[
               const SizedBox(height: AppSpacing.md),
               Text(
@@ -335,6 +403,37 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
         ),
       ),
     );
+  }
+
+  String _title(Item? existing) {
+    if (existing != null) {
+      return 'Add stock';
+    }
+    switch (_itemFields.kind) {
+      case ItemKind.stocked:
+        return 'Add item';
+      case ItemKind.cooked:
+        return 'Add cooked food';
+      case ItemKind.homemade:
+        return 'Add homemade item';
+    }
+  }
+
+  String _shelfLifeHint() {
+    final Item? existing = _existing;
+    final int? days = existing != null
+        ? ShelfLife.daysForItem(existing, _stock.location)
+        : ShelfLife.daysFor(
+            kind: _itemFields.kind,
+            location: _stock.location,
+            own: _itemFields.shelfLifeValue,
+            usualLocation: _itemFields.location,
+          );
+    if (days == null) {
+      return '';
+    }
+    return 'Left empty, the use-by date is ${ShelfLife.label(days)} after '
+        'the date above.';
   }
 
   Widget _buildNameField(BuildContext context) {

@@ -16,11 +16,15 @@ import '../../pantry/domain/entities.dart';
 /// How many "use these first" items the dashboard lists.
 const int kUseFirstShown = 5;
 
-/// The items to use first: expired and expiring stock, soonest first.
+/// The items to use first: expired and expiring stock, plus any cooked
+/// leftovers still in the fridge, soonest first.
 List<ItemStock> useTheseFirst(List<ItemStock> stocks) {
   final List<ItemStock> urgent = <ItemStock>[
     for (final ItemStock s in stocks)
-      if (s.status == StatusKind.expiring || s.status == StatusKind.expired) s,
+      if (s.status == StatusKind.expiring ||
+          s.status == StatusKind.expired ||
+          (s.item.isLeftover && s.inStock.isNotEmpty))
+        s,
   ];
   urgent.sort((ItemStock a, ItemStock b) {
     final int byDays = (a.daysToExpiry ?? 0).compareTo(b.daysToExpiry ?? 0);
@@ -210,7 +214,7 @@ class _Content extends ConsumerWidget {
                 child: ItemCard(
                   revealIndex: i + 5,
                   name: s.item.name,
-                  subtitle: '${s.primaryLocation.label} · ${s.remainingLabel} left',
+                  subtitle: s.summaryLine,
                   icon: categoryIcon(categories[s.item.categoryId]?.iconKey),
                   status: s.status,
                   statusLabel: s.statusLabel,

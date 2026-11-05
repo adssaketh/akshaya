@@ -2,6 +2,7 @@ import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/time/clock.dart';
 import '../../../core/ui/feedback.dart';
 import '../../pantry/domain/pantry_repository.dart';
 import '../../pantry/presentation/providers.dart';
@@ -99,13 +100,19 @@ class RecipeDetailScreen extends ConsumerWidget {
     RankedRecipe ranked,
   ) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    final List<CookRequest>? requests =
+    final CookSheetResult? result =
         await showCookSheet(context, CookPlanner.plan(ranked.matches));
-    if (requests == null || requests.isEmpty) {
+    if (result == null || result.requests.isEmpty) {
       return;
     }
     final PantryRepository pantry = ref.read(pantryRepositoryProvider);
-    final CookOutcome outcome = await CookExecutor.run(pantry, requests);
+    final CookOutcome outcome = await CookExecutor.run(
+      pantry,
+      result.requests,
+      leftover: result.leftover,
+      recipeTitle: recipe.title,
+      today: ref.read(todayProvider),
+    );
     if (outcome.failures.isNotEmpty) {
       showMessage(
         messenger,
@@ -115,9 +122,10 @@ class RecipeDetailScreen extends ConsumerWidget {
     }
     showUndoSnackBar(
       messenger,
-      message: outcome.usedCount == 1
-          ? 'Took 1 item out of your pantry.'
-          : 'Took ${outcome.usedCount} items out of your pantry.',
+      message: (outcome.usedCount == 1
+              ? 'Took 1 item out of your pantry.'
+              : 'Took ${outcome.usedCount} items out of your pantry.') +
+          (outcome.leftover != null ? ' Leftovers saved.' : ''),
       onUndo: () => CookExecutor.undo(pantry, outcome),
     );
   }

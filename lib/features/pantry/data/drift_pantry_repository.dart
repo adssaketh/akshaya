@@ -9,8 +9,10 @@ import '../domain/default_categories.dart';
 import '../domain/entities.dart';
 import '../domain/failures.dart';
 import '../domain/fifo.dart';
+import '../domain/item_kind.dart';
 import '../domain/pantry_repository.dart';
 import '../domain/sample_data.dart';
+import '../domain/shelf_life.dart';
 import '../domain/storage_location.dart';
 import '../domain/unit.dart';
 import 'database/app_database.dart';
@@ -68,6 +70,8 @@ class DriftPantryRepository implements PantryRepository {
       defaultStorageLocation: r.defaultStorageLocation,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
+      kind: r.kind ?? ItemKind.stocked,
+      shelfLifeDays: r.shelfLifeDays,
     );
   }
 
@@ -86,6 +90,8 @@ class DriftPantryRepository implements PantryRepository {
       store: r.store,
       storageLocation: r.storageLocation,
       createdAt: r.createdAt,
+      containerLabel: r.containerLabel,
+      checkBy: r.checkBy,
     );
   }
 
@@ -501,7 +507,17 @@ class DriftPantryRepository implements PantryRepository {
     return result;
   }
 
-  void _validateItem({required String name, required double? threshold}) {
+  void _validateItem({
+    required String name,
+    required double? threshold,
+    int? shelfLifeDays,
+  }) {
+    if (shelfLifeDays != null &&
+        (shelfLifeDays < 1 || shelfLifeDays > ShelfLife.maxDays)) {
+      throw InvalidInputFailure(
+        'Shelf life must be between 1 and ${ShelfLife.maxDays} days.',
+      );
+    }
     if (name.isEmpty) {
       throw const InvalidInputFailure('Enter a name for the item.');
     }
@@ -554,7 +570,11 @@ class DriftPantryRepository implements PantryRepository {
   @override
   Future<Item> addItem(ItemDraft draft) async {
     final String name = _cleanName(draft.name);
-    _validateItem(name: name, threshold: draft.lowStockThreshold);
+    _validateItem(
+      name: name,
+      threshold: draft.lowStockThreshold,
+      shelfLifeDays: draft.shelfLifeDays,
+    );
 
     return _db.transaction<Item>(() async {
       final ItemRow? duplicate = await _itemRowByName(name);
@@ -595,6 +615,8 @@ class DriftPantryRepository implements PantryRepository {
               isEssential: Value<bool>(draft.isEssential),
               defaultStorageLocation:
                   Value<StorageLocation>(draft.defaultStorageLocation),
+              kind: Value<ItemKind?>(draft.kind.isStocked ? null : draft.kind),
+              shelfLifeDays: Value<int?>(draft.shelfLifeDays),
               updatedBy: Value<String?>(_userId),
             ),
           );
@@ -618,6 +640,8 @@ class DriftPantryRepository implements PantryRepository {
         defaultStorageLocation: draft.defaultStorageLocation,
         createdAt: now,
         updatedAt: now,
+        kind: draft.kind,
+        shelfLifeDays: draft.shelfLifeDays,
       );
     });
   }
@@ -645,7 +669,11 @@ class DriftPantryRepository implements PantryRepository {
   @override
   Future<Item> updateItem(Item item) async {
     final String name = _cleanName(item.name);
-    _validateItem(name: name, threshold: item.lowStockThreshold);
+    _validateItem(
+      name: name,
+      threshold: item.lowStockThreshold,
+      shelfLifeDays: item.shelfLifeDays,
+    );
 
     return _db.transaction<Item>(() async {
       final ItemRow existing = await _requireItem(item.id);
@@ -697,6 +725,8 @@ class DriftPantryRepository implements PantryRepository {
           isEssential: Value<bool>(item.isEssential),
           defaultStorageLocation:
               Value<StorageLocation>(item.defaultStorageLocation),
+          kind: Value<ItemKind?>(item.kind.isStocked ? null : item.kind),
+          shelfLifeDays: Value<int?>(item.shelfLifeDays),
           updatedAt: Value<DateTime>(now),
           updatedBy: Value<String?>(_userId),
           syncStatus: const Value<SyncStatus>(SyncStatus.pending),
@@ -725,6 +755,8 @@ class DriftPantryRepository implements PantryRepository {
         defaultStorageLocation: item.defaultStorageLocation,
         createdAt: existing.createdAt,
         updatedAt: now,
+        kind: item.kind,
+        shelfLifeDays: item.shelfLifeDays,
       );
     });
   }
@@ -815,6 +847,8 @@ class DriftPantryRepository implements PantryRepository {
       final DateTime? expiry = _dateOrNull(draft.expiryDate);
       final DateTime? opened = _dateOrNull(draft.openedDate);
       final String? store = _cleanOptional(draft.store);
+      final String? container = _cleanOptional(draft.containerLabel);
+      final DateTime? checkBy = _dateOrNull(draft.checkBy);
 
       await _db.into(_db.stockBatches).insert(
             StockBatchesCompanion.insert(
@@ -833,6 +867,8 @@ class DriftPantryRepository implements PantryRepository {
                   Value<int?>(draft.useWithinDaysAfterOpening),
               price: Value<double?>(draft.price),
               store: Value<String?>(store),
+              containerLabel: Value<String?>(container),
+              checkBy: Value<DateTime?>(checkBy),
               updatedBy: Value<String?>(_userId),
             ),
           );
@@ -851,6 +887,8 @@ class DriftPantryRepository implements PantryRepository {
         store: store,
         storageLocation: draft.storageLocation,
         createdAt: now,
+        containerLabel: container,
+        checkBy: checkBy,
       );
     });
   }
@@ -883,6 +921,8 @@ class DriftPantryRepository implements PantryRepository {
       final DateTime? expiry = _dateOrNull(batch.expiryDate);
       final DateTime? opened = _dateOrNull(batch.openedDate);
       final String? store = _cleanOptional(batch.store);
+      final String? container = _cleanOptional(batch.containerLabel);
+      final DateTime? checkBy = _dateOrNull(batch.checkBy);
 
       await (_db.update(_db.stockBatches)
             ..where((t) => t.id.equals(batch.id)))
@@ -899,6 +939,8 @@ class DriftPantryRepository implements PantryRepository {
           price: Value<double?>(batch.price),
           store: Value<String?>(store),
           storageLocation: Value<StorageLocation>(batch.storageLocation),
+          containerLabel: Value<String?>(container),
+          checkBy: Value<DateTime?>(checkBy),
           updatedAt: Value<DateTime>(now),
           updatedBy: Value<String?>(_userId),
           syncStatus: const Value<SyncStatus>(SyncStatus.pending),
@@ -919,6 +961,8 @@ class DriftPantryRepository implements PantryRepository {
         store: store,
         storageLocation: batch.storageLocation,
         createdAt: existing.createdAt,
+        containerLabel: container,
+        checkBy: checkBy,
       );
     });
   }

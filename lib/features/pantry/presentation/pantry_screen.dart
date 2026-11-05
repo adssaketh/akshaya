@@ -6,6 +6,7 @@ import '../../../core/ui/feedback.dart';
 import '../../commands/domain/command_models.dart';
 import '../../commands/presentation/voice_mic_button.dart';
 import '../domain/entities.dart';
+import '../domain/item_kind.dart';
 import '../domain/pantry_query.dart';
 import '../domain/stock_logic.dart';
 import 'pantry_actions.dart';
@@ -51,6 +52,13 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: <Widget>[
+          FloatingActionButton.small(
+            heroTag: 'pantry-cooked-fab',
+            tooltip: 'Add cooked or homemade food',
+            onPressed: () => showQuickAddMadeAtHome(context),
+            child: const Icon(Icons.soup_kitchen_rounded),
+          ),
+          const SizedBox(height: AppSpacing.md),
           FloatingActionButton.small(
             heroTag: 'pantry-scan-fab',
             tooltip: 'Scan barcode',
@@ -150,6 +158,19 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
                       selected: query.statusFilter == kind,
                       onSelected: (bool _) => notifier.setStatus(
                         query.statusFilter == kind ? null : kind,
+                      ),
+                    ),
+                  ],
+                  for (final ItemKind kind in const <ItemKind>[
+                    ItemKind.cooked,
+                    ItemKind.homemade,
+                  ]) ...<Widget>[
+                    const SizedBox(width: AppSpacing.sm),
+                    ChoiceChip(
+                      label: Text(kind.label),
+                      selected: query.kindFilter == kind,
+                      onSelected: (bool _) => notifier.setKind(
+                        query.kindFilter == kind ? null : kind,
                       ),
                     ),
                   ],
@@ -303,8 +324,7 @@ class _PantryRow extends ConsumerWidget {
         onLongPress: () => showItemActionsSheet(context, ref, stock),
         child: ItemCard(
           name: stock.item.name,
-          subtitle:
-              '${stock.primaryLocation.label} · ${stock.remainingLabel} left',
+          subtitle: stock.summaryLine,
           icon: icon,
           status: stock.status,
           statusLabel: stock.statusLabel,

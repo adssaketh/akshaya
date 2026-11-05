@@ -94,6 +94,52 @@ void main() {
     expect(SyncDocuments.barcodesOf(doc), <String>['8901234567890']);
   });
 
+  group('Phase 9 columns', () {
+    final Map<String, Object?> itemRow = <String, Object?>{
+      'id': 'i1',
+      'created_at': 1,
+      'updated_at': 2,
+      'is_deleted': 0,
+      'name': 'Sambar',
+      'category_id': 'c1',
+      'default_unit': 'portion',
+      'is_essential': 0,
+      'default_storage_location': 'fridge',
+      'kind': 'cooked',
+      'shelf_life_days': 3,
+    };
+
+    test('kind and shelf life travel with the item', () {
+      final Map<String, Object?> doc = SyncDocuments.toRemote(
+        SyncSchema.items,
+        itemRow,
+        householdId: 'h1',
+        userId: 'u1',
+      );
+      expect(doc['kind'], 'cooked');
+      expect(doc['shelfLifeDays'], 3);
+      final Map<String, Object?> row =
+          SyncDocuments.toLocal(SyncSchema.items, doc);
+      expect(row['kind'], 'cooked');
+      expect(row['shelf_life_days'], 3);
+    });
+
+    test('a document from an older app still loads', () {
+      final Map<String, Object?> doc = SyncDocuments.toRemote(
+        SyncSchema.items,
+        itemRow,
+        householdId: 'h1',
+        userId: 'u1',
+      )
+        ..remove('kind')
+        ..remove('shelfLifeDays');
+      final Map<String, Object?> row =
+          SyncDocuments.toLocal(SyncSchema.items, doc);
+      expect(row['kind'], isNull);
+      expect(row['shelf_life_days'], isNull);
+    });
+  });
+
   test('every collection is in the schema once', () {
     expect(SyncSchema.collections, <String>[
       'categories',

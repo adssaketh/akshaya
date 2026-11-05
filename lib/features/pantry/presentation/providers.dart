@@ -6,6 +6,7 @@ import '../data/database/app_database.dart';
 import '../data/database/open_database.dart';
 import '../data/drift_pantry_repository.dart';
 import '../domain/entities.dart';
+import '../domain/item_kind.dart';
 import '../domain/pantry_query.dart';
 import '../domain/pantry_repository.dart';
 import '../domain/stock_logic.dart';
@@ -113,8 +114,19 @@ class PantryQueryNotifier extends Notifier<PantryQuery> {
         : state.copyWith(statusFilter: status);
   }
 
+  /// Pass null to show every kind of food.
+  void setKind(ItemKind? kind) {
+    state = kind == null
+        ? state.copyWith(clearKindFilter: true)
+        : state.copyWith(kindFilter: kind);
+  }
+
   void clearFilters() {
-    state = state.copyWith(text: '', clearStatusFilter: true);
+    state = state.copyWith(
+      text: '',
+      clearStatusFilter: true,
+      clearKindFilter: true,
+    );
   }
 }
 

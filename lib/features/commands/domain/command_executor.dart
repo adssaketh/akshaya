@@ -452,6 +452,8 @@ final class CommandExecutor {
         defaultStorageLocation: item.defaultStorageLocation,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
+        kind: item.kind,
+        shelfLifeDays: item.shelfLifeDays,
       ),
     );
     state.replace(updated);

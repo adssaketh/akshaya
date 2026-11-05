@@ -14,6 +14,7 @@ Rules:
   - "unit": one of pcs, g, kg, ml, L, packet, dozen, bunch. Leave it out for countable things such as onions or eggs (use quantity only) and whenever there is no quantity.
   - "status": "in_pantry" if the pantry list below has it in enough quantity, otherwise "missing".
 - Prefer ingredients from the pantry list. A few common extras the pantry may lack (cooking oil, spices) are fine, but do not depend on many missing ingredients.
+- Pantry lines marked [cooked leftover] are food that is already cooked (counted in portions). Suggest ways to eat them: serve as they are, pair with a fresh side, or turn into a new dish (leftover rice into fried rice or curd rice, leftover dal into paratha dough or soup). Do not treat them as raw ingredients, and put them first when they expire soonest.
 - "steps" is 3 to 12 short, clear instructions.
 - "uses_expiring" lists the names of the pantry items that expire in the next few days that the recipe uses. It may be empty.
 - Today is {{today}}.

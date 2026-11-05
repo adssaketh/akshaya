@@ -111,6 +111,9 @@ abstract final class SyncSchema {
       SyncColumn('low_stock_threshold', SyncColumnKind.real),
       SyncColumn('is_essential', SyncColumnKind.boolean, required: true),
       SyncColumn('default_storage_location', SyncColumnKind.text, required: true),
+      // Phase 9. Optional, so documents from older apps still load.
+      SyncColumn('kind', SyncColumnKind.text),
+      SyncColumn('shelf_life_days', SyncColumnKind.integer),
     ],
   );
 
@@ -131,6 +134,9 @@ abstract final class SyncSchema {
       SyncColumn('price', SyncColumnKind.real),
       SyncColumn('store', SyncColumnKind.text),
       SyncColumn('storage_location', SyncColumnKind.text, required: true),
+      // Phase 9. Optional, so documents from older apps still load.
+      SyncColumn('container_label', SyncColumnKind.text),
+      SyncColumn('check_by', SyncColumnKind.text),
     ],
   );
 

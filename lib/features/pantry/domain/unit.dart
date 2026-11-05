@@ -3,7 +3,7 @@ import 'failures.dart';
 
 /// Units that can be converted into each other. Only g<->kg and ml<->L are
 /// convertible; every other unit converts only to itself.
-enum UnitFamily { pieces, mass, volume, packet, dozen, bunch }
+enum UnitFamily { pieces, mass, volume, packet, dozen, bunch, portion }
 
 /// Measurement units. The enum [name] is what the database stores, so never
 /// rename a value without a migration.
@@ -15,7 +15,10 @@ enum Unit {
   l('L', 'L', UnitFamily.volume, 1000),
   packet('packet', 'packets', UnitFamily.packet, 1),
   dozen('dozen', 'dozen', UnitFamily.dozen, 1),
-  bunch('bunch', 'bunches', UnitFamily.bunch, 1);
+  bunch('bunch', 'bunches', UnitFamily.bunch, 1),
+
+  /// One serving of cooked food (a bowl, a plate, a container).
+  portion('portion', 'portions', UnitFamily.portion, 1);
 
   const Unit(this.symbol, this.pluralSymbol, this.family, this.baseFactor);
 
@@ -74,6 +77,8 @@ enum Unit {
       case Unit.dozen:
       case Unit.bunch:
         return const <double>[0.5, 1];
+      case Unit.portion:
+        return const <double>[0.5, 1, 2];
     }
   }
 }

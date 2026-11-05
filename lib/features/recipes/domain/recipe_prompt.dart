@@ -57,7 +57,8 @@ abstract final class RecipePromptBuilder {
     } else {
       when = 'expires ${_isoDate(expiry)} (in $days days)';
     }
-    return '- ${_clean(line.name)}: $amount, $when';
+    final String leftover = line.item.isLeftover ? ' [cooked leftover]' : '';
+    return '- ${_clean(line.name)}: $amount, $when$leftover';
   }
 
   static String _dietText(RecipeDiet diet) {

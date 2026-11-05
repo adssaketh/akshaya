@@ -16,6 +16,7 @@ import '../../../sync/data/database/sync_tables.dart';
 import '../../../sync/data/database/sync_triggers.dart';
 import '../../domain/consumption_type.dart';
 import '../../domain/default_categories.dart';
+import '../../domain/item_kind.dart';
 import '../../domain/storage_location.dart';
 import '../../domain/unit.dart';
 import 'converters.dart';
@@ -38,6 +39,9 @@ part 'app_database.g.dart';
 ///    rows as waiting to be synced.
 ///  - v6 (Phase 7): saved_recipes (synced, with its own sync trigger) and
 ///    recipe_cache (local only: the last AI recipe ideas).
+///  - v7 (Phase 9): items.kind and items.shelf_life_days, stock_batches
+///    .container_label and .check_by (all nullable, so older rows, backups and
+///    synced documents stay valid; a missing kind means stocked).
 ///
 /// Later phases add tables through migrations in [migration]; never edit a
 /// released version in place.
@@ -65,7 +69,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -129,6 +133,14 @@ class AppDatabase extends _$AppDatabase {
           // saved_recipes, so they are installed once all tables exist (this
           // also covers a jump from v4 straight to v6).
           await _installSync();
+        }
+        if (from < 7) {
+          // Plain ALTER TABLE ... ADD COLUMN of nullable columns: existing
+          // rows read as null (stocked, no shelf life, no container).
+          await m.addColumn(items, items.kind);
+          await m.addColumn(items, items.shelfLifeDays);
+          await m.addColumn(stockBatches, stockBatches.containerLabel);
+          await m.addColumn(stockBatches, stockBatches.checkBy);
         }
       },
     );

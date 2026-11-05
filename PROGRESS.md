@@ -597,7 +597,44 @@ Fix:
 Files: `lib/app.dart`, `lib/features/lock/app_lock.dart`, `lib/features/alerts/presentation/{providers,alerts_section}.dart`, `lib/features/settings/domain/app_settings.dart`, `lib/features/ai/domain/ai_settings.dart`, `lib/features/sync/domain/sync_settings.dart`.
 If Settings still stutters on your phone, the next suspects are the long monolithic sections (each is one `Column`, built whole when it scrolls into view) and first-draw cost of the variable fonts; tell me and I will profile or split the sections into lazily built tiles.
 
-## Next: Phase 9 (v2 roadmap), only when you say so.
+## Phase 9: Leftovers, cooked food and homemade items (built, CI pending)
+
+Item type is now Stocked (default) / Cooked / Homemade.
+
+**Decisions (asked first):** kind and shelf life are columns on existing tables (no new tables); one new unit `portion` (counts servings of cooked food, converts to nothing).
+
+**Schema v7** (`m.addColumn`, all nullable, old rows read as Stocked): `items.kind`, `items.shelf_life_days`, `stock_batches.container_label`, `stock_batches.check_by`. All four are synced columns, optional, so documents from older apps still load. `firestore.rules` is unchanged (extra fields are accepted): no redeploy needed.
+
+**Built**
+- Shelf life defaults (`ShelfLife`): cooked fridge 2 / freezer 30 / pantry 1 / other 1 days; homemade fridge 30 / freezer 180 / pantry 90 / other 30. A per-item override ("Keeps for") applies to the place the item is usually kept; other places use the default. Use-by is filled in at save when left empty, counted from the cooked/made date.
+- Add item: Stocked/Cooked/Homemade selector. Cooked defaults to portion + fridge, homemade to pantry. Made-at-home items show container label ("steel dabba"), "Check by" date and a hint of the default use-by. The Pantry screen has a small FAB for quick-add of cooked/homemade food.
+- Pantry: Cooked and Homemade filter chips; list lines read "Cooked · Fridge · 3 portions left · steel dabba".
+- Item detail and batch edit: "Cooked/Made on", container, check-by.
+- Home "Use these first" also lists cooked leftovers still in stock.
+- Recipes: pantry lines for leftovers are marked `[cooked leftover]` in the prompt, with a template rule to serve or reuse them. "I cooked this" has "Some food is left over": portions + place; it creates (or adds to) a Cooked item named after the recipe, rolled back by Undo. A Stocked item with the same name is never touched ("<name> (leftover)" is used).
+- CSV pantry export gained Type, Container, Check by columns.
+- Backup JSON is generic by column, so the new fields are included.
+
+**New/changed files** (besides the Settings scroll fix above): `pantry/domain/{item_kind,shelf_life,unit,entities,stock_logic,pantry_query}.dart`, `pantry/data/database/{tables,app_database}.dart`, `pantry/data/drift_pantry_repository.dart`, `pantry/presentation/{add_item_screen,pantry_screen,pantry_actions,item_detail_screen,batch_form_screen,providers}.dart`, `pantry/presentation/widgets/{item_fields,stock_fields}.dart`, `home/presentation/home_screen.dart`, `recipes/domain/{cook_plan,recipe_prompt}.dart`, `recipes/presentation/{cook_sheet,recipe_detail_screen}.dart`, `assets/prompts/generate_recipes.txt`, `commands/domain/command_executor.dart` (alias learning keeps kind), `sync/domain/sync_schema.dart`, `backup/domain/backup_csv.dart`. Tests: `shelf_life_test`, `summary_line_test`, `made_at_home_repository_test`, new cases in `sync_documents_test`.
+
+**Test checklist (device)**
+1. Pantry > soup FAB > Cooked food: name "Sambar", 3 portions, leave use-by empty. Expect use-by = today + 2 days (fridge), line shows "Cooked · Fridge · 3 portions left".
+2. Change location to Freezer before saving: use-by should be +30 days.
+3. Homemade item (pickle) with container "glass jar" and a Check by date: appears under the Homemade chip; detail shows container and check-by.
+4. Cooked leftover shows on Home under "Use these first" even with days left.
+5. Recipes > open a recipe > I cooked this > turn on "Some food is left over" (2 portions): confirm, see the new Cooked item; Undo removes it.
+6. Existing stocked items are unchanged after the update (kind shows nothing extra).
+7. With two phones in one household: a Cooked item added on one appears on the other. The other phone should be updated too: an old build cannot read the new `portion` unit.
+8. Settings scroll: scroll the Settings tab fast, with and without sync/AI on. Tell me if lag is still there.
+
+**Known issues**
+- The optional "check by" date is stored and shown but does not raise a notification yet (planned with Phase 13 actionable notifications).
+- Mixed app versions in one household: an older build fails to parse items using unit `portion`. Update all members' phones together.
+- Item kind is not set by voice/text commands: a command that creates an item makes a Stocked one.
+- The Settings scroll fix was found by reading the code, not by profiling on a device (see above).
+- Written without a local Flutter SDK: CI is the compiler; if it is red, fix first.
+
+## Next: Phase 10 (v2 roadmap), only when you say so.
 
 ## Phase 0: what was built (unchanged)
 

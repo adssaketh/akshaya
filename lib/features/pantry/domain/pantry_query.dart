@@ -2,6 +2,7 @@ import 'package:akshaya/core/design/design.dart' show StatusKind;
 
 import 'default_categories.dart';
 import 'entities.dart';
+import 'item_kind.dart';
 import 'stock_logic.dart';
 import 'storage_location.dart';
 
@@ -40,6 +41,7 @@ final class PantryQuery {
     this.group = PantryGroup.category,
     this.sort = PantrySort.expiry,
     this.statusFilter,
+    this.kindFilter,
   });
 
   final String text;
@@ -47,8 +49,11 @@ final class PantryQuery {
   final PantrySort sort;
   final StatusKind? statusFilter;
 
+  /// Show only cooked or only homemade food (null shows everything).
+  final ItemKind? kindFilter;
+
   bool get hasActiveFilters =>
-      text.trim().isNotEmpty || statusFilter != null;
+      text.trim().isNotEmpty || statusFilter != null || kindFilter != null;
 
   PantryQuery copyWith({
     String? text,
@@ -56,6 +61,8 @@ final class PantryQuery {
     PantrySort? sort,
     StatusKind? statusFilter,
     bool clearStatusFilter = false,
+    ItemKind? kindFilter,
+    bool clearKindFilter = false,
   }) {
     return PantryQuery(
       text: text ?? this.text,
@@ -63,6 +70,7 @@ final class PantryQuery {
       sort: sort ?? this.sort,
       statusFilter:
           clearStatusFilter ? null : (statusFilter ?? this.statusFilter),
+      kindFilter: clearKindFilter ? null : (kindFilter ?? this.kindFilter),
     );
   }
 
@@ -71,6 +79,10 @@ final class PantryQuery {
   bool matches(ItemStock stock) {
     final StatusKind? wanted = statusFilter;
     if (wanted != null && stock.status != wanted) {
+      return false;
+    }
+    final ItemKind? wantedKind = kindFilter;
+    if (wantedKind != null && stock.item.kind != wantedKind) {
       return false;
     }
     final String needle = normalizeForSearch(text);

@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../domain/consumption_type.dart';
+import '../../domain/item_kind.dart';
 import '../../domain/storage_location.dart';
 import '../../domain/unit.dart';
 import 'converters.dart';
@@ -65,6 +66,14 @@ class Items extends Table with SyncColumns {
   TextColumn get defaultStorageLocation => textEnum<StorageLocation>()
       .withDefault(const Constant('pantry'))();
 
+  /// Stocked, cooked or homemade (schema v7). Null means stocked, so rows from
+  /// before v7, old backups and documents from older phones need no change.
+  TextColumn get kind => textEnum<ItemKind>().nullable()();
+
+  /// Days the food keeps in its usual location (cooked and homemade items);
+  /// null uses the default for the kind. Schema v7.
+  IntColumn get shelfLifeDays => integer().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -115,6 +124,12 @@ class StockBatches extends Table with SyncColumns {
   TextColumn get store => text().nullable()();
 
   TextColumn get storageLocation => textEnum<StorageLocation>()();
+
+  /// What the food is kept in, such as "steel dabba" (schema v7).
+  TextColumn get containerLabel => text().nullable()();
+
+  /// A day to look at homemade food again (schema v7).
+  TextColumn get checkBy => text().map(const DateOnlyConverter()).nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

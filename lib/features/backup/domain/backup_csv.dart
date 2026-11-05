@@ -36,6 +36,9 @@ abstract final class BackupCsv {
         'Price',
         'Store',
         'Location',
+        'Type',
+        'Container',
+        'Check by',
       ],
     ];
     for (final ItemWithBatches r in sorted) {
@@ -53,6 +56,9 @@ abstract final class BackupCsv {
           b.price,
           b.store,
           b.storageLocation.label,
+          r.item.kind.label,
+          b.containerLabel,
+          b.checkBy == null ? null : _date(b.checkBy!),
         ]);
       }
     }
