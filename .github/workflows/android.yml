@@ -166,6 +166,31 @@ jobs:
         with:
           name: akshaya-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
+      - name: Build the signed release APK (only when the release key secrets exist)
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$RELEASE_KEYSTORE_BASE64" ] || [ -z "$RELEASE_STORE_PASSWORD" ] || [ -z "$RELEASE_KEY_ALIAS" ] || [ -z "$RELEASE_KEY_PASSWORD" ]; then
+            echo "Release key secrets not set; skipping the signed release APK."
+            exit 0
+          fi
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          export RELEASE_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          flutter build apk --release $DART_DEFINES
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          echo "Release APK is signed with:"
+          "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk | grep -E "SHA-1|SHA-256"
+          rm -f "$RUNNER_TEMP/release.jks"
+          echo "RELEASE_BUILT=true" >> "$GITHUB_ENV"
+      - name: Upload the signed release APK
+        if: env.RELEASE_BUILT == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: akshaya-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
 
   rules-tests:
     # Firestore security rules, run against the local emulator (no Firebase

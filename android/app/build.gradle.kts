@@ -33,6 +33,17 @@ android {
     }
 
     signingConfigs {
+        // The release key lives outside the repository: CI restores it from a
+        // secret and points these variables at it.
+        create("release") {
+            val path = System.getenv("RELEASE_KEYSTORE_PATH")
+            if (path != null) {
+                storeFile = file(path)
+                storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
         // Always sign debug builds with ~/.android/debug.keystore (CI restores
         // or caches one there), so the SHA-1 registered in Firebase stays valid.
         getByName("debug") {
@@ -48,9 +59,14 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Signed with the release key when CI (or you) provides it through
+            // RELEASE_KEYSTORE_PATH and friends; otherwise falls back to the
+            // debug key so `flutter run --release` still works.
+            signingConfig = if (System.getenv("RELEASE_KEYSTORE_PATH") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
