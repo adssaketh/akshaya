@@ -16,7 +16,7 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 7 Recipe suggestions | Done. CI green, checked on device. |
 | 8 Dashboard, insights, backup/export, settings and usage | Done. CI green. |
 | 9 Leftovers, cooked food, homemade items | Done. CI green. |
-| 10 Inventory reconciliation (count mode) | Built; waiting for CI and your device check. |
+| 10 Inventory reconciliation (count mode) | Built. CI green (analyzer, tests, rules, APK); waiting for your device check. |
 
 ## Phase 2: what is built
 
@@ -636,7 +636,7 @@ Item type is now Stocked (default) / Cooked / Homemade.
 - The Settings scroll fix was found by reading the code, not by profiling on a device (see above).
 - Written without a local Flutter SDK: CI is the compiler; if it is red, fix first.
 
-## Phase 10: Inventory reconciliation, Count mode (built; waiting for CI and device check)
+## Phase 10: Inventory reconciliation, Count mode (built, CI green; waiting for device check)
 
 **Decisions (asked first):** a surplus found on the shelf becomes a new batch; count progress is a local session; spec extended to add a `set_stock` voice intent and the `adjustment` log type.
 
