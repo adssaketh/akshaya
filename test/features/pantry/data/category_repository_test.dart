@@ -38,11 +38,11 @@ void main() {
 
   test('refuses an empty or duplicate name', () async {
     await expectLater(
-      repo.addCategory(name: '  ', iconKey: 'other'),
+      () async => repo.addCategory(name: '  ', iconKey: 'other'),
       throwsA(isA<InvalidInputFailure>()),
     );
     await expectLater(
-      repo.addCategory(name: 'dairy', iconKey: 'dairy'),
+      () async => repo.addCategory(name: 'dairy', iconKey: 'dairy'),
       throwsA(isA<InvalidInputFailure>()),
     );
   });
