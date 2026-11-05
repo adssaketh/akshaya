@@ -82,7 +82,6 @@ class SettingsScreen extends ConsumerWidget {
       child: ListView.builder(
         physics: const ClampingScrollPhysics(),
         addAutomaticKeepAlives: false,
-        cacheExtent: 800,
         itemCount: sections.length + 1,
         itemBuilder: (BuildContext context, int index) {
           if (index == 0) {
