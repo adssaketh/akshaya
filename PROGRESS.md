@@ -671,7 +671,7 @@ Item type is now Stocked (default) / Cooked / Homemade.
 - The reminder fires only on the chosen day and only when the Daily alert is on.
 - Written without a local Flutter SDK: CI is the compiler; if it is red, fix first.
 
-## Phase 11: Consumption forecasting and "What should I buy?" (built; waiting for CI and device check)
+## Phase 11: Consumption forecasting and "What should I buy?" (built, CI green; waiting for device check)
 
 All on-device, no AI. Schema v8 adds nullable `shopping_entries.repeat_every_days` (synced, optional; older builds ignore it and read the nearest built-in repeat).
 
