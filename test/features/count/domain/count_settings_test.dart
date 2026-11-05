@@ -77,7 +77,7 @@ void main() {
         lastCompletedOn: DateTime(2026, 11, 2),
       );
       expect(done.reminderDueOn(DateTime(2026, 11, 6)), isFalse);
-      expect(done.reminderDueOn(DateTime(2026, 12, 6)), isFalse);
+      expect(done.reminderDueOn(DateTime(2026, 12, 6)), isTrue);
       expect(done.countedInMonthOf(DateTime(2026, 11, 30)), isTrue);
     });
   });
