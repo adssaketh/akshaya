@@ -597,13 +597,13 @@ Fix:
 Files: `lib/app.dart`, `lib/features/lock/app_lock.dart`, `lib/features/alerts/presentation/{providers,alerts_section}.dart`, `lib/features/settings/domain/app_settings.dart`, `lib/features/ai/domain/ai_settings.dart`, `lib/features/sync/domain/sync_settings.dart`.
 If Settings still stutters on your phone, the next suspects are the long monolithic sections (each is one `Column`, built whole when it scrolls into view) and first-draw cost of the variable fonts; tell me and I will profile or split the sections into lazily built tiles.
 
-## Phase 9: Leftovers, cooked food and homemade items (built, CI pending)
+## Phase 9: Leftovers, cooked food and homemade items (built, CI green: analyzer, tests, rules, APK)
 
 Item type is now Stocked (default) / Cooked / Homemade.
 
 **Decisions (asked first):** kind and shelf life are columns on existing tables (no new tables); one new unit `portion` (counts servings of cooked food, converts to nothing).
 
-**Schema v7** (`m.addColumn`, all nullable, old rows read as Stocked): `items.kind`, `items.shelf_life_days`, `stock_batches.container_label`, `stock_batches.check_by`. All four are synced columns, optional, so documents from older apps still load. `firestore.rules` is unchanged (extra fields are accepted): no redeploy needed.
+**Schema v7** (idempotent `ALTER TABLE ADD COLUMN`, all nullable, old rows read as Stocked): `items.kind`, `items.shelf_life_days`, `stock_batches.container_label`, `stock_batches.check_by`. All four are synced columns, optional, so documents from older apps still load. `firestore.rules` is unchanged (extra fields are accepted): no redeploy needed.
 
 **Built**
 - Shelf life defaults (`ShelfLife`): cooked fridge 2 / freezer 30 / pantry 1 / other 1 days; homemade fridge 30 / freezer 180 / pantry 90 / other 30. A per-item override ("Keeps for") applies to the place the item is usually kept; other places use the default. Use-by is filled in at save when left empty, counted from the cooked/made date.
