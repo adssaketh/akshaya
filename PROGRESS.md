@@ -12,7 +12,7 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 3 Barcode scanning + Open Food Facts | Done. CI green, APK installed and checked on device. |
 | 4 Local notifications and background checks | Done. CI green, APK installed and checklist passed. |
 | 5 Multilingual input (offline parser, then Gemini with daily cap) | Done. CI green after fix rounds, APK installed and checklist passed. |
-| 6 Firebase auth, household sharing, sync, security rules | Built, not yet compiled (CI is the first compile). Device checklist pending. |
+| 6 Firebase auth, household sharing, sync, security rules | Done. CI green (incl. rules tests), Google sign-in, create/join by code and QR, two-way sync checked on two devices. |
 | 7 to 8 | Not started |
 
 ## Phase 2: what is built
@@ -437,12 +437,13 @@ Set up first: `docs/FIREBASE_SETUP.md` (Google + Email providers, Firestore, rul
 
 ## Known issues (Phase 6)
 
-- Not compiled or run locally (no Flutter SDK in my sandbox). Google sign-in uses Firebase's own provider flow (`signInWithProvider`), not the Android Credential Manager (it rejected the build with `[16] Account reauth failed`). Firebase package APIs are written from memory; if CI complains, send me the errors. Versions are `^` lower bounds; send the resolved versions to pin.
+- Google sign-in uses Firebase's own provider flow (`signInWithProvider`), not the Android Credential Manager (it rejected the build with `[16] Account reauth failed`). Firebase package APIs are written from memory; if CI complains, send me the errors. Versions are `^` lower bounds; send the resolved versions to pin.
 - Two simultaneous alert sources: if two collections deliver at once, a change in the older one can be treated as already seen and skip its alert (sync itself is unaffected).
 - The background check cannot tell a new document from an edited one, so another member's edit to an entry can read as "added".
 - A member removed while offline learns about it on the next connection.
 - Usage numbers are an estimate of this phone only (other members' usage counts against the same project quota).
-- Rules tests were written but not run here; the CI `rules-tests` job is their first run.
+- Firestore setup lessons: create the database (Standard edition, `(default)`, production mode) and publish `firestore.rules` before first use; add every Google account you test with as a Test user (or publish the consent screen); the debug APK is signed with the cached CI keystore (SHA-1 D6:15:75:44:…:BE registered in Firebase).
+- The six composite indexes (`firestore.indexes.json`) are only for the daily purge of 30-day-old deletes; deploy them when you want that clean-up to work.
 
 ## Next: Phase 7 (recipe suggestions)
 

@@ -65,7 +65,8 @@ AccountFailure accountFailureOf(Object error) {
       );
     case SyncErrorKind.denied:
       return const AccountFailure(
-        'That was refused. The invite code may be wrong or replaced.',
+        'The cloud refused that. Check the invite code if you are joining; '
+        'otherwise the household rules may not be published yet.',
       );
     case SyncErrorKind.signedOut:
       return const AccountFailure('Please sign in again.');
