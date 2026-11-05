@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release builds strip resources that no code references by name. The
+     long-press shortcut icons are looked up by name at run time
+     (quick_actions), so they must be kept or the shortcuts show blank. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_shortcut_voice,@drawable/ic_shortcut_scan,@drawable/ic_shortcut_shopping" />

@@ -22,6 +22,7 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 13 Food rescue, waste cost, actionable notifications | Done. CI green, checked on device. |
 | 14 Home screen widgets, app shortcuts, travel mode | Built in 1.0.1. CI green (analyzer, tests, rules, signed APK); waiting for your device check. Needs a Firestore rules + indexes redeploy (trips). |
 | In-app user guide with search (1.0.3) | Built. Waiting for CI and your device check. No schema change, no new packages, no rules redeploy. |
+| Shortcut icons and smaller APK (1.0.4) | Built. Waiting for CI and your device check. Build config only. |
 
 ## Phase 2: what is built
 
@@ -850,6 +851,33 @@ Version rule: 1.0.0 was the first signed build. Every change or patch bumps the 
 - Settings builds its sections lazily, each in its own repaint layer (scroll lag).
 - Release signing: `android/app/build.gradle.kts` signs `release` with the key from `RELEASE_KEYSTORE_PATH` and friends, else the debug key. CI restores the key from the secrets `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD` and uploads `akshayapatra-release.apk` (artifact `akshaya-release-apk`). The keystore (a PKCS12 `.p12`) is only on your devices and in GitHub secrets: back it up.
 - 3D launcher icon and in-app logo (`tool/generate_launcher_icons.py` renders the shaded SVG with rsvg-convert; the logo widget uses gradients from the tokens).
+
+### 1.0.4: shortcut icons and APK size
+
+#### What changed
+- **Long-press shortcut icons were blank** (Voice add, Scan barcode, Shopping list). The icons are looked up by name at run time (`quick_actions`), so release builds treated them as unused and stripped them. `android/app/src/main/res/raw/keep.xml` now keeps the three `ic_shortcut_*` drawables.
+- **APK size.** The workflow built a *debug* APK for all three CPU types (arm64, armv7, x86_64) with the slow, unoptimised debug engine, which is why it was far larger than a store app. Both the debug and the signed release builds now use `--target-platform android-arm64` (every phone from about 2017 on). Expect the debug APK to drop by roughly two thirds. The signed release APK (`akshayapatra-release.apk`) is the small one to install day to day: it is optimised and has unused code and resources removed.
+- Version 1.0.4+5.
+
+#### Files
+```
+pubspec.yaml                                     1.0.4+5
+android/app/src/main/res/raw/keep.xml            keeps the shortcut icons in release builds
+.github/workflows/android.yml                    --target-platform android-arm64 for debug and release
+```
+
+#### Key decisions
+- arm64 only. A 32-bit (armv7) phone cannot install these APKs. If you ever need one, remove the flag, or build with `--split-per-abi`.
+- Not done: `mobile_scanner` could use Google's downloadable barcode model (`dev.steenbakker.mobile_scanner.useUnbundled=true`) to save about 2 to 3 MB, but the first scan would then need internet and Play services. Say if you want it.
+
+#### Test checklist (you)
+1. Install the new APK. Long-press the app icon: Voice add, Scan barcode and Shopping list each show a terracotta icon. (If an old install still shows blanks, open the app once, or uninstall and reinstall: Android caches shortcut icons.)
+2. Each shortcut still opens the right screen.
+3. In the Actions run, compare the size of `akshaya-debug-apk` with the previous one, and use `akshaya-release-apk` for daily use.
+
+#### Known issues
+- Written without a Flutter SDK here, so CI is the compiler.
+- The blank-icon cause is deduced from how release builds work. If you were on the debug APK and icons are still blank after this, tell me the launcher (for example One UI) and I will switch the icons to PNG.
 
 ### 1.0.3: In-app user guide
 
