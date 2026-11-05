@@ -90,12 +90,19 @@ class FirebaseAuthGateway implements AuthGateway {
       final UserCredential result = await auth.signInWithCredential(credential);
       return _require(result.user);
     } on GoogleSignInException catch (error) {
+      // Android reports a rejected app key (wrong SHA-1, client not ready yet)
+      // as "cancelled" too, so the message covers both.
+      final String detail = error.description ?? error.code.name;
       if (error.code == GoogleSignInExceptionCode.canceled) {
-        throw const AccountFailure('Sign-in was cancelled.');
+        throw AccountFailure(
+          'Google sign-in was cancelled or not accepted ($detail). If you did '
+          'not cancel it, check that this build\'s SHA-1 is registered in '
+          'Firebase and that a Google account is on this phone.',
+        );
       }
-      throw const AccountFailure(
-        'Google sign-in did not work. Check that this build\'s SHA-1 key is '
-        'added to the Firebase project, or use email and password.',
+      throw AccountFailure(
+        'Google sign-in did not work ($detail). Check that this build\'s '
+        'SHA-1 key is added to the Firebase project, or use email and password.',
       );
     } on FirebaseAuthException catch (error) {
       throw _authFailure(error);
