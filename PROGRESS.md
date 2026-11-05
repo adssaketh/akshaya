@@ -16,7 +16,9 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 7 Recipe suggestions | Done. CI green, checked on device. |
 | 8 Dashboard, insights, backup/export, settings and usage | Done. CI green. |
 | 9 Leftovers, cooked food, homemade items | Done. CI green. |
-| 10 Inventory reconciliation (count mode) | Built. CI green (analyzer, tests, rules, APK); waiting for your device check. |
+| 10 Inventory reconciliation (count mode) | Done. CI green, checked on device. |
+| 11 Consumption forecasting, "What should I buy?" | Done. CI green, checked on device. |
+| 12 Weekly meal planner and prep reminders | Built on branch `phase-12`. CI green (analyzer, tests, rules, APK); waiting for your device check. |
 
 ## Phase 2: what is built
 
@@ -702,7 +704,46 @@ All on-device, no AI. Schema v8 adds nullable `shopping_entries.repeat_every_day
 - Older builds in a household read only the nearest built-in repeat of a custom interval.
 - Count-mode surplus batches are excluded from purchase habits.
 
-## Next: Phase 12 (v2 roadmap), only when you say so.
+## Phase 12: Weekly meal planner and prep reminders (built, CI green; waiting for device check)
+
+Schema v9 adds one synced table, `meal_plan_entries` (Firestore collection `mealPlan`). **Redeploy rules and indexes before using it with a household:** `firebase deploy --only firestore:rules,firestore:indexes` (still Spark, no billing). Without it, meal plan sync is rejected (local use is unaffected).
+
+### Files
+- New `lib/features/planner/`:
+  - `domain/`: `meal_slot.dart`, `meal_plan_models.dart`, `meal_plan_repository.dart`, `prep_rules.dart`, `prep_schedule.dart`, `meal_shopping.dart`, `plan_prompt.dart`, `plan_validator.dart`, `ai_plan_service.dart`.
+  - `data/`: `database/planner_tables.dart`, `drift_meal_plan_repository.dart`, `firebase_plan_backend.dart`.
+  - `presentation/`: `providers.dart`, `meal_planner_screen.dart`, `slot_picker_sheet.dart`, `prep_reminders_sheet.dart`, `plan_week_sheet.dart`, `meal_actions.dart`.
+- New `assets/prompts/plan_week.txt`.
+- Changed: `app_database.dart` (v9 + migration), `sync_triggers.dart`, `sync_schema.dart`, `sync_store.dart`, `backup_service.dart`, `firestore.rules`, `firestore.indexes.json` (8th index), `docs/FIREBASE_SETUP.md`, `firebase/test/firestore.rules.test.js`, `recipe_validator.dart` / `recipe_prompt.dart` (public helpers reused), alerts (`alert_plan.dart` `AlertTarget.mealPlan` + `prep` channel, `alert_scheduler.dart`, `alert_worker.dart`, `local_notification_gateway.dart`, `alerts/presentation/providers.dart`), `app_shell.dart` (opens planner from a prep notification), `recipes_screen.dart` (calendar button in the header).
+- Tests: `test/features/planner/**`, plus additions to `sync_documents_test.dart`.
+
+### Key decisions
+- One meal per slot (Breakfast / Lunch / Dinner / Snack). A meal is a recipe (stored whole as JSON, so it survives the saved recipe or ideas going away), a leftover pantry item, or free text.
+- Prep reminders live on the meal (`prep_json`), suggested on-device by `PrepRules` when a recipe is assigned (soak beans, batter dishes with urad, thaw, marinate, ferment, overnight) and fully editable. The AI only supplies prep inside "Plan my week"; rules are the fallback.
+- "Plan my week": one AI call, up to 21 empty slots, full recipes returned once and referenced by id. Same gate as other AI features: on/off, privacy notice, shared daily cap (every attempt counts), cooldown, retries. Only empty slots are filled; diet and avoid list are enforced again on-device. Undo removes what it added.
+- Prep notifications use their own channel, ids 6000+, scheduled for the next 7 days and refreshed with the other alerts (app open, plan change, 6-hourly background). They work while daily alerts are off.
+- "Generate shopping list" totals the shown week's uncooked recipe meals from today, subtracts current stock, skips items already unchecked on the list, adds the rest as "recipe".
+- Cooking a meal reuses the "I cooked this" sheet, executor and Undo. A leftover meal takes 1 portion; free text just toggles done.
+
+### Test checklist (you)
+1. Recipes tab -> calendar icon -> Meal plan opens on this week. Tap a slot: type "Pesarattu", then use a chip (Outside). Both appear; Undo works.
+2. Pick a saved recipe or a recent idea. Open it; with Rajma or idli batter it shows the bell icon and suggested prep reminders. Edit text, day and time; save.
+3. Wait for (or set a time a few minutes ahead for) a reminder: notification "Soak ..." arrives; tapping it opens the planner. Also works with daily alerts turned off.
+4. Plan my week: pick days and meals, confirm the notice, wait. Empty slots fill with recipes; existing meals untouched; Undo clears them. With AI off or the cap reached you get a clear message and nothing changes.
+5. Generate shopping list: only missing/short items land on your list; pressing again adds nothing new.
+6. "I cooked this" on a recipe meal: cook sheet shows, ingredients deducted, meal ticked, Undo restores both. Leftover meal takes 1 portion.
+7. Replace and Remove a meal (with Undo); Clear this week; switch weeks with the arrows.
+8. Two devices in one household (after redeploying rules/indexes): a meal added on one appears on the other.
+9. Upgrade over an existing install: data intact. Export a backup and import it: meals come back.
+
+### Known issues
+- Prep reminders belong to the planned meal, not to the saved recipe, so a recipe planned again gets suggestions again.
+- Home is not linked to the planner yet.
+- Meal plan sync needs the redeploy above; older app versions in a household ignore the new collection.
+- Prep reminders are scheduled only 7 days ahead and re-planned on each refresh.
+- Plan my week needs the network and AI quota; the offline path is picking meals by hand.
+
+## Next: Phase 13 (v2 roadmap), only when you say so.
 
 ## Phase 0: what was built (unchanged)
 
