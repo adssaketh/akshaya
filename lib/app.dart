@@ -15,6 +15,7 @@ import 'features/settings/domain/app_settings.dart';
 import 'features/settings/presentation/providers.dart';
 import 'features/shell/app_shell.dart';
 import 'features/sync/presentation/providers.dart';
+import 'features/travel/presentation/back_home_coordinator.dart';
 
 class AkshayaApp extends ConsumerStatefulWidget {
   const AkshayaApp({super.key});
@@ -53,6 +54,8 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
     ref.read(alertCoordinatorProvider);
     // Starts household sync once someone is signed in to a household.
     ref.read(syncCoordinatorProvider);
+    // Adds each trip's back-home essentials to the shopping list when due.
+    ref.read(backHomeCoordinatorProvider);
     _lifecycle = AppLifecycleListener(
       onPause: () {
         // Live listeners cost reads; they stop while the app is hidden.

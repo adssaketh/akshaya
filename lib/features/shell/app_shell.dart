@@ -90,7 +90,12 @@ class _AppShellState extends ConsumerState<AppShell> {
       case AlertTarget.recipes:
         setState(() => _index = _recipesTab);
       case AlertTarget.trip:
-        unawaited(openTravelMode(context));
+        unawaited(
+          openTravelMode(
+            context,
+            onShowRecipes: () => setState(() => _index = _recipesTab),
+          ),
+        );
     }
     ref.read(alertTargetProvider.notifier).clear();
   }

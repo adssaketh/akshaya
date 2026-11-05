@@ -16,6 +16,8 @@ import '../../pantry/presentation/providers.dart';
 import '../../shopping/presentation/providers.dart';
 import '../../pantry/domain/entities.dart';
 import '../../rescue/presentation/food_rescue_section.dart';
+import '../../travel/presentation/travel_screen.dart';
+import '../../travel/presentation/trip_banner.dart';
 
 /// How many "use these first" items the dashboard listed before Food rescue
 /// replaced that list.
@@ -194,6 +196,7 @@ class _Content extends ConsumerWidget {
         const SizedBox(height: AppSpacing.lg),
         _QuickActions(onShowShopping: onShowShopping),
         const SizedBox(height: AppSpacing.lg),
+        TripBanner(onShowRecipes: onShowRecipes),
         if (stocks.isEmpty)
           EmptyState(
             icon: Icons.inventory_2_outlined,
@@ -234,6 +237,12 @@ class _Content extends ConsumerWidget {
           onPressed: () => openWhatToBuy(context),
           icon: const Icon(Icons.auto_graph_rounded),
           label: const Text('What should I buy?'),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        OutlinedButton.icon(
+          onPressed: () => openTravelMode(context, onShowRecipes: onShowRecipes),
+          icon: const Icon(Icons.luggage_rounded),
+          label: const Text('Travel mode'),
         ),
         const SizedBox(height: AppSpacing.sm),
         OutlinedButton.icon(

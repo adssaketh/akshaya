@@ -11,6 +11,7 @@ import '../backup/presentation/backup_section.dart';
 import '../count/presentation/count_section.dart';
 import '../pantry/presentation/providers.dart';
 import '../rescue/presentation/freeze_rules_screen.dart';
+import '../travel/presentation/travel_screen.dart';
 import 'presentation/general_section.dart';
 import '../sync/presentation/sync_section.dart';
 
@@ -36,6 +37,12 @@ class SettingsScreen extends ConsumerWidget {
                 builder: (BuildContext _) => const FreezeRulesScreen(),
               ),
             ),
+          ),
+      (BuildContext context) => ListTile(
+            leading: const Icon(Icons.luggage_rounded),
+            title: const Text('Travel mode'),
+            subtitle: const Text('Trips, paused alerts and the back-home list'),
+            onTap: () => openTravelMode(context),
           ),
       (BuildContext _) => const AiVoiceSection(),
       (BuildContext _) => const SyncSection(),
