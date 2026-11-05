@@ -5,7 +5,9 @@ import 'alert_digest.dart';
 import 'alert_plan.dart';
 import 'alert_schedule.dart';
 import 'alert_settings.dart';
+import 'alert_snoozes.dart';
 import 'notification_gateway.dart';
+import 'quiet_hours.dart';
 
 /// Works out the alerts for the next few days and hands them to the phone.
 ///
@@ -26,21 +28,37 @@ class AlertScheduler {
   /// month.
   ///
   /// [prep] are the meal planner's prep reminders, each due at its own time.
-  /// They are scheduled whether or not the daily alert is on.
+  /// They are scheduled whether or not the daily alert is on, unless the
+  /// settings switch prep reminders off.
+  ///
+  /// Anything due inside the quiet hours moves to the moment they end, and
+  /// items in [snoozes] are left out of the alert of the days they are
+  /// snoozed.
   Future<List<ScheduledAlert>> refresh({
     required AlertSettings settings,
     required List<ItemWithBatches> items,
     required List<ShoppingEntry> entries,
     CountSettings counts = const CountSettings(),
     List<ScheduledAlert> prep = const <ScheduledAlert>[],
+    AlertSnoozes snoozes = const AlertSnoozes(),
   }) async {
+    final List<ScheduledAlert> prepAlerts = settings.prep
+        ? <ScheduledAlert>[
+            for (final ScheduledAlert alert in prep)
+              ScheduledAlert(
+                fireAt: QuietHours.shift(alert.fireAt, settings),
+                notifications: alert.notifications,
+              ),
+          ]
+        : const <ScheduledAlert>[];
+
     if (!settings.enabled) {
-      if (prep.isEmpty) {
+      if (prepAlerts.isEmpty) {
         await _gateway.cancelScheduled();
         return const <ScheduledAlert>[];
       }
-      await _gateway.replaceScheduled(prep);
-      return prep;
+      await _gateway.replaceScheduled(prepAlerts);
+      return prepAlerts;
     }
 
     final DateTime first = AlertSchedule.nextFire(
@@ -51,23 +69,27 @@ class AlertScheduler {
 
     final List<ScheduledAlert> alerts = <ScheduledAlert>[];
     for (int day = 0; day < times.length; day++) {
+      // The alert shows when the quiet hours end, so it is about that day.
+      final DateTime fireAt = QuietHours.shift(times[day], settings);
+      final DateTime date = AlertSchedule.dateOf(fireAt);
       final AlertDigest digest = AlertDigestBuilder.build(
         items: items,
         entries: entries,
-        today: AlertSchedule.dateOf(times[day]),
+        today: date,
         settings: settings,
+        snoozes: snoozes,
       );
       final List<AlertNotification> plan = <AlertNotification>[
         ...AlertPlanner.plan(digest, dayOffset: day),
-        if (counts.reminderDueOn(AlertSchedule.dateOf(times[day])))
+        if (counts.reminderDueOn(date))
           AlertPlanner.countReminder(dayOffset: day),
       ];
       if (plan.isNotEmpty) {
-        alerts.add(ScheduledAlert(fireAt: times[day], notifications: plan));
+        alerts.add(ScheduledAlert(fireAt: fireAt, notifications: plan));
       }
     }
 
-    final List<ScheduledAlert> all = <ScheduledAlert>[...alerts, ...prep];
+    final List<ScheduledAlert> all = <ScheduledAlert>[...alerts, ...prepAlerts];
     await _gateway.replaceScheduled(all);
     return all;
   }
@@ -78,12 +100,14 @@ class AlertScheduler {
     required AlertSettings settings,
     required List<ItemWithBatches> items,
     required List<ShoppingEntry> entries,
+    AlertSnoozes snoozes = const AlertSnoozes(),
   }) async {
     final AlertDigest digest = AlertDigestBuilder.build(
       items: items,
       entries: entries,
       today: AlertSchedule.dateOf(_gateway.nowInAlertZone()),
       settings: settings,
+      snoozes: snoozes,
     );
     final List<AlertNotification> plan = AlertPlanner.plan(
       digest,

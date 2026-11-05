@@ -1,3 +1,4 @@
+import 'alert_action.dart';
 import 'alert_plan.dart';
 
 /// Alerts due at one moment.
@@ -7,6 +8,18 @@ final class ScheduledAlert {
   /// Wall-clock time in the alert time zone (see `AlertSchedule`).
   final DateTime fireAt;
   final List<AlertNotification> notifications;
+}
+
+/// A tap on a notification button that does its work without opening the app,
+/// handed to the running app so it can do that work on its own data.
+final class AlertActionRequest {
+  const AlertActionRequest(this.action, this.payload);
+
+  final AlertAction action;
+
+  /// What the notification carried: the group it listed and, for an alert
+  /// about one item, that item.
+  final AlertPayload payload;
 }
 
 /// What the alert logic needs from the phone's notification system. The real
@@ -40,6 +53,11 @@ abstract interface class NotificationGateway {
 
   /// Alerts the person taps while the app is running.
   Stream<AlertTarget> get taps;
+
+  /// Buttons the person taps while the app is running that work without
+  /// opening it (Used it, Add to list, Snooze). When the app is not running
+  /// the phone does the work in a background task instead.
+  Stream<AlertActionRequest> get actionRequests;
 
   /// The alert that started the app, once; null when the app was started any
   /// other way.

@@ -86,6 +86,8 @@ class _AppShellState extends ConsumerState<AppShell> {
         unawaited(openCountMode(context));
       case AlertTarget.mealPlan:
         unawaited(openMealPlanner(context));
+      case AlertTarget.recipes:
+        setState(() => _index = _recipesTab);
     }
     ref.read(alertTargetProvider.notifier).clear();
   }

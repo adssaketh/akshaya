@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../ai/data/firebase_runtime.dart';
 import '../../alerts/domain/alert_plan.dart';
+import '../../alerts/domain/alert_settings.dart';
 import '../../alerts/domain/notification_gateway.dart';
 import '../../pantry/data/database/app_database.dart';
 import '../../settings/data/drift_settings_repository.dart';
@@ -46,6 +47,10 @@ Future<int> checkHouseholdChanges(
   final Map<String, String> settings =
       await DriftSettingsRepository(db).readAll();
   if (!SyncSettings.fromMap(settings).enabled) {
+    return 0;
+  }
+  final AlertSettings alertSettings = AlertSettings.fromMap(settings);
+  if (!alertSettings.household) {
     return 0;
   }
   final int alerted = await store.cursor(SyncStore.alertKey);
@@ -110,7 +115,14 @@ Future<int> checkHouseholdChanges(
     ];
     if (alerts.isNotEmpty) {
       await gateway.initialize();
-      await gateway.showNow(alerts);
+      final DateTime now = gateway.nowInAlertZone();
+      final bool quiet = alertSettings.quietEnabled &&
+          alertSettings.isQuiet(now.hour * 60 + now.minute);
+      // In quiet hours the cursor still moves: those changes are not alerted
+      // later, they are simply there when the app opens.
+      if (!quiet) {
+        await gateway.showNow(alerts);
+      }
     }
     await store.advanceCursor(SyncStore.alertKey, newest);
     return alerts.length;

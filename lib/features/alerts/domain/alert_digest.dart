@@ -5,6 +5,7 @@ import '../../pantry/domain/stock_logic.dart';
 import '../../shopping/domain/shopping_entities.dart';
 import '../../shopping/domain/shopping_suggestions.dart';
 import 'alert_settings.dart';
+import 'alert_snoozes.dart';
 
 /// What the daily alert is about on one calendar day. Pure data: the same
 /// rules as the Pantry statuses and the Shopping suggestions, so the alert
@@ -48,11 +49,15 @@ abstract final class AlertDigestBuilder {
   /// way the Pantry list shows them). Low stock leaves out items that are
   /// already on a shopping list, and items whose stock is all past its date
   /// (those are in [AlertDigest.expired]).
+  ///
+  /// Items in [snoozes] are left out of every list. The settings can switch
+  /// off the expired, expiring and low-stock parts one by one.
   static AlertDigest build({
     required List<ItemWithBatches> items,
     required List<ShoppingEntry> entries,
     required DateTime today,
     required AlertSettings settings,
+    AlertSnoozes snoozes = const AlertSnoozes(),
   }) {
     final List<ItemStock> stocks = <ItemStock>[
       for (final ItemWithBatches record in items)
@@ -67,6 +72,9 @@ abstract final class AlertDigestBuilder {
     final List<ItemStock> expiringToday = <ItemStock>[];
     final List<ItemStock> expiringSoon = <ItemStock>[];
     for (final ItemStock stock in stocks) {
+      if (snoozes.hides(stock.item.id, today)) {
+        continue;
+      }
       switch (stock.status) {
         case StatusKind.expired:
           expired.add(stock);
@@ -93,14 +101,16 @@ abstract final class AlertDigestBuilder {
               entries: entries,
               today: today,
             ))
-              if (s.reason != SuggestionReason.expired) s,
+              if (s.reason != SuggestionReason.expired &&
+                  !snoozes.hides(s.item.id, today))
+                s,
           ]
         : const <ShoppingSuggestion>[];
 
     return AlertDigest(
-      expired: expired,
-      expiringToday: expiringToday,
-      expiringSoon: expiringSoon,
+      expired: settings.expired ? expired : const <ItemStock>[],
+      expiringToday: settings.expiring ? expiringToday : const <ItemStock>[],
+      expiringSoon: settings.expiring ? expiringSoon : const <ItemStock>[],
       lowStock: lowStock,
       warningDays: settings.warningDays,
     );

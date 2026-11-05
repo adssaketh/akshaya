@@ -13,6 +13,8 @@ import '../domain/entities.dart';
 import '../domain/item_kind.dart';
 import '../domain/pantry_repository.dart';
 import '../domain/stock_logic.dart';
+import '../domain/waste_reason.dart';
+import '../../rescue/presentation/waste_reason_sheet.dart';
 import 'pantry_actions.dart';
 import 'pantry_icons.dart';
 import 'providers.dart';
@@ -310,9 +312,24 @@ class _BatchCard extends ConsumerWidget {
           final ConsumptionType type = action == _BatchAction.wasted
               ? ConsumptionType.wasted
               : ConsumptionType.expired;
+          WasteReason? reason;
+          if (type == ConsumptionType.wasted) {
+            // Why it was thrown away feeds the waste report.
+            final StockBatch current = batch;
+            final DateTime? date = current.effectiveExpiry;
+            reason = await showWasteReasonSheet(
+              context,
+              itemName: item.name,
+              expired: date != null && date.isBefore(ref.read(todayProvider)),
+            );
+            if (reason == null) {
+              return;
+            }
+          }
           final UseResult result = await repo.discardBatch(
             batchId: batch.id,
             type: type,
+            wasteReason: reason,
           );
           showUndoSnackBar(
             messenger,

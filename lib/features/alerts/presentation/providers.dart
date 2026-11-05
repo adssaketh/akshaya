@@ -15,16 +15,23 @@ import '../../settings/presentation/providers.dart';
 import '../../shopping/domain/shopping_entities.dart';
 import '../../shopping/presentation/providers.dart';
 import '../data/local_notification_gateway.dart';
+import '../data/notification_background_handler.dart';
 import '../data/workmanager_background_work.dart';
 import '../domain/alert_plan.dart';
 import '../domain/alert_scheduler.dart';
 import '../domain/alert_settings.dart';
+import '../domain/alert_snoozes.dart';
 import '../domain/background_work.dart';
+import '../domain/notification_action_runner.dart';
 import '../domain/notification_gateway.dart';
 
 /// The phone's notification system. Tests override it with a fake.
 final Provider<NotificationGateway> notificationGatewayProvider =
-    Provider<NotificationGateway>((Ref ref) => LocalNotificationGateway());
+    Provider<NotificationGateway>(
+  (Ref ref) => LocalNotificationGateway(
+    backgroundHandler: akshayaNotificationBackgroundHandler,
+  ),
+);
 
 /// The periodic background check. Tests override it with a fake.
 final Provider<BackgroundWork> backgroundWorkProvider =
@@ -41,6 +48,14 @@ final Provider<AlertSettings> alertSettingsProvider =
   final Map<String, String> stored =
       ref.watch(settingsMapProvider).value ?? const <String, String>{};
   return AlertSettings.fromMap(stored);
+});
+
+/// Items whose alerts are snoozed (the "Snooze 1 day" button).
+final Provider<AlertSnoozes> alertSnoozesProvider =
+    Provider<AlertSnoozes>((Ref ref) {
+  final Map<String, String> stored =
+      ref.watch(settingsMapProvider).value ?? const <String, String>{};
+  return AlertSnoozes.fromMap(stored);
 });
 
 /// The alert setting for "expiring soon", for the pantry providers.
@@ -106,6 +121,7 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
           items: const <ItemWithBatches>[],
           entries: const <ShoppingEntry>[],
           prep: prep,
+          snoozes: AlertSnoozes.fromMap(stored),
         );
         if (prep.isEmpty) {
           await work.cancelAlertRefresh();
@@ -132,6 +148,7 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
         entries: entries,
         counts: counts,
         prep: prep,
+        snoozes: AlertSnoozes.fromMap(stored),
       );
       if (!workRegistered) {
         await work.ensureAlertRefreshRegistered();
@@ -167,6 +184,10 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
     shoppingEntriesProvider,
     (previous, next) => queue(),
   );
+  ref.listen<AlertSnoozes>(
+    alertSnoozesProvider,
+    (previous, next) => queue(),
+  );
   ref.listen<DateTime>(todayProvider, (previous, next) => queue());
   // Planning a meal, editing its prep reminders or cooking it changes which
   // reminders are due.
@@ -186,10 +207,37 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
         ref.read(alertTargetProvider.notifier).open(target),
   );
 
+  // Buttons on an alert ("Used it", "Add to list", "Snooze 1 day") tapped
+  // while the app is running: done here with the app's own repositories, so
+  // its screens update at once.
+  final StreamSubscription<AlertActionRequest> actions =
+      gateway.actionRequests.listen((AlertActionRequest request) {
+    unawaited(() async {
+      try {
+        final NotificationActionRunner runner = NotificationActionRunner(
+          pantry: ref.read(pantryRepositoryProvider),
+          shopping: ref.read(shoppingRepositoryProvider),
+          settings: ref.read(settingsRepositoryProvider),
+          clock: ref.read(clockProvider),
+        );
+        final ActionOutcome outcome = await runner.run(
+          request.action,
+          request.payload,
+        );
+        if (outcome.changed && !disposed) {
+          queue();
+        }
+      } on Object catch (error) {
+        debugPrint('Could not run the alert button: $error');
+      }
+    }());
+  });
+
   ref.onDispose(() {
     disposed = true;
     pause?.cancel();
     unawaited(taps.cancel());
+    unawaited(actions.cancel());
   });
 
   // An alert that started the app.

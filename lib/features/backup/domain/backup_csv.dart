@@ -78,7 +78,7 @@ abstract final class BackupCsv {
         (ConsumptionEntry a, ConsumptionEntry b) => a.date.compareTo(b.date),
       );
     final List<List<Object?>> rows = <List<Object?>>[
-      <Object?>['Date', 'Item', 'Quantity', 'Unit', 'Type'],
+      <Object?>['Date', 'Item', 'Quantity', 'Unit', 'Type', 'Reason'],
       for (final ConsumptionEntry e in sorted)
         <Object?>[
           _date(e.date),
@@ -86,6 +86,7 @@ abstract final class BackupCsv {
           roundQty(e.quantityUsed),
           e.unit.symbol,
           e.type.label,
+          e.wasteReason?.label,
         ],
     ];
     return Csv.encode(rows);

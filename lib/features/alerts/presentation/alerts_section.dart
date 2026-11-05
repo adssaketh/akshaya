@@ -82,14 +82,81 @@ class AlertsSection extends ConsumerWidget {
           ),
         ),
         SwitchListTile(
+          secondary: const Icon(Icons.event_busy_outlined),
+          title: const Text('Expired food'),
+          subtitle: const Text('Items that are past their date'),
+          value: settings.expired,
+          onChanged: settings.enabled
+              ? (bool value) => _save(ref, settings.copyWith(expired: value))
+              : null,
+        ),
+        SwitchListTile(
+          secondary: const Icon(Icons.hourglass_top_rounded),
+          title: const Text('Expiring soon'),
+          subtitle: const Text('Items that expire today or within the window'),
+          value: settings.expiring,
+          onChanged: settings.enabled
+              ? (bool value) => _save(ref, settings.copyWith(expiring: value))
+              : null,
+        ),
+        SwitchListTile(
           secondary: const Icon(Icons.shopping_basket_outlined),
-          title: const Text('Include low stock'),
+          title: const Text('Low stock'),
           subtitle: const Text('Items that ran out or are nearly out'),
           value: settings.lowStock,
           onChanged: settings.enabled
               ? (bool value) => _save(ref, settings.copyWith(lowStock: value))
               : null,
         ),
+        SwitchListTile(
+          secondary: const Icon(Icons.soup_kitchen_outlined),
+          title: const Text('Meal prep reminders'),
+          subtitle: const Text('Soak, thaw and other prep for planned meals'),
+          value: settings.prep,
+          onChanged: (bool value) =>
+              _save(ref, settings.copyWith(prep: value)),
+        ),
+        SwitchListTile(
+          secondary: const Icon(Icons.group_outlined),
+          title: const Text('Household changes'),
+          subtitle: const Text('When another member changes the shared lists'),
+          value: settings.household,
+          onChanged: (bool value) =>
+              _save(ref, settings.copyWith(household: value)),
+        ),
+        SwitchListTile(
+          secondary: const Icon(Icons.bedtime_outlined),
+          title: const Text('Quiet hours'),
+          subtitle: Text(
+            settings.quietEnabled
+                ? 'No alerts from ${settings.quietStartLabel} to '
+                    '${settings.quietEndLabel}; they wait until it ends'
+                : 'Hold alerts back overnight',
+          ),
+          value: settings.quietEnabled,
+          onChanged: (bool value) =>
+              _save(ref, settings.copyWith(quietEnabled: value)),
+        ),
+        if (settings.quietEnabled) ...<Widget>[
+          ListTile(
+            leading: const SizedBox(width: AppSizes.iconLg),
+            title: const Text('Quiet from'),
+            trailing: Text(
+              settings.quietStartLabel,
+              style: context.akText.titleMedium,
+            ),
+            onTap: () => _pickQuiet(context, ref, settings, start: true),
+          ),
+          ListTile(
+            leading: const SizedBox(width: AppSizes.iconLg),
+            title: const Text('Quiet until'),
+            trailing: Text(
+              settings.quietEndLabel,
+              style: context.akText.titleMedium,
+            ),
+            onTap: () => _pickQuiet(context, ref, settings, start: false),
+          ),
+        ],
         ListTile(
           leading: const Icon(Icons.visibility_outlined),
           title: const Text('Show today’s alert now'),
@@ -142,6 +209,29 @@ class AlertsSection extends ConsumerWidget {
       settings
           .copyWith(minutesOfDay: picked.hour * 60 + picked.minute)
           .toMap(),
+    );
+  }
+
+  Future<void> _pickQuiet(
+    BuildContext context,
+    WidgetRef ref,
+    AlertSettings settings, {
+    required bool start,
+  }) async {
+    final int current = start ? settings.quietStart : settings.quietEnd;
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: current ~/ 60, minute: current % 60),
+    );
+    if (picked == null) {
+      return;
+    }
+    final int minutes = picked.hour * 60 + picked.minute;
+    await _save(
+      ref,
+      start
+          ? settings.copyWith(quietStart: minutes)
+          : settings.copyWith(quietEnd: minutes),
     );
   }
 

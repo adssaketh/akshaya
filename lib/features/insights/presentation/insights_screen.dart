@@ -10,6 +10,7 @@ import '../../forecast/presentation/providers.dart';
 import '../../pantry/domain/entities.dart';
 import '../../pantry/presentation/providers.dart';
 import '../domain/insights.dart';
+import '../domain/waste_cost.dart';
 import 'providers.dart';
 
 const List<String> _monthNames = <String>[
@@ -51,6 +52,7 @@ class InsightsScreen extends ConsumerWidget {
         ref.watch(categoriesProvider).value ?? const <Category>[];
     final DateTime month = ref.watch(insightsMonthProvider);
     final Map<String, ItemForecast> forecasts = ref.watch(forecastsProvider);
+    final int warningDays = ref.watch(expiryWarningDaysProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Insights')),
@@ -85,12 +87,24 @@ class InsightsScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.lg),
               Reveal(
                 index: 3,
+                child: _SavedCard(
+                  saved: WasteCost.moneySaved(
+                    records: records,
+                    logs: logs,
+                    month: month,
+                    warningDays: warningDays,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Reveal(
+                index: 4,
                 child: _RunOutCard(
                   forecasts: ConsumptionForecast.runningOut(forecasts),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              Reveal(index: 4, child: _PriceCard(records: records)),
+              Reveal(index: 5, child: _PriceCard(records: records)),
             ],
           );
         },
@@ -380,6 +394,22 @@ class _WasteCard extends StatelessWidget {
             'Value is estimated from the prices you entered.',
           ),
           const SizedBox(height: AppSpacing.md),
+          Text('Why', style: text.titleSmall),
+          const SizedBox(height: AppSpacing.xs),
+          for (final ReasonWaste r in report.byReason)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+              child: Row(
+                children: <Widget>[
+                  Expanded(child: Text(r.reason.label)),
+                  Text(
+                    '${r.count}x · ${formatMoney(r.value)}',
+                    style: text.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: AppSpacing.md),
           Text('Most wasted', style: text.titleSmall),
           const SizedBox(height: AppSpacing.xs),
           for (final WastedItem w in report.topItems)
@@ -390,6 +420,63 @@ class _WasteCard extends StatelessWidget {
                   Expanded(child: Text(w.name)),
                   Text(
                     '${w.count}x · ${formatMoney(w.value)}',
+                    style: text.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Money saved
+// ---------------------------------------------------------------------------
+
+class _SavedCard extends StatelessWidget {
+  const _SavedCard({required this.saved});
+
+  final MoneySaved saved;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = context.akText;
+    if (saved.isEmpty) {
+      return _Card(
+        title: 'Money saved',
+        child: _Muted(
+          'Food you use while it is expiring soon counts here. Nothing yet in '
+          '${formatMonth(saved.month)}.',
+        ),
+      );
+    }
+    return _Card(
+      title: 'Money saved',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(formatMoney(saved.value), style: text.headlineMedium),
+          const SizedBox(height: AppSpacing.xs),
+          _Muted(
+            '${saved.uses} ${saved.uses == 1 ? 'use' : 'uses'} of '
+            '${saved.itemCount} ${saved.itemCount == 1 ? 'item' : 'items'} '
+            'in ${formatMonth(saved.month)}, used in time after they were '
+            'flagged as expiring. Value is estimated from the prices you '
+            'entered.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text('Biggest rescues', style: text.titleSmall),
+          const SizedBox(height: AppSpacing.xs),
+          for (final SavedItem item in saved.topItems)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+              child: Row(
+                children: <Widget>[
+                  Expanded(child: Text(item.name)),
+                  Text(
+                    '${item.uses}x · ${formatMoney(item.value)}',
                     style: text.bodyMedium,
                   ),
                 ],

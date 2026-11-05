@@ -1,5 +1,6 @@
 import '../../pantry/domain/consumption_type.dart';
 import '../../pantry/domain/entities.dart';
+import 'waste_cost.dart';
 
 /// First day of the month containing [day].
 DateTime monthOf(DateTime day) => DateTime(day.year, day.month);
@@ -63,6 +64,7 @@ final class WasteReport {
     required this.wastedCount,
     required this.expiredCount,
     required this.topItems,
+    this.byReason = const <ReasonWaste>[],
   });
 
   final DateTime month;
@@ -78,6 +80,10 @@ final class WasteReport {
   final int wastedCount;
   final int expiredCount;
   final List<WastedItem> topItems;
+
+  /// The same events split by why the food was thrown away, biggest loss
+  /// first.
+  final List<ReasonWaste> byReason;
 
   bool get isEmpty => entries == 0;
 }
@@ -225,6 +231,7 @@ abstract final class Insights {
       wastedCount: wasted,
       expiredCount: expired,
       topItems: top.take(5).toList(),
+      byReason: WasteCost.byReason(records, logs, month),
     );
   }
 

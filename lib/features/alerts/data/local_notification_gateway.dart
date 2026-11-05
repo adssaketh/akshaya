@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../domain/alert_action.dart';
 import '../domain/alert_plan.dart';
 import '../domain/notification_gateway.dart';
 
@@ -12,8 +13,16 @@ import '../domain/notification_gateway.dart';
 /// Alerts are scheduled with `inexactAllowWhileIdle`: no special permission is
 /// needed, and the system may deliver them a few minutes late.
 class LocalNotificationGateway implements NotificationGateway {
-  LocalNotificationGateway({FlutterLocalNotificationsPlugin? plugin})
-      : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+  /// [backgroundHandler] is the top-level function the phone runs when a
+  /// notification button that does not open the app is tapped while the app
+  /// is not running. Only the app's own gateway needs one: background tasks
+  /// that merely schedule alerts do not.
+  LocalNotificationGateway({
+    FlutterLocalNotificationsPlugin? plugin,
+    this.backgroundHandler,
+  }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+
+  final void Function(NotificationResponse response)? backgroundHandler;
 
   /// The time zone the daily time is read in.
   static const String zoneName = 'Asia/Kolkata';
@@ -30,6 +39,8 @@ class LocalNotificationGateway implements NotificationGateway {
   final FlutterLocalNotificationsPlugin _plugin;
   final StreamController<AlertTarget> _taps =
       StreamController<AlertTarget>.broadcast();
+  final StreamController<AlertActionRequest> _actions =
+      StreamController<AlertActionRequest>.broadcast();
   bool _initialized = false;
 
   static void _ensureZones() {
@@ -50,15 +61,34 @@ class LocalNotificationGateway implements NotificationGateway {
         android: AndroidInitializationSettings(_smallIcon),
       ),
       onDidReceiveNotificationResponse: _onTapped,
+      onDidReceiveBackgroundNotificationResponse: backgroundHandler,
     );
     _initialized = true;
   }
 
+  /// A tap on the notification or on one of its buttons while the app runs.
   void _onTapped(NotificationResponse response) {
-    final AlertTarget? target = AlertTarget.fromPayload(response.payload);
-    if (target != null) {
-      _taps.add(target);
+    final AlertAction? action = AlertAction.fromId(response.actionId);
+    final AlertPayload? payload = AlertPayload.parse(response.payload);
+    if (action == null) {
+      if (payload != null) {
+        _taps.add(payload.target);
+      }
+      return;
     }
+    if (action.opensApp) {
+      _taps.add(_targetOf(action, payload));
+    } else if (payload != null) {
+      _actions.add(AlertActionRequest(action, payload));
+    }
+  }
+
+  /// Where a button that opens the app leads.
+  static AlertTarget _targetOf(AlertAction action, AlertPayload? payload) {
+    if (action == AlertAction.showRecipes) {
+      return AlertTarget.recipes;
+    }
+    return payload?.target ?? AlertTarget.pantryExpiring;
   }
 
   @override
@@ -124,6 +154,15 @@ class LocalNotificationGateway implements NotificationGateway {
         category: AndroidNotificationCategory.reminder,
         timeoutAfter: _timeoutMillis,
         styleInformation: BigTextStyleInformation(alert.body),
+        actions: <AndroidNotificationAction>[
+          for (final AlertAction action in alert.actions)
+            AndroidNotificationAction(
+              action.id,
+              action.label,
+              showsUserInterface: action.opensApp,
+              cancelNotification: true,
+            ),
+        ],
       ),
     );
   }
@@ -151,7 +190,7 @@ class LocalNotificationGateway implements NotificationGateway {
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           title: alert.title,
           body: alert.body,
-          payload: alert.target.payload,
+          payload: alert.payload,
         );
       }
     }
@@ -172,13 +211,16 @@ class LocalNotificationGateway implements NotificationGateway {
         title: alert.title,
         body: alert.body,
         notificationDetails: _details(alert),
-        payload: alert.target.payload,
+        payload: alert.payload,
       );
     }
   }
 
   @override
   Stream<AlertTarget> get taps => _taps.stream;
+
+  @override
+  Stream<AlertActionRequest> get actionRequests => _actions.stream;
 
   @override
   Future<AlertTarget?> takeLaunchTarget() async {
@@ -188,6 +230,11 @@ class LocalNotificationGateway implements NotificationGateway {
     if (details == null || !details.didNotificationLaunchApp) {
       return null;
     }
-    return AlertTarget.fromPayload(details.notificationResponse?.payload);
+    final NotificationResponse? response = details.notificationResponse;
+    final AlertAction? action = AlertAction.fromId(response?.actionId);
+    if (action != null && action.opensApp) {
+      return _targetOf(action, AlertPayload.parse(response?.payload));
+    }
+    return AlertTarget.fromPayload(response?.payload);
   }
 }

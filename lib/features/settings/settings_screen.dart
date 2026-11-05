@@ -10,6 +10,7 @@ import '../commands/presentation/voice_mic_button.dart';
 import '../backup/presentation/backup_section.dart';
 import '../count/presentation/count_section.dart';
 import '../pantry/presentation/providers.dart';
+import '../rescue/presentation/freeze_rules_screen.dart';
 import 'presentation/general_section.dart';
 import '../sync/presentation/sync_section.dart';
 
@@ -29,6 +30,17 @@ class SettingsScreen extends ConsumerWidget {
           const AlertsSection(),
           const Divider(),
           const CountSection(),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.ac_unit_rounded),
+            title: const Text('Freezing rules'),
+            subtitle: const Text('How long frozen food keeps, by category'),
+            onTap: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (BuildContext _) => const FreezeRulesScreen(),
+              ),
+            ),
+          ),
           const Divider(),
           const AiVoiceSection(),
           const Divider(),

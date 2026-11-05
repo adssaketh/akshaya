@@ -8,6 +8,8 @@ import 'core/time/clock.dart';
 import 'core/util/money.dart';
 import 'features/alerts/presentation/providers.dart';
 import 'features/lock/app_lock.dart';
+import 'features/pantry/data/database/app_database.dart';
+import 'features/pantry/presentation/providers.dart' show appDatabaseProvider;
 import 'features/settings/domain/app_settings.dart';
 import 'features/settings/presentation/providers.dart';
 import 'features/shell/app_shell.dart';
@@ -47,6 +49,10 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
         ref.read(todayProvider.notifier).refresh();
         // Notifications may have been switched on or off in system settings.
         ref.invalidate(notificationsAllowedProvider);
+        // A notification button may have changed the pantry from a background
+        // task with its own database connection; re-run the watched queries.
+        final AppDatabase db = ref.read(appDatabaseProvider);
+        db.markTablesUpdated(db.allTables);
       },
     );
   }

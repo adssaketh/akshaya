@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:akshaya/features/alerts/domain/alert_action.dart';
 import 'package:akshaya/features/alerts/domain/alert_plan.dart';
 import 'package:akshaya/features/alerts/domain/background_work.dart';
 import 'package:akshaya/features/alerts/domain/notification_gateway.dart';
@@ -33,8 +34,14 @@ class FakeNotificationGateway implements NotificationGateway {
 
   final StreamController<AlertTarget> _taps =
       StreamController<AlertTarget>.broadcast();
+  final StreamController<AlertActionRequest> _actions =
+      StreamController<AlertActionRequest>.broadcast();
 
   void tap(AlertTarget target) => _taps.add(target);
+
+  /// Pretends the person tapped a background button on a notification.
+  void pressAction(AlertAction action, AlertPayload payload) =>
+      _actions.add(AlertActionRequest(action, payload));
 
   @override
   Future<void> initialize() async => initializeCalls++;
@@ -76,6 +83,9 @@ class FakeNotificationGateway implements NotificationGateway {
 
   @override
   Stream<AlertTarget> get taps => _taps.stream;
+
+  @override
+  Stream<AlertActionRequest> get actionRequests => _actions.stream;
 
   @override
   Future<AlertTarget?> takeLaunchTarget() async {

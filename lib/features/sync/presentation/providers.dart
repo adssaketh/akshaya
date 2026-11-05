@@ -7,6 +7,7 @@ import '../../../core/time/clock.dart';
 import '../../ai/data/firebase_runtime.dart';
 import '../../ai/presentation/providers.dart' show firebaseRuntimeProvider;
 import '../../alerts/domain/alert_plan.dart';
+import '../../alerts/domain/alert_settings.dart';
 import '../../alerts/domain/notification_gateway.dart';
 import '../../alerts/presentation/providers.dart'
     show notificationGatewayProvider;
@@ -105,6 +106,19 @@ Future<void> _notifyHouseholdChanges(
   List<RemoteChange> changes,
 ) async {
   try {
+    // The person may have switched household alerts off, or be in quiet
+    // hours: nothing is shown (the data still syncs).
+    final NotificationGateway gate = ref.read(notificationGatewayProvider);
+    await gate.initialize();
+    final AlertSettings alertSettings = AlertSettings.fromMap(
+      await ref.read(settingsRepositoryProvider).readAll(),
+    );
+    final DateTime now = gate.nowInAlertZone();
+    if (!alertSettings.household ||
+        (alertSettings.quietEnabled &&
+            alertSettings.isQuiet(now.hour * 60 + now.minute))) {
+      return;
+    }
     final Map<String, String> names =
         await ref.read(syncStoreProvider).memberNames();
     final List<String> shopping = ChangeDigest.shoppingLines(changes, names);

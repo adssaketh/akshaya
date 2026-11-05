@@ -16,6 +16,7 @@ import '../domain/shelf_life.dart';
 import '../domain/stock_count.dart';
 import '../domain/storage_location.dart';
 import '../domain/unit.dart';
+import '../domain/waste_reason.dart';
 import 'database/app_database.dart';
 import 'database/sync_status.dart';
 
@@ -105,6 +106,7 @@ class DriftPantryRepository implements PantryRepository {
       unit: r.unit,
       date: r.date,
       type: r.type,
+      wasteReason: r.wasteReason,
     );
   }
 
@@ -996,6 +998,7 @@ class DriftPantryRepository implements PantryRepository {
     required double quantity,
     required Unit unit,
     ConsumptionType type = ConsumptionType.used,
+    WasteReason? wasteReason,
   }) {
     return _db.transaction<UseResult>(() async {
       final ItemRow item = await _requireItem(itemId);
@@ -1034,6 +1037,7 @@ class DriftPantryRepository implements PantryRepository {
             unit: d.unit,
             type: type,
             now: now,
+            wasteReason: wasteReason,
           ),
         );
       }
@@ -1052,6 +1056,7 @@ class DriftPantryRepository implements PantryRepository {
   Future<UseResult> discardBatch({
     required String batchId,
     required ConsumptionType type,
+    WasteReason? wasteReason,
   }) {
     return _db.transaction<UseResult>(() async {
       final BatchRow? row = await _batchRow(batchId);
@@ -1068,6 +1073,7 @@ class DriftPantryRepository implements PantryRepository {
         unit: row.unit,
         type: type,
         now: _now(),
+        wasteReason: wasteReason,
       );
       return UseResult(
         itemId: row.itemId,
@@ -1079,6 +1085,24 @@ class DriftPantryRepository implements PantryRepository {
     });
   }
 
+  /// The reason worth storing: only waste carries one. Expired food with no
+  /// reason picked is stored as "expired", which is what happened to it.
+  WasteReason? _reasonFor(ConsumptionType type, WasteReason? picked) {
+    switch (type) {
+      case ConsumptionType.wasted:
+        return picked == WasteReason.unspecified ? null : picked;
+      case ConsumptionType.expired:
+        return picked == null || picked == WasteReason.unspecified
+            ? WasteReason.expired
+            : picked;
+      case ConsumptionType.used:
+      case ConsumptionType.givenAway:
+      case ConsumptionType.cookedInRecipe:
+      case ConsumptionType.adjustment:
+        return null;
+    }
+  }
+
   /// Lowers one batch and writes the matching consumption log. Must run inside
   /// a transaction.
   Future<AppliedDeduction> _applyDeduction({
@@ -1088,6 +1112,7 @@ class DriftPantryRepository implements PantryRepository {
     required Unit unit,
     required ConsumptionType type,
     required DateTime now,
+    WasteReason? wasteReason,
   }) async {
     final BatchRow? row = await _batchRow(batchId);
     if (row == null) {
@@ -1118,6 +1143,7 @@ class DriftPantryRepository implements PantryRepository {
             unit: unit,
             date: now,
             type: type,
+            wasteReason: Value<WasteReason?>(_reasonFor(type, wasteReason)),
             createdAt: now,
             updatedAt: now,
             updatedBy: Value<String?>(_userId),

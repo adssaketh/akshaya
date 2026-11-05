@@ -1,5 +1,6 @@
 import '../../pantry/domain/stock_logic.dart';
 import '../../shopping/domain/shopping_suggestions.dart';
+import 'alert_action.dart';
 import 'alert_digest.dart';
 
 /// Where tapping an alert takes the person.
@@ -23,7 +24,10 @@ enum AlertTarget {
   countMode('count:start'),
 
   /// The meal planner, from a prep reminder ("Soak Rajma").
-  mealPlan('plan:week');
+  mealPlan('plan:week'),
+
+  /// The Recipes tab, from the "Show recipes" button of an expiry alert.
+  recipes('recipes:open');
 
   const AlertTarget(this.payload);
 
@@ -31,9 +35,43 @@ enum AlertTarget {
   final String payload;
 
   static AlertTarget? fromPayload(String? payload) {
+    return AlertPayload.parse(payload)?.target;
+  }
+}
+
+/// What a notification carries: where it leads, and (for an alert about one
+/// item) which item, so its buttons act on exactly that item.
+final class AlertPayload {
+  const AlertPayload(this.target, {this.itemId});
+
+  final AlertTarget target;
+
+  /// The item a single-item alert is about, or null.
+  final String? itemId;
+
+  static const String _separator = '|';
+
+  /// The text stored on the notification: the target's payload, then the
+  /// item id after a `|` when there is one.
+  String encode() {
+    final String? id = itemId;
+    return id == null ? target.payload : '${target.payload}$_separator$id';
+  }
+
+  /// Reads [text] back; null when it is empty or names no known target.
+  static AlertPayload? parse(String? text) {
+    if (text == null || text.isEmpty) {
+      return null;
+    }
+    final int cut = text.indexOf(_separator);
+    final String targetText = cut < 0 ? text : text.substring(0, cut);
+    final String? id = cut < 0 ? null : text.substring(cut + 1);
     for (final AlertTarget target in AlertTarget.values) {
-      if (target.payload == payload) {
-        return target;
+      if (target.payload == targetText) {
+        return AlertPayload(
+          target,
+          itemId: id == null || id.isEmpty ? null : id,
+        );
       }
     }
     return null;
@@ -52,6 +90,8 @@ final class AlertNotification {
     required this.channel,
     required this.title,
     required this.body,
+    this.actions = const <AlertAction>[],
+    this.itemId,
   });
 
   final int id;
@@ -61,6 +101,16 @@ final class AlertNotification {
 
   /// May hold several lines; the notification expands to show them all.
   final String body;
+
+  /// The buttons under the notification (Android shows up to three).
+  final List<AlertAction> actions;
+
+  /// The item an alert about exactly one item is about; its buttons act on
+  /// that item.
+  final String? itemId;
+
+  /// The text stored on the notification (see [AlertPayload]).
+  String get payload => AlertPayload(target, itemId: itemId).encode();
 }
 
 /// Turns a digest into the notifications to show. Pure and English only.
@@ -98,6 +148,10 @@ abstract final class AlertPlanner {
             for (final ItemStock s in digest.expired)
               '${s.item.name} (${_ago(-(s.daysToExpiry ?? 0))})',
           ]),
+          actions: const <AlertAction>[
+            AlertAction.addToList,
+            AlertAction.snooze,
+          ],
         ),
       );
     }
@@ -143,6 +197,26 @@ abstract final class AlertPlanner {
           channel: AlertChannelKind.expiry,
           title: title,
           body: lines.join('\n'),
+          // One item: its own "Used it". Several: buttons for the whole
+          // group, because "Used it" could not say which one.
+          actions: today + soon == 1
+              ? const <AlertAction>[
+                  AlertAction.usedIt,
+                  AlertAction.snooze,
+                  AlertAction.showRecipes,
+                ]
+              : const <AlertAction>[
+                  AlertAction.showRecipes,
+                  AlertAction.addToList,
+                  AlertAction.snooze,
+                ],
+          itemId: today + soon == 1
+              ? (digest.expiringToday.isNotEmpty
+                      ? digest.expiringToday.first
+                      : digest.expiringSoon.first)
+                  .item
+                  .id
+              : null,
         ),
       );
     }
@@ -159,6 +233,10 @@ abstract final class AlertPlanner {
             for (final ShoppingSuggestion s in digest.lowStock)
               '${s.item.name} (${_stockLeft(s)})',
           ]),
+          actions: const <AlertAction>[
+            AlertAction.addToList,
+            AlertAction.snooze,
+          ],
         ),
       );
     }

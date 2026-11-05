@@ -8,6 +8,7 @@ import 'package:akshaya/features/commands/presentation/providers.dart';
 import 'package:akshaya/features/pantry/domain/consumption_type.dart';
 import 'package:akshaya/features/pantry/domain/entities.dart';
 import 'package:akshaya/features/pantry/domain/unit.dart';
+import 'package:akshaya/features/pantry/domain/waste_reason.dart';
 import 'package:akshaya/features/pantry/presentation/providers.dart';
 import 'package:akshaya/features/recipes/domain/ai_recipe_service.dart';
 import 'package:akshaya/features/recipes/domain/recipe_models.dart';
@@ -102,6 +103,7 @@ class CookingPantry extends FakePantryRepository {
     required double quantity,
     required Unit unit,
     ConsumptionType type = ConsumptionType.used,
+    WasteReason? wasteReason,
   }) async {
     used.add((itemId: itemId, quantity: quantity, unit: unit, type: type));
     return UseResult(

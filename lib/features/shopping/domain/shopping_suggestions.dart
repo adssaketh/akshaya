@@ -161,6 +161,10 @@ abstract final class ShoppingSuggestions {
 
   /// What was bought last time (latest purchase date, then latest created),
   /// or one of the item's default unit when it was never bought.
+  static ({double quantity, Unit unit}) usualPurchase(ItemStock stock) {
+    return _usualPurchase(stock);
+  }
+
   static ({double quantity, Unit unit}) _usualPurchase(ItemStock stock) {
     StockBatch? latest;
     for (final StockBatch b in stock.batches) {

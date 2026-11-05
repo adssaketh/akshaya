@@ -15,12 +15,16 @@ import '../../pantry/presentation/pantry_icons.dart';
 import '../../pantry/presentation/providers.dart';
 import '../../shopping/presentation/providers.dart';
 import '../../pantry/domain/entities.dart';
+import '../../rescue/presentation/food_rescue_section.dart';
 
-/// How many "use these first" items the dashboard lists.
+/// How many "use these first" items the dashboard listed before Food rescue
+/// replaced that list.
 const int kUseFirstShown = 5;
 
 /// The items to use first: expired and expiring stock, plus any cooked
-/// leftovers still in the fridge, soonest first.
+/// leftovers still in the fridge, soonest first. The Home list is now the
+/// Food rescue section (it works per batch and adds actions); these rules are
+/// kept and tested for anything that needs a plain "use first" list.
 List<ItemStock> useTheseFirst(List<ItemStock> stocks) {
   final List<ItemStock> urgent = <ItemStock>[
     for (final ItemStock s in stocks)
@@ -117,7 +121,6 @@ class _Content extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final Map<String, Category> categories = ref.watch(categoriesByIdProvider);
-    final List<ItemStock> urgent = useTheseFirst(stocks);
     final List<BuyRecommendation> runningOut = ref
         .watch(buyRecommendationsProvider(WhatToBuy.defaultHorizonDays));
 
@@ -201,39 +204,7 @@ class _Content extends ConsumerWidget {
             onAction: () => openAddItem(context),
           )
         else ...<Widget>[
-          const SectionHeader(title: 'Use these first'),
-          if (urgent.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-              child: Text(
-                'Nothing is expiring soon.',
-                style: context.akText.bodyMedium!.copyWith(
-                  color: context.akColors.textSecondary,
-                ),
-              ),
-            )
-          else
-            for (final (int i, ItemStock s) in urgent.take(kUseFirstShown).indexed)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: ItemCard(
-                  revealIndex: i + 5,
-                  name: s.item.name,
-                  subtitle: s.summaryLine,
-                  icon: categoryIcon(categories[s.item.categoryId]?.iconKey),
-                  status: s.status,
-                  statusLabel: s.statusLabel,
-                  onTap: () => openItemDetail(context, s.item.id),
-                ),
-              ),
-          if (urgent.length > kUseFirstShown)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () => onShowPantry(StatusKind.expiring),
-                child: Text('See all ${urgent.length}'),
-              ),
-            ),
+          FoodRescueSection(onShowRecipes: onShowRecipes),
           const SizedBox(height: AppSpacing.sm),
           FilledButton.icon(
             onPressed: onShowRecipes,

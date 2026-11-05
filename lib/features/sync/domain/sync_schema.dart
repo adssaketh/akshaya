@@ -151,6 +151,7 @@ abstract final class SyncSchema {
       SyncColumn('unit', SyncColumnKind.text, required: true),
       SyncColumn('date', SyncColumnKind.integer, required: true),
       SyncColumn('type', SyncColumnKind.text, required: true),
+      SyncColumn('waste_reason', SyncColumnKind.text),
     ],
   );
 

@@ -4,6 +4,7 @@ import 'package:akshaya/features/pantry/domain/failures.dart';
 import 'package:akshaya/features/pantry/domain/pantry_repository.dart';
 import 'package:akshaya/features/pantry/domain/stock_logic.dart';
 import 'package:akshaya/features/pantry/domain/unit.dart';
+import 'package:akshaya/features/pantry/domain/waste_reason.dart';
 import 'package:akshaya/features/recipes/domain/ai_recipe_service.dart';
 import 'package:akshaya/features/recipes/domain/recipe_models.dart';
 import 'package:akshaya/features/recipes/domain/recipe_pantry.dart';
@@ -104,6 +105,7 @@ class RecordingPantry extends Fake implements PantryRepository {
     required double quantity,
     required Unit unit,
     ConsumptionType type = ConsumptionType.used,
+    WasteReason? wasteReason,
   }) async {
     if (failing.contains(itemId)) {
       throw InsufficientStockFailure(available: 0.1, availableLabel: '100 g');

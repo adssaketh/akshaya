@@ -20,6 +20,7 @@ import '../../domain/default_categories.dart';
 import '../../domain/item_kind.dart';
 import '../../domain/storage_location.dart';
 import '../../domain/unit.dart';
+import '../../domain/waste_reason.dart';
 import 'converters.dart';
 import 'sync_status.dart';
 import 'tables.dart';
@@ -75,7 +76,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration {
@@ -185,6 +186,16 @@ class AppDatabase extends _$AppDatabase {
             'ON meal_plan_entries (plan_date)',
           );
           await _installSync();
+        }
+        if (from < 10) {
+          // One nullable column, so existing logs keep reading as "no reason
+          // recorded". Skipped when already there (see the v7 note above).
+          await _addColumnIfMissing(
+            m,
+            consumptionLogs,
+            consumptionLogs.wasteReason,
+            'waste_reason',
+          );
         }
       },
     );

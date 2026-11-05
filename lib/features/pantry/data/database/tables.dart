@@ -4,6 +4,7 @@ import '../../domain/consumption_type.dart';
 import '../../domain/item_kind.dart';
 import '../../domain/storage_location.dart';
 import '../../domain/unit.dart';
+import '../../domain/waste_reason.dart';
 import 'converters.dart';
 import 'sync_status.dart';
 
@@ -152,6 +153,12 @@ class ConsumptionLogs extends Table with SyncColumns {
   IntColumn get date => integer().map(const EpochMillisConverter())();
 
   TextColumn get type => textEnum<ConsumptionType>()();
+
+  /// Why thrown-away food was thrown away (schema v10). Null for logs made
+  /// before v10, for waste logged without a reason, and for anything that is
+  /// not waste, so old rows, old backups and documents from older phones need
+  /// no change.
+  TextColumn get wasteReason => textEnum<WasteReason>().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

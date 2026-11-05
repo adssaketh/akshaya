@@ -3,6 +3,7 @@ import 'entities.dart';
 import 'stock_count.dart';
 import 'storage_location.dart';
 import 'unit.dart';
+import 'waste_reason.dart';
 
 /// Everything the pantry features need from storage. The local database is
 /// the single source of truth; cloud sync (Phase 6) works behind this
@@ -68,18 +69,22 @@ abstract interface class PantryRepository {
   Future<void> undoDeleteBatch(String batchId);
 
   /// Takes [quantity] from the item's batches, first-expiring first, and logs
-  /// it as [type].
+  /// it as [type]. [wasteReason] is stored on the log when the food is thrown
+  /// away; it is ignored for any other type.
   Future<UseResult> useStock({
     required String itemId,
     required double quantity,
     required Unit unit,
     ConsumptionType type = ConsumptionType.used,
+    WasteReason? wasteReason,
   });
 
-  /// Writes off everything left in one batch as [type] (wasted or expired).
+  /// Writes off everything left in one batch as [type] (wasted or expired),
+  /// with the optional [wasteReason].
   Future<UseResult> discardBatch({
     required String batchId,
     required ConsumptionType type,
+    WasteReason? wasteReason,
   });
 
   /// Reverses a [useStock] or [discardBatch].

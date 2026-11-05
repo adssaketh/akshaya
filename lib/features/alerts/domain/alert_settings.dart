@@ -6,6 +6,13 @@ abstract final class AlertSettingKeys {
   static const String minutesOfDay = 'alerts.minutes_of_day';
   static const String warningDays = 'alerts.warning_days';
   static const String lowStock = 'alerts.low_stock';
+  static const String expired = 'alerts.expired';
+  static const String expiring = 'alerts.expiring';
+  static const String prep = 'alerts.prep';
+  static const String household = 'alerts.household';
+  static const String quietEnabled = 'alerts.quiet_enabled';
+  static const String quietStart = 'alerts.quiet_start';
+  static const String quietEnd = 'alerts.quiet_end';
 
   /// Set once the first-run "allow notifications?" explanation has been
   /// shown, whatever the person answered.
@@ -15,6 +22,12 @@ abstract final class AlertSettingKeys {
 /// 08:00, as minutes after midnight.
 const int kDefaultAlertMinutes = 8 * 60;
 
+/// Quiet hours start at 22:00 by default.
+const int kDefaultQuietStartMinutes = 22 * 60;
+
+/// Quiet hours end at 07:00 by default.
+const int kDefaultQuietEndMinutes = 7 * 60;
+
 /// How the daily alert behaves. Stored per phone.
 final class AlertSettings {
   const AlertSettings({
@@ -22,6 +35,13 @@ final class AlertSettings {
     this.minutesOfDay = kDefaultAlertMinutes,
     this.warningDays = kDefaultExpiryWarningDays,
     this.lowStock = true,
+    this.expired = true,
+    this.expiring = true,
+    this.prep = true,
+    this.household = true,
+    this.quietEnabled = false,
+    this.quietStart = kDefaultQuietStartMinutes,
+    this.quietEnd = kDefaultQuietEndMinutes,
   });
 
   /// Reads the settings from stored text, using defaults for anything missing
@@ -43,6 +63,21 @@ final class AlertSettings {
         maxWarningDays,
       ),
       lowStock: _readBool(values[AlertSettingKeys.lowStock], true),
+      expired: _readBool(values[AlertSettingKeys.expired], true),
+      expiring: _readBool(values[AlertSettingKeys.expiring], true),
+      prep: _readBool(values[AlertSettingKeys.prep], true),
+      household: _readBool(values[AlertSettingKeys.household], true),
+      quietEnabled: _readBool(values[AlertSettingKeys.quietEnabled], false),
+      quietStart: _limit(
+        _readInt(values[AlertSettingKeys.quietStart], kDefaultQuietStartMinutes),
+        0,
+        24 * 60 - 1,
+      ),
+      quietEnd: _limit(
+        _readInt(values[AlertSettingKeys.quietEnd], kDefaultQuietEndMinutes),
+        0,
+        24 * 60 - 1,
+      ),
     );
   }
 
@@ -62,6 +97,46 @@ final class AlertSettings {
   /// Whether low-stock and out-of-stock items are part of the alert.
   final bool lowStock;
 
+  /// Whether the alert lists food that has already expired.
+  final bool expired;
+
+  /// Whether the alert lists food expiring today or soon.
+  final bool expiring;
+
+  /// Whether meal prep reminders ("Soak rajma") are shown.
+  final bool prep;
+
+  /// Whether a change another member made to the household's lists is shown.
+  final bool household;
+
+  /// Whether notifications are held back during quiet hours.
+  final bool quietEnabled;
+
+  /// Quiet hours start (minutes after midnight). When the end is earlier, the
+  /// quiet hours run past midnight.
+  final int quietStart;
+
+  /// Quiet hours end (minutes after midnight).
+  final int quietEnd;
+
+  /// "10:00 pm".
+  String get quietStartLabel => formatMinutesOfDay(quietStart);
+
+  /// "7:00 am".
+  String get quietEndLabel => formatMinutesOfDay(quietEnd);
+
+  /// Whether [minutesOfDay] falls inside the quiet hours (false when they are
+  /// off or empty because start and end are the same).
+  bool isQuiet(int minutesOfDay) {
+    if (!quietEnabled || quietStart == quietEnd) {
+      return false;
+    }
+    if (quietStart < quietEnd) {
+      return minutesOfDay >= quietStart && minutesOfDay < quietEnd;
+    }
+    return minutesOfDay >= quietStart || minutesOfDay < quietEnd;
+  }
+
   int get hour => minutesOfDay ~/ 60;
 
   int get minute => minutesOfDay % 60;
@@ -74,12 +149,26 @@ final class AlertSettings {
     int? minutesOfDay,
     int? warningDays,
     bool? lowStock,
+    bool? expired,
+    bool? expiring,
+    bool? prep,
+    bool? household,
+    bool? quietEnabled,
+    int? quietStart,
+    int? quietEnd,
   }) {
     return AlertSettings(
       enabled: enabled ?? this.enabled,
       minutesOfDay: minutesOfDay ?? this.minutesOfDay,
       warningDays: warningDays ?? this.warningDays,
       lowStock: lowStock ?? this.lowStock,
+      expired: expired ?? this.expired,
+      expiring: expiring ?? this.expiring,
+      prep: prep ?? this.prep,
+      household: household ?? this.household,
+      quietEnabled: quietEnabled ?? this.quietEnabled,
+      quietStart: quietStart ?? this.quietStart,
+      quietEnd: quietEnd ?? this.quietEnd,
     );
   }
 
@@ -90,6 +179,13 @@ final class AlertSettings {
       AlertSettingKeys.minutesOfDay: minutesOfDay.toString(),
       AlertSettingKeys.warningDays: warningDays.toString(),
       AlertSettingKeys.lowStock: lowStock.toString(),
+      AlertSettingKeys.expired: expired.toString(),
+      AlertSettingKeys.expiring: expiring.toString(),
+      AlertSettingKeys.prep: prep.toString(),
+      AlertSettingKeys.household: household.toString(),
+      AlertSettingKeys.quietEnabled: quietEnabled.toString(),
+      AlertSettingKeys.quietStart: quietStart.toString(),
+      AlertSettingKeys.quietEnd: quietEnd.toString(),
     };
   }
 
@@ -99,11 +195,30 @@ final class AlertSettings {
         other.enabled == enabled &&
         other.minutesOfDay == minutesOfDay &&
         other.warningDays == warningDays &&
-        other.lowStock == lowStock;
+        other.lowStock == lowStock &&
+        other.expired == expired &&
+        other.expiring == expiring &&
+        other.prep == prep &&
+        other.household == household &&
+        other.quietEnabled == quietEnabled &&
+        other.quietStart == quietStart &&
+        other.quietEnd == quietEnd;
   }
 
   @override
-  int get hashCode => Object.hash(enabled, minutesOfDay, warningDays, lowStock);
+  int get hashCode => Object.hash(
+        enabled,
+        minutesOfDay,
+        warningDays,
+        lowStock,
+        expired,
+        expiring,
+        prep,
+        household,
+        quietEnabled,
+        quietStart,
+        quietEnd,
+      );
 
   static bool _readBool(String? text, bool fallback) {
     if (text == 'true') {

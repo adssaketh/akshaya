@@ -3,6 +3,7 @@ import 'consumption_type.dart';
 import 'item_kind.dart';
 import 'storage_location.dart';
 import 'unit.dart';
+import 'waste_reason.dart';
 
 /// Editable product category. The id is stable for the default categories
 /// (for example `cat_vegetables`) so devices that sync later agree on them.
@@ -165,6 +166,7 @@ final class ConsumptionEntry {
     required this.unit,
     required this.date,
     required this.type,
+    this.wasteReason,
   });
 
   final String id;
@@ -177,6 +179,10 @@ final class ConsumptionEntry {
   final Unit unit;
   final DateTime date;
   final ConsumptionType type;
+
+  /// Why the food was thrown away, when the person said. Null for logs made
+  /// before reasons existed and for anything that is not waste.
+  final WasteReason? wasteReason;
 
   /// "2 kg" for use and waste; "+1 kg" or "-1 kg" for an adjustment.
   String get amountLabel {

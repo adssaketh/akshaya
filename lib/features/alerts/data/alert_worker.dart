@@ -15,6 +15,7 @@ import '../../shopping/data/drift_shopping_repository.dart';
 import '../../shopping/domain/shopping_entities.dart';
 import '../domain/alert_scheduler.dart';
 import '../domain/alert_settings.dart';
+import '../domain/alert_snoozes.dart';
 import '../domain/notification_gateway.dart';
 import 'local_notification_gateway.dart';
 
@@ -52,6 +53,7 @@ Future<List<ScheduledAlert>> refreshAlertsFromDatabase(
     entries: entries,
     counts: counts,
     prep: PrepReminderPlanner.plan(meals, now: now),
+    snoozes: AlertSnoozes.fromMap(stored),
   );
 }
 
