@@ -345,7 +345,7 @@ class _EntryRow extends ConsumerWidget {
           return false;
         },
         child: ChecklistCard(
-          revealIndex: index < 8 ? index : null,
+          revealIndex: index,
           title: entry.name,
           checked: entry.isChecked,
           subtitle: _subtitle,

@@ -7,6 +7,12 @@ import 'app_motion.dart';
 /// [AppMotion.maxStaggered] so long lists do not drag).
 ///
 /// Plays once per widget: scrolling back or a data refresh does not replay it.
+/// Rows at [AppMotion.maxStaggered] or later (and any row built while motion is
+/// off) appear at once, so scrolling a long list never trickles in.
+///
+/// The widget tree below a Reveal never changes shape once it is built (the
+/// wrappers stay at rest when done). Swapping them out would make Flutter
+/// rebuild the child from scratch, which shows up as a flicker.
 class Reveal extends StatefulWidget {
   const Reveal({
     super.key,
@@ -48,6 +54,9 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
   );
   bool _started = false;
 
+  /// Decided once, on the first build, so the tree shape stays constant.
+  bool _wrapped = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -55,7 +64,8 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
       return;
     }
     _started = true;
-    if (AppMotion.of(context)) {
+    if (AppMotion.of(context) && widget.index < AppMotion.maxStaggered) {
+      _wrapped = true;
       _controller.forward();
     } else {
       _controller.value = 1;
@@ -70,14 +80,14 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    if (!_wrapped) {
+      return widget.child;
+    }
     return AnimatedBuilder(
       animation: _t,
       child: widget.child,
       builder: (BuildContext context, Widget? child) {
         final double t = _t.value;
-        if (t >= 1) {
-          return child!;
-        }
         return Opacity(
           opacity: t.clamp(0, 1),
           child: Transform.translate(

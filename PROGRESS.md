@@ -572,6 +572,17 @@ test/...                                       insights, backup, app settings, a
 - Category deletion has a confirmation, not an Undo.
 - `file_picker`/`local_auth` calls are untested on device until your check.
 
+## Motion smoothness fix (post Phase 8)
+
+Symptom: every tab switch flashed blank, Home counters restarted (9 > 10 > 2 > 10), list rows and FABs re-animated.
+Cause: `TabPane` and `Reveal` returned the bare child once finished but wrapped it in `Opacity`/`Transform` while animating. Changing the widget type at that spot made Flutter rebuild the whole screen from scratch at the start and end of each animation.
+Fix:
+- `TabPane`: fade and slide wrappers are always present; a tab starts at 40% opacity (never blank) and eases to 100%.
+- `Reveal`: tree shape is decided once on first build; rows from index 10 on (or built with motion off) appear at once.
+- Pantry and Shopping rows always pass their index (no more `index < 8 ? index : null`, which re-wrapped rows as the list changed). Pantry list rows have stable keys with `findChildIndexCallback`, so search/filter reuses rows and only new rows animate.
+- Tests: `motion_test.dart` now checks that the child State survives a tab switch and an entrance, and that a tab never starts fully transparent.
+Rule: never swap a widget wrapper in or out around a screen or row to "skip" an animation at rest.
+
 ## Next: Phase 9 (v2 roadmap), only when you say so.
 
 ## Phase 0: what was built (unchanged)

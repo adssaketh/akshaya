@@ -35,9 +35,14 @@ class AkshayaPageTransitionsBuilder extends PageTransitionsBuilder {
   }
 }
 
-/// Tab pane that fades and rises a little each time it becomes the visible
-/// tab. The pane stays built while hidden, so its scroll position and state
-/// survive.
+/// Tab pane that eases in each time it becomes the visible tab. The pane stays
+/// built while hidden, so its scroll position and state survive.
+///
+/// The widget tree below this pane is the same on every frame (fade and slide
+/// wrappers are always present, just at rest when done). Swapping the wrapper
+/// in and out would make Flutter rebuild the whole screen from scratch at the
+/// start and end of every switch: a blank flash, counters restarting from 0
+/// and list rows re-animating. Do not "optimise" the wrappers away.
 class TabPane extends StatefulWidget {
   const TabPane({super.key, required this.active, required this.child});
 
@@ -49,6 +54,12 @@ class TabPane extends StatefulWidget {
 }
 
 class _TabPaneState extends State<TabPane> with SingleTickerProviderStateMixin {
+  /// A tab never starts fully transparent: that reads as a blank flash.
+  static const double _startOpacity = 0.4;
+
+  /// Fraction of the pane's height it rises while easing in (about 10 dp).
+  static const double _rise = 0.012;
+
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: AppMotion.base,
@@ -56,6 +67,11 @@ class _TabPaneState extends State<TabPane> with SingleTickerProviderStateMixin {
   );
   late final Animation<double> _t =
       CurvedAnimation(parent: _controller, curve: AppMotion.enter);
+  late final Animation<double> _opacity =
+      Tween<double>(begin: _startOpacity, end: 1).animate(_t);
+  late final Animation<Offset> _slide =
+      Tween<Offset>(begin: const Offset(0, _rise), end: Offset.zero)
+          .animate(_t);
 
   @override
   void didUpdateWidget(TabPane oldWidget) {
@@ -73,22 +89,9 @@ class _TabPaneState extends State<TabPane> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _t,
-      child: widget.child,
-      builder: (BuildContext context, Widget? child) {
-        final double t = _t.value;
-        if (t >= 1) {
-          return child!;
-        }
-        return Opacity(
-          opacity: t,
-          child: Transform.translate(
-            offset: Offset(0, (1 - t) * 14),
-            child: child,
-          ),
-        );
-      },
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(position: _slide, child: widget.child),
     );
   }
 }

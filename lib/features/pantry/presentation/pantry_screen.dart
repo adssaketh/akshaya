@@ -211,6 +211,16 @@ class _PantryList extends ConsumerWidget {
     final List<Object> rows = <Object>[
       for (final PantrySection s in sections) ...<Object>[s, ...s.items],
     ];
+    final List<Key> keys = <Key>[
+      for (final Object row in rows)
+        if (row is PantrySection)
+          ValueKey<String>('section-${row.title}')
+        else
+          ValueKey<String>('row-${(row as ItemStock).item.id}'),
+    ];
+    final Map<Key, int> indexByKey = <Key, int>{
+      for (final (int i, Key k) in keys.indexed) k: i,
+    };
 
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(
@@ -220,21 +230,27 @@ class _PantryList extends ConsumerWidget {
         AppSizes.fab + AppSpacing.xxl,
       ),
       itemCount: rows.length,
+      // Rows keep their identity when the list is searched, filtered or
+      // re-sorted, so surviving rows are reused (no rebuild, no replayed
+      // entrance) and only genuinely new rows animate in.
+      findChildIndexCallback: (Key key) => indexByKey[key],
       itemBuilder: (BuildContext context, int index) {
         final Object row = rows[index];
         if (row is PantrySection) {
           return Padding(
+            key: keys[index],
             padding: const EdgeInsets.only(top: AppSpacing.sm),
             child: SectionHeader(title: '${row.title} (${row.items.length})'),
           );
         }
         final ItemStock stock = row as ItemStock;
         return Padding(
+          key: keys[index],
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: _PantryRow(
             stock: stock,
             icon: categoryIcon(categories[stock.item.categoryId]?.iconKey),
-            revealIndex: index < 8 ? index : null,
+            revealIndex: index,
           ),
         );
       },
