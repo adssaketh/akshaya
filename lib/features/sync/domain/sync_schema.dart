@@ -73,8 +73,8 @@ final class SyncTableSpec {
   List<String> get fields => <String>[for (final SyncColumn c in columns) c.field];
 }
 
-/// The synced tables (schema from Phase 1 to 4, plus recipes from Phase 7) and
-/// their documents.
+/// The synced tables (schema from Phase 1 to 4, recipes from Phase 7 and the
+/// meal plan from Phase 12) and their documents.
 abstract final class SyncSchema {
   static const List<SyncColumn> _shared = <SyncColumn>[
     SyncColumn('id', SyncColumnKind.text, required: true),
@@ -204,6 +204,25 @@ abstract final class SyncSchema {
     ],
   );
 
+  /// The weekly meal plan (Phase 12). The recipe and the prep reminders
+  /// travel as JSON text inside the document. Every column except the shared
+  /// ones is optional on the way in where a missing value has a safe meaning,
+  /// so a document from a newer app still loads.
+  static const SyncTableSpec mealPlan = SyncTableSpec(
+    table: 'meal_plan_entries',
+    collection: 'mealPlan',
+    columns: <SyncColumn>[
+      ..._shared,
+      SyncColumn('plan_date', SyncColumnKind.text, required: true),
+      SyncColumn('slot', SyncColumnKind.text, required: true),
+      SyncColumn('title', SyncColumnKind.text, required: true),
+      SyncColumn('recipe_json', SyncColumnKind.text),
+      SyncColumn('leftover_item_id', SyncColumnKind.text),
+      SyncColumn('is_cooked', SyncColumnKind.boolean, required: true),
+      SyncColumn('prep_json', SyncColumnKind.text),
+    ],
+  );
+
   /// Push and pull order: things other rows point at come first.
   static const List<SyncTableSpec> tables = <SyncTableSpec>[
     categories,
@@ -213,6 +232,7 @@ abstract final class SyncSchema {
     entries,
     logs,
     recipes,
+    mealPlan,
   ];
 
   /// The spec for a Firestore collection name, or null.

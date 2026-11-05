@@ -15,15 +15,23 @@ abstract final class SyncTriggers {
     'shopping_lists',
     'shopping_entries',
     'saved_recipes',
+    'meal_plan_entries',
   ];
 
   static const String _notSuppressed =
       '(COALESCE((SELECT suppress FROM sync_state WHERE id = 1), 0) = 0)';
 
-  /// Every statement to run, each safe to run twice.
-  static List<String> statements() {
+  /// Every statement to run, each safe to run twice. With [onlyTables] (the
+  /// tables that exist right now) triggers for other tables are left out, so
+  /// an upgrade that has not created a newer table yet does not fail; a later
+  /// call installs the rest.
+  static List<String> statements({Set<String>? onlyTables}) {
     final List<String> out = <String>[];
+    bool exists(String table) => onlyTables == null || onlyTables.contains(table);
     for (final String table in syncedTables) {
+      if (!exists(table)) {
+        continue;
+      }
       out.add(
         'CREATE TRIGGER IF NOT EXISTS sync_mark_$table AFTER UPDATE ON $table '
         "WHEN NEW.sync_status = OLD.sync_status AND NEW.sync_status <> 'pending' "
@@ -36,6 +44,9 @@ abstract final class SyncTriggers {
     // Aliases and barcodes travel on their item's document, so changing them
     // makes the item pending.
     for (final String child in <String>['item_aliases', 'item_barcodes']) {
+      if (!exists(child)) {
+        continue;
+      }
       out
         ..add(
           'CREATE TRIGGER IF NOT EXISTS sync_mark_${child}_ins '

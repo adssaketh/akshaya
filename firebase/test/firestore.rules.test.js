@@ -92,6 +92,27 @@ test('members can save recipes; bad recipe documents are rejected', async () => 
   await assertFails(setDoc(doc(as('stranger'), 'households', H, 'recipes', 'r1'), recipe('stranger')));
 });
 
+function mealPlan(uid, over = {}) {
+  return {
+    id: 'm1', householdId: H, createdAt: 1, updatedAt: 2, updatedBy: uid, isDeleted: false,
+    syncedAt: serverTimestamp(), planDate: '2026-11-06', slot: 'dinner', title: 'Rajma Masala',
+    recipeJson: '{}', leftoverItemId: null, isCooked: false, prepJson: null,
+    ...over,
+  };
+}
+
+test('members can plan meals; bad meal plan documents are rejected', async () => {
+  const ref = doc(as('member'), 'households', H, 'mealPlan', 'm1');
+  await assertSucceeds(setDoc(ref, mealPlan('member')));
+  await assertSucceeds(setDoc(ref, mealPlan('member', { recipeJson: null, title: 'Outside' })));
+  await assertFails(setDoc(ref, mealPlan('member', { isCooked: 'no' })));
+  await assertFails(setDoc(ref, mealPlan('member', { planDate: '2026-11-06T00:00:00' })));
+  await assertFails(setDoc(ref, mealPlan('member', { recipeJson: 'x'.repeat(20001) })));
+  await assertFails(setDoc(ref, mealPlan('member', { prepJson: 'x'.repeat(4001) })));
+  await assertFails(setDoc(ref, mealPlan('owner')));
+  await assertFails(setDoc(doc(as('stranger'), 'households', H, 'mealPlan', 'm1'), mealPlan('stranger')));
+});
+
 test('a non-member cannot read or write household data', async () => {
   const db = as('stranger');
   await assertFails(getDoc(doc(db, 'households', H, 'entries', 'e1')));

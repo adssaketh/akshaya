@@ -4,7 +4,7 @@ rules_version = '2';
 //
 //   households/{h}                       name, ownerId, inviteCode, createdAt
 //   households/{h}/members/{uid}         displayName, role, joinedAt
-//   households/{h}/{categories|items|shoppingLists|batches|entries|logs|recipes}/{id}
+//   households/{h}/{categories|items|shoppingLists|batches|entries|logs|recipes|mealPlan}/{id}
 //   inviteCodes/{code}                   householdId, ownerId
 //   users/{uid}                          householdId (pointer, own account only)
 //
@@ -217,6 +217,26 @@ service cloud.firestore {
           && request.resource.data.stepsJson is string
           && request.resource.data.stepsJson.size() <= 20000
           && request.resource.data.savedAt is int;
+        allow delete: if isMember(h) && resource.data.isDeleted == true;
+      }
+
+      // The weekly meal plan (Phase 12). The recipe and the prep reminders are
+      // JSON text; both are optional.
+      match /mealPlan/{id} {
+        allow read: if isMember(h);
+        allow create, update: if isMember(h) && syncedBase(h, id)
+          && isText(request.resource.data.planDate, 10)
+          && isText(request.resource.data.slot, 16)
+          && isText(request.resource.data.title, 200)
+          && request.resource.data.isCooked is bool
+          && (!('recipeJson' in request.resource.data)
+              || request.resource.data.recipeJson == null
+              || (request.resource.data.recipeJson is string
+                  && request.resource.data.recipeJson.size() <= 20000))
+          && (!('prepJson' in request.resource.data)
+              || request.resource.data.prepJson == null
+              || (request.resource.data.prepJson is string
+                  && request.resource.data.prepJson.size() <= 4000));
         allow delete: if isMember(h) && resource.data.isDeleted == true;
       }
     }

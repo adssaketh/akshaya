@@ -24,15 +24,23 @@ class AlertScheduler {
   /// With [counts], the monthly "time to count" reminder joins the alert of
   /// its day (at the same time) unless a count was already finished that
   /// month.
+  ///
+  /// [prep] are the meal planner's prep reminders, each due at its own time.
+  /// They are scheduled whether or not the daily alert is on.
   Future<List<ScheduledAlert>> refresh({
     required AlertSettings settings,
     required List<ItemWithBatches> items,
     required List<ShoppingEntry> entries,
     CountSettings counts = const CountSettings(),
+    List<ScheduledAlert> prep = const <ScheduledAlert>[],
   }) async {
     if (!settings.enabled) {
-      await _gateway.cancelScheduled();
-      return const <ScheduledAlert>[];
+      if (prep.isEmpty) {
+        await _gateway.cancelScheduled();
+        return const <ScheduledAlert>[];
+      }
+      await _gateway.replaceScheduled(prep);
+      return prep;
     }
 
     final DateTime first = AlertSchedule.nextFire(
@@ -59,8 +67,9 @@ class AlertScheduler {
       }
     }
 
-    await _gateway.replaceScheduled(alerts);
-    return alerts;
+    final List<ScheduledAlert> all = <ScheduledAlert>[...alerts, ...prep];
+    await _gateway.replaceScheduled(all);
+    return all;
   }
 
   /// Shows today's alert right now, whatever the time setting says. Returns

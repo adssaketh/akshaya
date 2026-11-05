@@ -108,6 +108,10 @@ class LocalNotificationGateway implements NotificationGateway {
         id = 'akshaya_household';
         name = 'Household changes';
         description = 'When someone in your household changes a shared list';
+      case AlertChannelKind.prep:
+        id = 'akshaya_prep';
+        name = 'Meal prep reminders';
+        description = 'Reminders to soak, thaw or start something before a meal';
     }
     return NotificationDetails(
       android: AndroidNotificationDetails(

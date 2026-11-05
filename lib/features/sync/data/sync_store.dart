@@ -651,7 +651,8 @@ class SyncStore {
       "(SELECT COUNT(*) FROM consumption_logs WHERE sync_status = 'pending') + "
       "(SELECT COUNT(*) FROM shopping_lists WHERE sync_status = 'pending') + "
       "(SELECT COUNT(*) FROM shopping_entries WHERE sync_status = 'pending') + "
-      "(SELECT COUNT(*) FROM saved_recipes WHERE sync_status = 'pending')"
+      "(SELECT COUNT(*) FROM saved_recipes WHERE sync_status = 'pending') + "
+      "(SELECT COUNT(*) FROM meal_plan_entries WHERE sync_status = 'pending')"
       ') AS c';
 
   /// How many rows are waiting to be sent. Emits again on every change.
@@ -667,6 +668,7 @@ class SyncStore {
             _db.shoppingLists,
             _db.shoppingEntries,
             _db.savedRecipes,
+            _db.mealPlanEntries,
           },
         )
         .watch()
@@ -687,7 +689,7 @@ class SyncStore {
     return (rows.first['c'] as num).toInt() > 0;
   }
 
-  /// Removes the pantry, shopping and recipe data from this phone (categories
+  /// Removes the pantry, shopping, recipe and meal plan data from this phone (categories
   /// and the default list stay). Nothing is sent to the cloud.
   Future<void> clearLocalData() async {
     await _suppressed(
@@ -700,6 +702,7 @@ class SyncStore {
         'shopping_lists',
         'shopping_entries',
         'saved_recipes',
+        'meal_plan_entries',
         'recipe_cache',
         'sync_batch_bases',
         'sync_cursors',
@@ -711,6 +714,7 @@ class SyncStore {
         await _exec('DELETE FROM item_barcodes');
         await _exec('DELETE FROM shopping_entries');
         await _exec('DELETE FROM saved_recipes');
+        await _exec('DELETE FROM meal_plan_entries');
         await _exec('DELETE FROM recipe_cache');
         await _exec('DELETE FROM items');
         await _exec('DELETE FROM sync_batch_bases');

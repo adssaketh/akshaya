@@ -5,6 +5,7 @@
 
 import 'package:drift/drift.dart';
 
+import '../../../planner/data/database/planner_tables.dart';
 import '../../../recipes/data/database/recipe_tables.dart';
 import '../../../scanning/data/database/scanning_tables.dart';
 import '../../../settings/data/database/settings_tables.dart';
@@ -44,6 +45,8 @@ part 'app_database.g.dart';
 ///    synced documents stay valid; a missing kind means stocked).
 ///  - v8 (Phase 11): shopping_entries.repeat_every_days (nullable: a custom
 ///    repeat learned from purchase history; null keeps the built-in repeat).
+///  - v9 (Phase 12): meal_plan_entries (synced, with its own sync trigger):
+///    the weekly meal plan.
 ///
 /// Later phases add tables through migrations in [migration]; never edit a
 /// released version in place.
@@ -65,13 +68,14 @@ part 'app_database.g.dart';
     HouseholdMembers,
     SavedRecipes,
     RecipeCache,
+    MealPlanEntries,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration {
@@ -172,6 +176,16 @@ class AppDatabase extends _$AppDatabase {
             'repeat_every_days',
           );
         }
+        if (from < 9) {
+          // One new table. Safe to run twice (createTable is IF NOT EXISTS),
+          // because the alert worker may open the database before the app.
+          await m.createTable(mealPlanEntries);
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS meal_plan_date_idx '
+            'ON meal_plan_entries (plan_date)',
+          );
+          await _installSync();
+        }
       },
     );
   }
@@ -196,7 +210,17 @@ class AppDatabase extends _$AppDatabase {
   /// twice.
   Future<void> _installSync() async {
     await customStatement(SyncTriggers.seedState);
-    for (final String statement in SyncTriggers.statements()) {
+    // Only for tables that exist: an upgrade from an old version installs the
+    // triggers in the step that adds saved_recipes, before a newer table
+    // (such as meal_plan_entries) has been created.
+    final List<QueryRow> tableRows = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
+    ).get();
+    final Set<String> existing = <String>{
+      for (final QueryRow row in tableRows) row.read<String>('name'),
+    };
+    for (final String statement
+        in SyncTriggers.statements(onlyTables: existing)) {
       await customStatement(statement);
     }
   }

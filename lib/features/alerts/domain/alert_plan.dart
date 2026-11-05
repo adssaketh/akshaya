@@ -20,7 +20,10 @@ enum AlertTarget {
   householdPantry('household:pantry'),
 
   /// Count mode's start screen, from the monthly "time to count" reminder.
-  countMode('count:start');
+  countMode('count:start'),
+
+  /// The meal planner, from a prep reminder ("Soak Rajma").
+  mealPlan('plan:week');
 
   const AlertTarget(this.payload);
 
@@ -39,7 +42,7 @@ enum AlertTarget {
 
 /// The Android notification channel an alert belongs to, so each kind can be
 /// muted on its own in system settings.
-enum AlertChannelKind { expiry, stock, household }
+enum AlertChannelKind { expiry, stock, household, prep }
 
 /// One notification to show.
 final class AlertNotification {

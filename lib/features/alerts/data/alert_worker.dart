@@ -6,6 +6,9 @@ import '../../pantry/data/database/app_database.dart';
 import '../../pantry/data/database/open_database.dart';
 import '../../pantry/data/drift_pantry_repository.dart';
 import '../../pantry/domain/entities.dart';
+import '../../planner/data/drift_meal_plan_repository.dart';
+import '../../planner/domain/meal_plan_models.dart';
+import '../../planner/domain/prep_schedule.dart';
 import '../../settings/data/drift_settings_repository.dart';
 import '../../sync/data/household_check.dart';
 import '../../shopping/data/drift_shopping_repository.dart';
@@ -39,11 +42,16 @@ Future<List<ScheduledAlert>> refreshAlertsFromDatabase(
   final List<ShoppingEntry> entries = await shopping.watchEntries().first;
 
   await gateway.initialize();
+  // Prep reminders for planned meals are scheduled with the daily alert.
+  final DateTime now = gateway.nowInAlertZone();
+  final List<MealPlanEntry> meals = await DriftMealPlanRepository(db)
+      .readFrom(DateTime(now.year, now.month, now.day));
   return AlertScheduler(gateway).refresh(
     settings: settings,
     items: items,
     entries: entries,
     counts: counts,
+    prep: PrepReminderPlanner.plan(meals, now: now),
   );
 }
 

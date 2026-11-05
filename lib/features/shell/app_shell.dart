@@ -10,6 +10,7 @@ import '../alerts/presentation/providers.dart';
 import '../count/presentation/count_flow.dart';
 import '../home/presentation/home_screen.dart';
 import '../pantry/presentation/pantry_screen.dart';
+import '../planner/presentation/meal_planner_screen.dart';
 import '../pantry/presentation/providers.dart';
 import '../recipes/presentation/recipes_screen.dart';
 import '../settings/settings_screen.dart';
@@ -83,6 +84,8 @@ class _AppShellState extends ConsumerState<AppShell> {
       case AlertTarget.countMode:
         setState(() => _index = _pantryTab);
         unawaited(openCountMode(context));
+      case AlertTarget.mealPlan:
+        unawaited(openMealPlanner(context));
     }
     ref.read(alertTargetProvider.notifier).clear();
   }

@@ -8,6 +8,7 @@ import '../../ai/domain/ai_gate.dart';
 import '../../ai/presentation/ai_notice_dialog.dart';
 import '../../ai/presentation/providers.dart';
 import '../../commands/presentation/voice_mic_button.dart';
+import '../../planner/presentation/meal_planner_screen.dart';
 import '../domain/recipe_matcher.dart';
 import '../domain/recipe_models.dart';
 import '../domain/recipe_pantry.dart';
@@ -64,7 +65,16 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     return SafeArea(
       child: Column(
         children: <Widget>[
-          const AkshayaHeader(actions: <Widget>[VoiceMicButton()]),
+          AkshayaHeader(
+            actions: <Widget>[
+              IconButton(
+                tooltip: 'Meal plan',
+                onPressed: () => openMealPlanner(context),
+                icon: const Icon(Icons.calendar_month_rounded),
+              ),
+              const VoiceMicButton(),
+            ],
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: SizedBox(

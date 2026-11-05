@@ -62,6 +62,10 @@ abstract final class RecipeResponseValidator {
     return out;
   }
 
+  /// One recipe object in the AI's recipe format, or null when it does not fit
+  /// (the meal planner reads recipes from its own answer with this).
+  static Recipe? parseRecipe(Object? raw) => _recipe(raw);
+
   static Recipe? _recipe(Object? raw) {
     if (raw is! Map<String, Object?>) {
       return null;

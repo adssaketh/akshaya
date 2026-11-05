@@ -8,6 +8,9 @@ import '../../count/domain/count_settings.dart';
 import '../../count/presentation/providers.dart';
 import '../../pantry/domain/entities.dart';
 import '../../pantry/presentation/providers.dart';
+import '../../planner/domain/meal_plan_models.dart';
+import '../../planner/domain/prep_schedule.dart';
+import '../../planner/presentation/providers.dart';
 import '../../settings/presentation/providers.dart';
 import '../../shopping/domain/shopping_entities.dart';
 import '../../shopping/presentation/providers.dart';
@@ -88,14 +91,29 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
       final AlertScheduler scheduler = ref.read(alertSchedulerProvider);
       final BackgroundWork work = ref.read(backgroundWorkProvider);
 
+      // Prep reminders for planned meals. They are scheduled even when the
+      // daily alert is off, so the background check stays registered for them.
+      final List<MealPlanEntry>? meals = ref.read(upcomingMealsProvider).value;
+      List<ScheduledAlert> prep = const <ScheduledAlert>[];
+      if (meals != null && meals.isNotEmpty) {
+        await gateway.initialize();
+        prep = PrepReminderPlanner.plan(meals, now: gateway.nowInAlertZone());
+      }
+
       if (!settings.enabled) {
         await scheduler.refresh(
           settings: settings,
           items: const <ItemWithBatches>[],
           entries: const <ShoppingEntry>[],
+          prep: prep,
         );
-        await work.cancelAlertRefresh();
-        workRegistered = false;
+        if (prep.isEmpty) {
+          await work.cancelAlertRefresh();
+          workRegistered = false;
+        } else if (!workRegistered) {
+          await work.ensureAlertRefreshRegistered();
+          workRegistered = true;
+        }
         return;
       }
 
@@ -113,6 +131,7 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
         items: items,
         entries: entries,
         counts: counts,
+        prep: prep,
       );
       if (!workRegistered) {
         await work.ensureAlertRefreshRegistered();
@@ -149,6 +168,12 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
     (previous, next) => queue(),
   );
   ref.listen<DateTime>(todayProvider, (previous, next) => queue());
+  // Planning a meal, editing its prep reminders or cooking it changes which
+  // reminders are due.
+  ref.listen<AsyncValue<List<MealPlanEntry>>>(
+    upcomingMealsProvider,
+    (previous, next) => queue(),
+  );
   // The monthly count reminder: switching it on or off, picking another day,
   // or finishing a count changes what is scheduled.
   ref.listen<CountSettings>(

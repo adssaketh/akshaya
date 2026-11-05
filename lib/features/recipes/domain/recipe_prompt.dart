@@ -43,6 +43,17 @@ abstract final class RecipePromptBuilder {
         .replaceAll('{{pantry}}', pantryText);
   }
 
+  /// The pantry lines as the prompt shows them, one per line (the meal planner
+  /// prompt uses the same format).
+  static String pantryText(List<PantryLine> pantry) =>
+      pantry.map((PantryLine line) => _line(line)).join('\n');
+
+  static String dietText(RecipeDiet diet) => _dietText(diet);
+
+  static String clean(String text) => _clean(text);
+
+  static String isoDate(DateTime d) => _isoDate(d);
+
   static String _line(PantryLine line) {
     final String amount = '${formatNumber(line.usable)} ${line.unit.symbol}';
     final DateTime? expiry = line.expiry;

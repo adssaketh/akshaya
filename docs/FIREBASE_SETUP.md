@@ -20,7 +20,7 @@ Console -> Authentication -> Sign-in method: enable **Google** and **Email/Passw
 
 ## 4. Firestore
 1. Console -> Firestore Database -> Create database (production mode, a free-tier region).
-2. Deploy rules and indexes (Firebase CLI, once): `firebase deploy --only firestore:rules,firestore:indexes --project <id>`; or paste `firestore.rules` into the Rules tab and create the seven composite indexes from `firestore.indexes.json` (collection `isDeleted` asc + `updatedAt` asc, for categories, items, shoppingLists, batches, entries, logs, recipes).
+2. Deploy rules and indexes (Firebase CLI, once): `firebase deploy --only firestore:rules,firestore:indexes --project <id>`; or paste `firestore.rules` into the Rules tab and create the eight composite indexes from `firestore.indexes.json` (collection `isDeleted` asc + `updatedAt` asc, for categories, items, shoppingLists, batches, entries, logs, recipes, mealPlan).
 
 ## 5. App Check (already used by AI)
 Play Integrity for release builds; for debug APKs register the debug token shown in logcat (App Check -> Apps -> Manage debug tokens). Enforce App Check on Firestore only after tokens are registered.

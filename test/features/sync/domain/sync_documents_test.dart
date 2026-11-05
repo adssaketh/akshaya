@@ -161,6 +161,41 @@ void main() {
     });
   });
 
+  test('a meal plan row travels as a document and back', () {
+    final Map<String, Object?> row = <String, Object?>{
+      'id': 'm1',
+      'household_id': null,
+      'created_at': 100,
+      'updated_at': 200,
+      'updated_by': null,
+      'is_deleted': 0,
+      'plan_date': '2026-11-06',
+      'slot': 'dinner',
+      'title': 'Rajma Masala',
+      'recipe_json': '{"title":"Rajma Masala"}',
+      'leftover_item_id': null,
+      'is_cooked': 1,
+      'prep_json': '[{"text":"Soak Rajma","daysBefore":1,"minutes":1200}]',
+      'sync_status': 'pending',
+    };
+    final Map<String, Object?> doc = SyncDocuments.toRemote(
+      SyncSchema.mealPlan,
+      row,
+      householdId: 'h1',
+      userId: 'u1',
+    );
+    expect(doc['planDate'], '2026-11-06');
+    expect(doc['isCooked'], true);
+    expect(doc['prepJson'], contains('Soak Rajma'));
+    expect(doc.containsKey('syncStatus'), isFalse);
+    final Map<String, Object?> back =
+        SyncDocuments.toLocal(SyncSchema.mealPlan, doc);
+    expect(back['plan_date'], '2026-11-06');
+    expect(back['is_cooked'], 1);
+    expect(back['recipe_json'], '{"title":"Rajma Masala"}');
+    expect(SyncSchema.byCollection('mealPlan')!.table, 'meal_plan_entries');
+  });
+
   test('every collection is in the schema once', () {
     expect(SyncSchema.collections, <String>[
       'categories',
@@ -170,6 +205,7 @@ void main() {
       'entries',
       'logs',
       'recipes',
+      'mealPlan',
     ]);
     for (final String collection in SyncSchema.collections) {
       expect(SyncSchema.byCollection(collection), isNotNull);
