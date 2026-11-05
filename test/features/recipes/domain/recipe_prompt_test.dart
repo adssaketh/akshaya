@@ -15,7 +15,7 @@ void main() {
 
   List<PantryLine> pantry() {
     return linesFor(<ItemWithBatches>[
-      stocked('milk', 'Milk', qty: 1.5, unit: Unit.L, expiry: DateTime(2026, 11, 5)),
+      stocked('milk', 'Milk', qty: 1.5, unit: Unit.l, expiry: DateTime(2026, 11, 5)),
       stocked('rice', 'Rice', qty: 2),
     ]);
   }

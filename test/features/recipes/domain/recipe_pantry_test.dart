@@ -12,7 +12,7 @@ void main() {
   test('soonest expiry first; expired and empty stock do not count', () {
     final List<PantryLine> lines = linesFor(<ItemWithBatches>[
       stocked('rice', 'Rice'),
-      stocked('milk', 'Milk', unit: Unit.L, expiry: DateTime(2026, 11, 6)),
+      stocked('milk', 'Milk', unit: Unit.l, expiry: DateTime(2026, 11, 6)),
       stocked('curd', 'Curd', expiry: DateTime(2026, 11, 5)),
       stocked('old', 'Old Bread', expiry: DateTime(2026, 11, 1)),
       ItemWithBatches(
@@ -30,7 +30,7 @@ void main() {
   test('expiringDays lists only items inside the warning window', () {
     final List<PantryLine> lines = linesFor(<ItemWithBatches>[
       stocked('rice', 'Rice'),
-      stocked('milk', 'Milk', unit: Unit.L, expiry: DateTime(2026, 11, 6)),
+      stocked('milk', 'Milk', unit: Unit.l, expiry: DateTime(2026, 11, 6)),
       stocked('ghee', 'Ghee', expiry: DateTime(2027, 3, 1)),
     ]);
     expect(

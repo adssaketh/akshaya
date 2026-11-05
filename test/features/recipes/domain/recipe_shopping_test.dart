@@ -17,9 +17,9 @@ void main() {
         stocked('rice', 'Rice', qty: 5),
         stocked('tom', 'Tomato', qty: 3, unit: Unit.pcs),
         ItemWithBatches(
-          item: makeItem(id: 'milk', name: 'Milk', unit: Unit.L),
+          item: makeItem(id: 'milk', name: 'Milk', unit: Unit.l),
           batches: <StockBatch>[
-            makeBatch(id: 'bm', itemId: 'milk', unit: Unit.L, remaining: 0),
+            makeBatch(id: 'bm', itemId: 'milk', unit: Unit.l, remaining: 0),
           ],
         ),
       ]),

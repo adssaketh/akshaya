@@ -14,7 +14,7 @@ void main() {
       linesFor(<ItemWithBatches>[
         stocked('rice', 'Rice', qty: 5),
         stocked('tom', 'Tomato', qty: 3, unit: Unit.pcs),
-        stocked('oil', 'Oil', qty: 1, unit: Unit.L),
+        stocked('oil', 'Oil', qty: 1, unit: Unit.l),
       ]),
     );
   }
@@ -55,7 +55,7 @@ void main() {
         expect(l.quantity, isNull);
         expect(l.startsChecked, isFalse);
       }
-      expect(p.lines.last.unit, Unit.L);
+      expect(p.lines.last.unit, Unit.l);
     });
 
     test('missing items are listed apart; salt and water are left out', () {

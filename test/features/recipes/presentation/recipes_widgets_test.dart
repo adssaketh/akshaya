@@ -30,10 +30,10 @@ import '../domain/recipe_test_support.dart';
 
 /// In-memory recipes, behaving like the database (streams re-emit).
 class FakeRecipeRepository implements RecipeRepository {
-  FakeRecipeRepository({RecipeCacheEntry? cache}) : _cache = cache;
+  FakeRecipeRepository({this.cache});
 
   final List<SavedRecipe> _saved = <SavedRecipe>[];
-  RecipeCacheEntry? _cache;
+  RecipeCacheEntry? cache;
   final StreamController<void> _changes = StreamController<void>.broadcast();
   final Set<String> removed = <String>{};
 
@@ -74,16 +74,16 @@ class FakeRecipeRepository implements RecipeRepository {
 
   @override
   Stream<RecipeCacheEntry?> watchCache() async* {
-    yield _cache;
-    yield* _changes.stream.map((_) => _cache);
+    yield cache;
+    yield* _changes.stream.map((_) => cache);
   }
 
   @override
-  Future<RecipeCacheEntry?> readCache() async => _cache;
+  Future<RecipeCacheEntry?> readCache() async => cache;
 
   @override
   Future<void> writeCache(RecipeCacheEntry entry) async {
-    _cache = entry;
+    cache = entry;
     _changes.add(null);
   }
 }

@@ -22,9 +22,9 @@ void main() {
         ),
         stocked('curd', 'Curd', expiry: DateTime(2026, 11, 1)),
         ItemWithBatches(
-          item: makeItem(id: 'milk', name: 'Milk', unit: Unit.L),
+          item: makeItem(id: 'milk', name: 'Milk', unit: Unit.l),
           batches: <StockBatch>[
-            makeBatch(id: 'bm', itemId: 'milk', unit: Unit.L, remaining: 0),
+            makeBatch(id: 'bm', itemId: 'milk', unit: Unit.l, remaining: 0),
           ],
         ),
       ]),

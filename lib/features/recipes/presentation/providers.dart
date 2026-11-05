@@ -7,7 +7,7 @@ import '../../ai/domain/ai_failures.dart';
 import '../../ai/domain/ai_gate.dart';
 import '../../ai/presentation/providers.dart';
 import '../../commands/presentation/providers.dart';
-import '../../pantry/domain/entities.dart';
+import '../../pantry/domain/stock_logic.dart';
 import '../../pantry/presentation/providers.dart';
 import '../../settings/presentation/providers.dart';
 import '../data/drift_recipe_repository.dart';
