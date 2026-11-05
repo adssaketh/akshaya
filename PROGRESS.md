@@ -380,7 +380,7 @@ Optional sign-in (Google, email/password), households (create, join by 8-charact
 ### Files (new or changed in Phase 6)
 
 ```
-pubspec.yaml                                       + firebase_auth, cloud_firestore, google_sign_in, qr_flutter
+pubspec.yaml                                       + firebase_auth, cloud_firestore, qr_flutter
 firestore.rules / firestore.indexes.json / firebase.json
 firebase/                                          rules tests (@firebase/rules-unit-testing, node --test)
 docs/FIREBASE_SETUP.md                             Spark-only setup, SHA-1, rules deploy, quota notes
@@ -437,7 +437,7 @@ Set up first: `docs/FIREBASE_SETUP.md` (Google + Email providers, Firestore, rul
 
 ## Known issues (Phase 6)
 
-- Not compiled or run locally (no Flutter SDK in my sandbox). Firebase package APIs (`google_sign_in` v7 in particular) are written from memory; if CI complains, send me the errors. Versions are `^` lower bounds; send the resolved versions to pin.
+- Not compiled or run locally (no Flutter SDK in my sandbox). Google sign-in uses Firebase's own provider flow (`signInWithProvider`), not the Android Credential Manager (it rejected the build with `[16] Account reauth failed`). Firebase package APIs are written from memory; if CI complains, send me the errors. Versions are `^` lower bounds; send the resolved versions to pin.
 - Two simultaneous alert sources: if two collections deliver at once, a change in the older one can be treated as already seen and skip its alert (sync itself is unaffected).
 - The background check cannot tell a new document from an edited one, so another member's edit to an entry can read as "added".
 - A member removed while offline learns about it on the next connection.

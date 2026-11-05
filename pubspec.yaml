@@ -31,7 +31,6 @@ dependencies:
   # Phase 6: optional sign-in and household sync (Spark plan, no server code).
   firebase_auth: ^6.0.0
   cloud_firestore: ^6.0.0
-  google_sign_in: ^7.0.0
   # Shows the household invite code as a QR code (scanning reuses
   # mobile_scanner).
   qr_flutter: ^4.1.0

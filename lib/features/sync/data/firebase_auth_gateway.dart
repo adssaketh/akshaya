@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../ai/data/firebase_runtime.dart';
 import '../domain/account_gateways.dart';
@@ -12,7 +11,6 @@ class FirebaseAuthGateway implements AuthGateway {
   FirebaseAuthGateway(this._runtime);
 
   final FirebaseRuntime _runtime;
-  bool _googleReady = false;
 
   @override
   bool get isAvailable => FirebaseBuildConfig.isConfigured;
@@ -71,41 +69,22 @@ class FirebaseAuthGateway implements AuthGateway {
   Future<AuthUser> signInWithGoogle() async {
     try {
       final FirebaseAuth auth = await _auth();
-      final GoogleSignIn google = GoogleSignIn.instance;
-      if (!_googleReady) {
-        await google.initialize(
-          serverClientId: FirebaseBuildConfig.webClientId.isEmpty
-              ? null
-              : FirebaseBuildConfig.webClientId,
-        );
-        _googleReady = true;
-      }
-      final GoogleSignInAccount account = await google.authenticate();
-      final String? idToken = account.authentication.idToken;
-      if (idToken == null) {
-        throw const AccountFailure('Google did not return a sign-in token.');
-      }
-      final AuthCredential credential =
-          GoogleAuthProvider.credential(idToken: idToken);
-      final UserCredential result = await auth.signInWithCredential(credential);
+      // Firebase's own browser-style flow: it does not depend on the Android
+      // Credential Manager, whose client matching rules reject some builds.
+      final GoogleAuthProvider provider = GoogleAuthProvider()
+        ..addScope('email');
+      final UserCredential result = await auth.signInWithProvider(provider);
       return _require(result.user);
-    } on GoogleSignInException catch (error) {
-      // Android reports a rejected app key (wrong SHA-1, client not ready yet)
-      // as "cancelled" too, so the message covers both.
-      final String detail = error.description ?? error.code.name;
-      if (error.code == GoogleSignInExceptionCode.canceled) {
-        throw AccountFailure(
-          'Google sign-in was cancelled or not accepted ($detail). If you did '
-          'not cancel it, check that this build\'s SHA-1 is registered in '
-          'Firebase and that a Google account is on this phone.',
-        );
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'web-context-canceled' ||
+          error.code == 'canceled' ||
+          error.code == 'cancelled-popup-request') {
+        throw const AccountFailure('Sign-in was cancelled.');
       }
       throw AccountFailure(
-        'Google sign-in did not work ($detail). Check that this build\'s '
-        'SHA-1 key is added to the Firebase project, or use email and password.',
+        'Google sign-in did not work (${error.code}). Use email and password '
+        'instead, or try again.',
       );
-    } on FirebaseAuthException catch (error) {
-      throw _authFailure(error);
     } on Object catch (error) {
       throw accountFailureOf(error);
     }
@@ -170,9 +149,6 @@ class FirebaseAuthGateway implements AuthGateway {
     try {
       final FirebaseAuth auth = await _auth();
       await auth.signOut();
-      if (_googleReady) {
-        await GoogleSignIn.instance.signOut();
-      }
     } on Object catch (error) {
       throw accountFailureOf(error);
     }
