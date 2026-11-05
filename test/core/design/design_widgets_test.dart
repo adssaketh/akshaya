@@ -65,6 +65,7 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
       expect(find.text('7'), findsOneWidget);
       expect(find.text('Low stock'), findsOneWidget);
       await tester.tap(find.byType(SummaryTile));

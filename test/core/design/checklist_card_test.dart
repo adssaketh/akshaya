@@ -84,8 +84,11 @@ void main() {
         ),
       );
 
-      final Text title = tester.widget<Text>(find.text('Milk'));
-      expect(title.style?.decoration, TextDecoration.lineThrough);
+      await tester.pumpAndSettle();
+      final TextStyle style = DefaultTextStyle.of(
+        tester.element(find.text('Milk')),
+      ).style;
+      expect(style.decoration, TextDecoration.lineThrough);
       expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
     });
 
