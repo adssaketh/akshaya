@@ -32,6 +32,20 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        // Always sign debug builds with ~/.android/debug.keystore (CI restores
+        // or caches one there), so the SHA-1 registered in Firebase stays valid.
+        getByName("debug") {
+            val keystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            if (keystore.exists()) {
+                storeFile = keystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

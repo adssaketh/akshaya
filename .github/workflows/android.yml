@@ -158,6 +158,10 @@ jobs:
           keytool -list -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey | grep -E "SHA1|SHA256"
       - name: Build debug APK
         run: flutter build apk --debug $DART_DEFINES
+      - name: Print the SHA-1 the APK is actually signed with
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-debug.apk | grep -E "SHA-1|SHA-256"
       - uses: actions/upload-artifact@v4
         with:
           name: akshaya-debug-apk
