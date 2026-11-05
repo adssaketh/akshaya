@@ -583,6 +583,20 @@ Fix:
 - Tests: `motion_test.dart` now checks that the child State survives a tab switch and an entrance, and that a tab never starts fully transparent.
 Rule: never swap a widget wrapper in or out around a screen or row to "skip" an animation at rest.
 
+## Settings scroll lag fix (post Phase 8)
+
+Symptom: the Settings tab scrolled with lag.
+Cause (found by reading the code; not profiled on a device): every setting, the AI call counter and the Firestore read/write counters live in one `app_settings` table behind one `settingsMapProvider`. Sync and AI write a counter on almost every operation. `AppSettings`, `AiSettings`, `AiUsage`, `SyncSettings` and `FirestoreUsage` had no `==`, so each of those writes produced "new" values and rebuilt `AkshayaApp` (MaterialApp, two fresh `ThemeData`), `AppLockGate`, every Settings section and, via the alert coordinator, re-planned the scheduled alerts. The Alerts block also watched the whole pantry and shopping streams.
+Fix:
+- Value equality (`==`/`hashCode`) on the five classes above, so a provider only notifies when its own values change.
+- `alertCoordinatorProvider` listens to `alertSettingsProvider` instead of the whole settings table.
+- `AppLockGate` watches only "settings loaded" and `appLock` (`select`).
+- `AkshayaApp` builds its two `ThemeData` once.
+- `AlertsSection` uses `ref.listen` (keeps the streams loaded for the preview) instead of `ref.watch`.
+- Test: `test/features/settings/settings_rebuild_test.dart` (usage-counter writes notify only the usage providers).
+Files: `lib/app.dart`, `lib/features/lock/app_lock.dart`, `lib/features/alerts/presentation/{providers,alerts_section}.dart`, `lib/features/settings/domain/app_settings.dart`, `lib/features/ai/domain/ai_settings.dart`, `lib/features/sync/domain/sync_settings.dart`.
+If Settings still stutters on your phone, the next suspects are the long monolithic sections (each is one `Column`, built whole when it scrolls into view) and first-draw cost of the variable fonts; tell me and I will profile or split the sections into lazily built tiles.
+
 ## Next: Phase 9 (v2 roadmap), only when you say so.
 
 ## Phase 0: what was built (unchanged)

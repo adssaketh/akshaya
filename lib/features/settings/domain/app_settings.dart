@@ -64,6 +64,23 @@ final class AppSettings {
   /// Whether the app plays its transitions and animations.
   final bool animations;
 
+  // Value equality matters: every write to the settings table (including the
+  // usage counters that sync and AI bump) rebuilds this object, and without
+  // equality the whole app would rebuild each time.
+  @override
+  bool operator ==(Object other) {
+    return other is AppSettings &&
+        other.theme == theme &&
+        other.currencySymbol == currencySymbol &&
+        other.defaultUnit == defaultUnit &&
+        other.appLock == appLock &&
+        other.animations == animations;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(theme, currencySymbol, defaultUnit, appLock, animations);
+
   static Unit _unitFromSymbol(String? symbol) {
     for (final Unit u in Unit.values) {
       if (u.symbol == symbol) {

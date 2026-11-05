@@ -129,8 +129,11 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
     });
   }
 
-  ref.listen<AsyncValue<Map<String, String>>>(
-    settingsMapProvider,
+  // Only the alert settings matter here. Listening to the whole settings table
+  // re-planned the alerts (and woke the database) on every usage counter that
+  // sync or AI bumped.
+  ref.listen<AlertSettings>(
+    alertSettingsProvider,
     (previous, next) => queue(),
   );
   ref.listen<AsyncValue<List<ItemWithBatches>>>(

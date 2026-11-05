@@ -51,6 +51,27 @@ final class SyncSettings {
   final String? householdName;
   final String? inviteCode;
   final String? lastHouseholdId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is SyncSettings &&
+        other.enabled == enabled &&
+        other.userName == userName &&
+        other.userEmail == userEmail &&
+        other.householdName == householdName &&
+        other.inviteCode == inviteCode &&
+        other.lastHouseholdId == lastHouseholdId;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        enabled,
+        userName,
+        userEmail,
+        householdName,
+        inviteCode,
+        lastHouseholdId,
+      );
 }
 
 /// Firestore reads and writes this phone made today (an estimate).
@@ -69,6 +90,17 @@ final class FirestoreUsage {
   final String? date;
   final int reads;
   final int writes;
+
+  @override
+  bool operator ==(Object other) {
+    return other is FirestoreUsage &&
+        other.date == date &&
+        other.reads == reads &&
+        other.writes == writes;
+  }
+
+  @override
+  int get hashCode => Object.hash(date, reads, writes);
 
   /// The usage after adding [moreReads] and [moreWrites] on [today]. A new day
   /// starts from zero.

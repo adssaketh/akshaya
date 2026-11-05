@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
+import '../settings/domain/app_settings.dart';
 import '../settings/presentation/providers.dart';
 
 /// Asks the phone to confirm the person (fingerprint, face or screen lock).
@@ -115,10 +116,16 @@ class _AppLockGateState extends ConsumerState<AppLockGate> {
 
   @override
   Widget build(BuildContext context) {
-    final AsyncValue<Map<String, String>> loaded =
-        ref.watch(settingsMapProvider);
-    final bool enabled = ref.watch(appSettingsProvider).appLock;
-    if (loaded.isLoading && !loaded.hasValue) {
+    // Narrow watches: the lock only cares whether settings have loaded and
+    // whether the lock is on, not about every other setting that changes.
+    final bool stillLoading = ref.watch(
+      settingsMapProvider.select(
+        (AsyncValue<Map<String, String>> v) => v.isLoading && !v.hasValue,
+      ),
+    );
+    final bool enabled =
+        ref.watch(appSettingsProvider.select((AppSettings s) => s.appLock));
+    if (stillLoading) {
       return ColoredBox(color: context.akColors.background);
     }
     final bool showLock = enabled && _locked;

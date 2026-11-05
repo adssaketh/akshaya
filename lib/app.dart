@@ -23,6 +23,11 @@ class AkshayaApp extends ConsumerStatefulWidget {
 class _AkshayaAppState extends ConsumerState<AkshayaApp> {
   late final AppLifecycleListener _lifecycle;
 
+  // Built once: rebuilding two full ThemeData objects on every app rebuild is
+  // wasted work.
+  final ThemeData _lightTheme = AkshayaTheme.light();
+  final ThemeData _darkTheme = AkshayaTheme.dark();
+
   @override
   void initState() {
     super.initState();
@@ -73,8 +78,8 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
     return MaterialApp(
       title: 'Akshaya Patra',
       debugShowCheckedModeBanner: false,
-      theme: AkshayaTheme.light(),
-      darkTheme: AkshayaTheme.dark(),
+      theme: _lightTheme,
+      darkTheme: _darkTheme,
       themeMode: _mode(settings.theme),
       builder: (BuildContext context, Widget? child) =>
           AppLockGate(child: child ?? const SizedBox.shrink()),

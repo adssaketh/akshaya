@@ -49,6 +49,19 @@ final class AiSettings {
   final bool noticeAccepted;
   final VoiceLanguage voiceLanguage;
 
+  @override
+  bool operator ==(Object other) {
+    return other is AiSettings &&
+        other.enabled == enabled &&
+        other.dailyCap == dailyCap &&
+        other.noticeAccepted == noticeAccepted &&
+        other.voiceLanguage == voiceLanguage;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(enabled, dailyCap, noticeAccepted, voiceLanguage);
+
   AiSettings copyWith({
     bool? enabled,
     int? dailyCap,
@@ -78,6 +91,14 @@ final class AiUsage {
   /// "2026-11-04", or null before the first call.
   final String? date;
   final int count;
+
+  @override
+  bool operator ==(Object other) {
+    return other is AiUsage && other.date == date && other.count == count;
+  }
+
+  @override
+  int get hashCode => Object.hash(date, count);
 
   /// Calls made on [today] (a new day starts again at zero).
   int countOn(DateTime today) => date == dayKey(today) ? count : 0;

@@ -24,10 +24,11 @@ class AlertsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AlertSettings settings = ref.watch(alertSettingsProvider);
     final bool? allowed = ref.watch(notificationsAllowedProvider).value;
-    // Kept loaded for the preview button.
+    // Kept loaded for the preview button. Listening (not watching) keeps them
+    // subscribed without rebuilding this whole block on every pantry change.
     ref
-      ..watch(itemsStreamProvider)
-      ..watch(shoppingEntriesProvider);
+      ..listen(itemsStreamProvider, (previous, next) {})
+      ..listen(shoppingEntriesProvider, (previous, next) {});
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
