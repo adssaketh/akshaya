@@ -137,13 +137,47 @@ class AppDatabase extends _$AppDatabase {
         if (from < 7) {
           // Plain ALTER TABLE ... ADD COLUMN of nullable columns: existing
           // rows read as null (stocked, no shelf life, no container).
-          await m.addColumn(items, items.kind);
-          await m.addColumn(items, items.shelfLifeDays);
-          await m.addColumn(stockBatches, stockBatches.containerLabel);
-          await m.addColumn(stockBatches, stockBatches.checkBy);
+          // Each is skipped when the column is already there: the alert
+          // worker may open the database before the app does, and test
+          // fixtures build old databases from the current table classes.
+          await _addColumnIfMissing(m, items, items.kind, 'kind');
+          await _addColumnIfMissing(
+            m,
+            items,
+            items.shelfLifeDays,
+            'shelf_life_days',
+          );
+          await _addColumnIfMissing(
+            m,
+            stockBatches,
+            stockBatches.containerLabel,
+            'container_label',
+          );
+          await _addColumnIfMissing(
+            m,
+            stockBatches,
+            stockBatches.checkBy,
+            'check_by',
+          );
         }
       },
     );
+  }
+
+  Future<void> _addColumnIfMissing(
+    Migrator m,
+    TableInfo<Table, dynamic> table,
+    GeneratedColumn<Object> column,
+    String columnName,
+  ) async {
+    final List<QueryRow> info = await customSelect(
+      'PRAGMA table_info(${table.actualTableName})',
+    ).get();
+    final bool exists =
+        info.any((QueryRow row) => row.read<String>('name') == columnName);
+    if (!exists) {
+      await m.addColumn(table, column);
+    }
   }
 
   /// The sync bookkeeping row and the triggers that capture edits. Safe to run
