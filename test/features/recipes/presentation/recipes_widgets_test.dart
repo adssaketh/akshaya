@@ -425,6 +425,13 @@ void main() {
     }
 
     Future<void> ready(ProviderContainer c) async {
+      // Providers nobody listens to are paused, so keep the ones the
+      // controller reads alive until their first values have arrived.
+      c
+        ..listen(pantryLinesProvider, (previous, next) {})
+        ..listen(recipePreferencesProvider, (previous, next) {})
+        ..listen(itemsStreamProvider, (previous, next) {})
+        ..listen(settingsMapProvider, (previous, next) {});
       await c.read(itemsStreamProvider.future);
       await c.read(settingsMapProvider.future);
     }
