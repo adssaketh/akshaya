@@ -14,6 +14,7 @@ import '../planner/presentation/meal_planner_screen.dart';
 import '../pantry/presentation/providers.dart';
 import '../recipes/presentation/recipes_screen.dart';
 import '../settings/settings_screen.dart';
+import '../travel/presentation/travel_screen.dart';
 import '../shopping/presentation/shopping_screen.dart';
 
 /// Bottom navigation: Home, Pantry, Shopping, Recipes, Settings.
@@ -88,6 +89,8 @@ class _AppShellState extends ConsumerState<AppShell> {
         unawaited(openMealPlanner(context));
       case AlertTarget.recipes:
         setState(() => _index = _recipesTab);
+      case AlertTarget.trip:
+        unawaited(openTravelMode(context));
     }
     ref.read(alertTargetProvider.notifier).clear();
   }

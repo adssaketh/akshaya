@@ -4,7 +4,7 @@ rules_version = '2';
 //
 //   households/{h}                       name, ownerId, inviteCode, createdAt
 //   households/{h}/members/{uid}         displayName, role, joinedAt
-//   households/{h}/{categories|items|shoppingLists|batches|entries|logs|recipes|mealPlan}/{id}
+//   households/{h}/{categories|items|shoppingLists|batches|entries|logs|recipes|mealPlan|trips}/{id}
 //   inviteCodes/{code}                   householdId, ownerId
 //   users/{uid}                          householdId (pointer, own account only)
 //
@@ -237,6 +237,25 @@ service cloud.firestore {
               || request.resource.data.prepJson == null
               || (request.resource.data.prepJson is string
                   && request.resource.data.prepJson.size() <= 4000));
+        allow delete: if isMember(h) && resource.data.isDeleted == true;
+      }
+
+      // Travel mode trips (Phase 14). The essentials list is JSON text and is
+      // optional; the name may be empty.
+      match /trips/{id} {
+        allow read: if isMember(h);
+        allow create, update: if isMember(h) && syncedBase(h, id)
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 80
+          && isText(request.resource.data.startDate, 10)
+          && isText(request.resource.data.endDate, 10)
+          && request.resource.data.pauseRecurring is bool
+          && request.resource.data.pauseAlerts is bool
+          && request.resource.data.essentialsAdded is bool
+          && (!('essentialsJson' in request.resource.data)
+              || request.resource.data.essentialsJson == null
+              || (request.resource.data.essentialsJson is string
+                  && request.resource.data.essentialsJson.size() <= 4000));
         allow delete: if isMember(h) && resource.data.isDeleted == true;
       }
     }

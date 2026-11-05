@@ -14,6 +14,8 @@ import '../../planner/presentation/providers.dart';
 import '../../settings/presentation/providers.dart';
 import '../../shopping/domain/shopping_entities.dart';
 import '../../shopping/presentation/providers.dart';
+import '../../travel/domain/trip_models.dart';
+import '../../travel/presentation/trip_providers.dart';
 import '../data/local_notification_gateway.dart';
 import '../data/notification_background_handler.dart';
 import '../data/workmanager_background_work.dart';
@@ -122,6 +124,7 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
           entries: const <ShoppingEntry>[],
           prep: prep,
           snoozes: AlertSnoozes.fromMap(stored),
+          trips: ref.read(tripsProvider).value ?? const <Trip>[],
         );
         if (prep.isEmpty) {
           await work.cancelAlertRefresh();
@@ -149,6 +152,7 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
         counts: counts,
         prep: prep,
         snoozes: AlertSnoozes.fromMap(stored),
+        trips: ref.read(tripsProvider).value ?? const <Trip>[],
       );
       if (!workRegistered) {
         await work.ensureAlertRefreshRegistered();
@@ -186,6 +190,11 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
   );
   ref.listen<AlertSnoozes>(
     alertSnoozesProvider,
+    (previous, next) => queue(),
+  );
+  // A trip that pauses alerts, or its return day, changes what is scheduled.
+  ref.listen<AsyncValue<List<Trip>>>(
+    tripsProvider,
     (previous, next) => queue(),
   );
   ref.listen<DateTime>(todayProvider, (previous, next) => queue());

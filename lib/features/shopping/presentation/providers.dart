@@ -4,6 +4,7 @@ import '../../../core/time/clock.dart';
 import '../../pantry/domain/entities.dart';
 import '../../pantry/domain/stock_logic.dart';
 import '../../pantry/presentation/providers.dart';
+import '../../travel/presentation/trip_providers.dart';
 import '../data/drift_shopping_repository.dart';
 import '../domain/shopping_entities.dart';
 import '../domain/shopping_repository.dart';
@@ -70,6 +71,7 @@ final Provider<AsyncValue<ShoppingListView>> shoppingViewProvider =
       ref.watch(itemsStreamProvider).value ?? const <ItemWithBatches>[];
   final List<Category> categories =
       ref.watch(categoriesProvider).value ?? const <Category>[];
+  final DateTime? pausedUntil = ref.watch(recurringResumeProvider);
 
   return entries.whenData(
     (List<ShoppingEntry> all) => ShoppingListBuilder.build(
@@ -82,6 +84,7 @@ final Provider<AsyncValue<ShoppingListView>> shoppingViewProvider =
       },
       categories: categories,
       today: today,
+      pausedUntil: pausedUntil,
     ),
   );
 });
@@ -93,6 +96,7 @@ final Provider<Map<String, int>> toBuyCountsProvider =
   final List<ShoppingEntry> entries =
       ref.watch(shoppingEntriesProvider).value ?? const <ShoppingEntry>[];
   final DateTime today = ref.watch(todayProvider);
+  final DateTime? pausedUntil = ref.watch(recurringResumeProvider);
 
   final Map<String, List<ShoppingEntry>> byList =
       <String, List<ShoppingEntry>>{};
@@ -101,7 +105,11 @@ final Provider<Map<String, int>> toBuyCountsProvider =
   }
   return <String, int>{
     for (final MapEntry<String, List<ShoppingEntry>> e in byList.entries)
-      e.key: ShoppingListBuilder.toBuyCount(e.value, today),
+      e.key: ShoppingListBuilder.toBuyCount(
+        e.value,
+        today,
+        pausedUntil: pausedUntil,
+      ),
   };
 });
 

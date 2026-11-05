@@ -73,8 +73,8 @@ final class SyncTableSpec {
   List<String> get fields => <String>[for (final SyncColumn c in columns) c.field];
 }
 
-/// The synced tables (schema from Phase 1 to 4, recipes from Phase 7 and the
-/// meal plan from Phase 12) and their documents.
+/// The synced tables (schema from Phase 1 to 4, recipes from Phase 7, the
+/// meal plan from Phase 12 and trips from Phase 14) and their documents.
 abstract final class SyncSchema {
   static const List<SyncColumn> _shared = <SyncColumn>[
     SyncColumn('id', SyncColumnKind.text, required: true),
@@ -224,6 +224,23 @@ abstract final class SyncSchema {
     ],
   );
 
+  /// Trips for travel mode (Phase 14). The essentials to buy on the way back
+  /// travel as JSON text inside the document.
+  static const SyncTableSpec trips = SyncTableSpec(
+    table: 'trips',
+    collection: 'trips',
+    columns: <SyncColumn>[
+      ..._shared,
+      SyncColumn('name', SyncColumnKind.text, required: true),
+      SyncColumn('start_date', SyncColumnKind.text, required: true),
+      SyncColumn('end_date', SyncColumnKind.text, required: true),
+      SyncColumn('pause_recurring', SyncColumnKind.boolean, required: true),
+      SyncColumn('pause_alerts', SyncColumnKind.boolean, required: true),
+      SyncColumn('essentials_json', SyncColumnKind.text),
+      SyncColumn('essentials_added', SyncColumnKind.boolean, required: true),
+    ],
+  );
+
   /// Push and pull order: things other rows point at come first.
   static const List<SyncTableSpec> tables = <SyncTableSpec>[
     categories,
@@ -234,6 +251,7 @@ abstract final class SyncSchema {
     logs,
     recipes,
     mealPlan,
+    trips,
   ];
 
   /// The spec for a Firestore collection name, or null.

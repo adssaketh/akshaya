@@ -1,5 +1,6 @@
 import '../../pantry/domain/stock_logic.dart';
 import '../../shopping/domain/shopping_suggestions.dart';
+import '../../travel/domain/trip_summary.dart';
 import 'alert_action.dart';
 import 'alert_digest.dart';
 
@@ -27,7 +28,10 @@ enum AlertTarget {
   mealPlan('plan:week'),
 
   /// The Recipes tab, from the "Show recipes" button of an expiry alert.
-  recipes('recipes:open');
+  recipes('recipes:open'),
+
+  /// Travel mode, from the "Welcome back" summary.
+  trip('trip:open');
 
   const AlertTarget(this.payload);
 
@@ -127,6 +131,7 @@ abstract final class AlertPlanner {
   static const int _expiringSlot = 2;
   static const int _lowStockSlot = 3;
   static const int _countSlot = 4;
+  static const int _tripSlot = 5;
 
   /// The id of an alert on day [dayOffset] (0 is the first alert day).
   static int idFor(int dayOffset, int slot) => _baseId + dayOffset * 10 + slot;
@@ -252,6 +257,20 @@ abstract final class AlertPlanner {
       channel: AlertChannelKind.stock,
       title: 'Time to count your pantry',
       body: 'Check the shelf against the app. A few minutes keeps it right.',
+    );
+  }
+
+  /// The "Welcome back" summary shown on the day a trip ends.
+  static AlertNotification tripSummary(
+    TripSummary summary, {
+    int dayOffset = 0,
+  }) {
+    return AlertNotification(
+      id: idFor(dayOffset, _tripSlot),
+      target: AlertTarget.trip,
+      channel: AlertChannelKind.expiry,
+      title: summary.title,
+      body: summary.body,
     );
   }
 

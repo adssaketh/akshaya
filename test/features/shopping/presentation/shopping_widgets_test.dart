@@ -11,6 +11,7 @@ import 'package:akshaya/features/shopping/presentation/checkout_screen.dart';
 import 'package:akshaya/features/shopping/presentation/entry_form_screen.dart';
 import 'package:akshaya/features/shopping/presentation/providers.dart';
 import 'package:akshaya/features/shopping/presentation/shopping_screen.dart';
+import 'package:akshaya/features/travel/presentation/trip_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../pantry/domain/test_data.dart';
 import '../../pantry/presentation/fake_repository.dart';
 import '../../settings/fake_settings_repository.dart';
+import '../../travel/fake_trip_repository.dart';
 import '../domain/shopping_test_data.dart';
 import 'fake_shopping_repository.dart';
 
@@ -32,6 +34,7 @@ Widget host({
       shoppingRepositoryProvider.overrideWithValue(shopping),
       pantryRepositoryProvider.overrideWithValue(pantry),
       settingsRepositoryProvider.overrideWithValue(FakeSettingsRepository()),
+      tripRepositoryProvider.overrideWithValue(FakeTripRepository()),
       clockProvider.overrideWithValue(() => DateTime(2026, 11, 4, 10)),
       if (share != null) shareServiceProvider.overrideWithValue(share),
     ],

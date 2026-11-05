@@ -13,6 +13,9 @@ import '../../settings/data/drift_settings_repository.dart';
 import '../../sync/data/household_check.dart';
 import '../../shopping/data/drift_shopping_repository.dart';
 import '../../shopping/domain/shopping_entities.dart';
+import '../../travel/data/drift_trip_repository.dart';
+import '../../travel/domain/back_home.dart';
+import '../../travel/domain/trip_models.dart';
 import '../domain/alert_scheduler.dart';
 import '../domain/alert_settings.dart';
 import '../domain/alert_snoozes.dart';
@@ -40,6 +43,21 @@ Future<List<ScheduledAlert>> refreshAlertsFromDatabase(
   final DriftPantryRepository pantry = DriftPantryRepository(db);
   final DriftShoppingRepository shopping = DriftShoppingRepository(db, pantry);
   final List<ItemWithBatches> items = await pantry.watchItems().first;
+
+  // The back-home essentials go on the list before the alerts are worked out,
+  // so a trip's last day sees them.
+  final DriftTripRepository tripRepository = DriftTripRepository(db);
+  try {
+    await addBackHomeEssentials(
+      trips: tripRepository,
+      shopping: shopping,
+      pantry: pantry,
+      today: DateTime.now(),
+    );
+  } on Object catch (error) {
+    debugPrint('Back-home essentials failed: $error');
+  }
+  final List<Trip> trips = await tripRepository.readAll();
   final List<ShoppingEntry> entries = await shopping.watchEntries().first;
 
   await gateway.initialize();
@@ -54,6 +72,7 @@ Future<List<ScheduledAlert>> refreshAlertsFromDatabase(
     counts: counts,
     prep: PrepReminderPlanner.plan(meals, now: now),
     snoozes: AlertSnoozes.fromMap(stored),
+    trips: trips,
   );
 }
 

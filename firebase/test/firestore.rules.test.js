@@ -113,6 +113,27 @@ test('members can plan meals; bad meal plan documents are rejected', async () =>
   await assertFails(setDoc(doc(as('stranger'), 'households', H, 'mealPlan', 'm1'), mealPlan('stranger')));
 });
 
+function trip(uid, over = {}) {
+  return {
+    id: 't1', householdId: H, createdAt: 1, updatedAt: 2, updatedBy: uid, isDeleted: false,
+    syncedAt: serverTimestamp(), name: 'Goa', startDate: '2026-11-10', endDate: '2026-11-15',
+    pauseRecurring: true, pauseAlerts: true, essentialsJson: '[]', essentialsAdded: false,
+    ...over,
+  };
+}
+
+test('members can save trips; bad trip documents are rejected', async () => {
+  const ref = doc(as('member'), 'households', H, 'trips', 't1');
+  await assertSucceeds(setDoc(ref, trip('member')));
+  await assertSucceeds(setDoc(ref, trip('member', { name: '', essentialsJson: null })));
+  await assertFails(setDoc(ref, trip('member', { pauseAlerts: 'yes' })));
+  await assertFails(setDoc(ref, trip('member', { startDate: '2026-11-10T00:00:00' })));
+  await assertFails(setDoc(ref, trip('member', { name: 'x'.repeat(81) })));
+  await assertFails(setDoc(ref, trip('member', { essentialsJson: 'x'.repeat(4001) })));
+  await assertFails(setDoc(ref, trip('owner')));
+  await assertFails(setDoc(doc(as('stranger'), 'households', H, 'trips', 't1'), trip('stranger')));
+});
+
 test('a non-member cannot read or write household data', async () => {
   const db = as('stranger');
   await assertFails(getDoc(doc(db, 'households', H, 'entries', 'e1')));

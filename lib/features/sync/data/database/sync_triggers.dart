@@ -16,6 +16,7 @@ abstract final class SyncTriggers {
     'shopping_entries',
     'saved_recipes',
     'meal_plan_entries',
+    'trips',
   ];
 
   static const String _notSuppressed =

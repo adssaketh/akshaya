@@ -19,6 +19,7 @@ import '../domain/shopping_enums.dart';
 import '../domain/shopping_repository.dart';
 import '../domain/shopping_suggestions.dart';
 import '../domain/shopping_view.dart';
+import '../../travel/presentation/trip_providers.dart';
 import 'providers.dart';
 import 'shopping_actions.dart';
 
@@ -278,13 +279,15 @@ class _EntryRow extends ConsumerWidget {
   /// Position in the list, for the staggered entrance.
   final int index;
 
-  /// Repeating entries waiting for their next date cannot be ticked.
-  bool get _waiting => !entry.isDueOn(today);
+  /// Repeating entries waiting for their next date (or held back by a trip)
+  /// cannot be ticked.
+  bool _waiting(DateTime? pausedUntil) =>
+      !entry.isDueOn(today, pausedUntil: pausedUntil);
 
-  String get _subtitle {
+  String _subtitle(DateTime? pausedUntil) {
     final List<String> parts = <String>[entry.quantityLabel];
-    final DateTime? due = entry.dueOn;
-    if (_waiting && due != null) {
+    final DateTime? due = entry.comesBackOn(today, pausedUntil: pausedUntil);
+    if (_waiting(pausedUntil) && due != null) {
       parts.add('Back ${formatDateShort(due)}');
     }
     if (entry.recurrence.repeats) {
@@ -322,6 +325,7 @@ class _EntryRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AkshayaColors colors = context.akColors;
     final ShoppingRepository repo = ref.read(shoppingRepositoryProvider);
+    final DateTime? pausedUntil = ref.watch(recurringResumeProvider);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -366,9 +370,9 @@ class _EntryRow extends ConsumerWidget {
           revealIndex: index,
           title: entry.name,
           checked: entry.isChecked,
-          subtitle: _subtitle,
+          subtitle: _subtitle(pausedUntil),
           trailing: _trailing(context),
-          onChanged: _waiting
+          onChanged: _waiting(pausedUntil)
               ? null
               : (bool checked) async {
                   final ScaffoldMessengerState messenger =

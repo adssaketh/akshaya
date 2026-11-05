@@ -1,6 +1,8 @@
 import '../../count/domain/count_settings.dart';
 import '../../pantry/domain/entities.dart';
 import '../../shopping/domain/shopping_entities.dart';
+import '../../travel/domain/trip_models.dart';
+import '../../travel/domain/trip_summary.dart';
 import 'alert_digest.dart';
 import 'alert_plan.dart';
 import 'alert_schedule.dart';
@@ -34,6 +36,10 @@ class AlertScheduler {
   /// Anything due inside the quiet hours moves to the moment they end, and
   /// items in [snoozes] are left out of the alert of the days they are
   /// snoozed.
+  ///
+  /// On the away days of a trip that pauses alerts nothing is scheduled (prep
+  /// reminders are not part of this and still come). On the trip's return day
+  /// a "Welcome back" summary comes with the day's alert.
   Future<List<ScheduledAlert>> refresh({
     required AlertSettings settings,
     required List<ItemWithBatches> items,
@@ -41,6 +47,7 @@ class AlertScheduler {
     CountSettings counts = const CountSettings(),
     List<ScheduledAlert> prep = const <ScheduledAlert>[],
     AlertSnoozes snoozes = const AlertSnoozes(),
+    List<Trip> trips = const <Trip>[],
   }) async {
     final List<ScheduledAlert> prepAlerts = settings.prep
         ? <ScheduledAlert>[
@@ -72,6 +79,10 @@ class AlertScheduler {
       // The alert shows when the quiet hours end, so it is about that day.
       final DateTime fireAt = QuietHours.shift(times[day], settings);
       final DateTime date = AlertSchedule.dateOf(fireAt);
+      if (TripSchedule.alertsPausedOn(date, trips)) {
+        // Away: nothing about the pantry until the household is back.
+        continue;
+      }
       final AlertDigest digest = AlertDigestBuilder.build(
         items: items,
         entries: entries,
@@ -79,7 +90,17 @@ class AlertScheduler {
         settings: settings,
         snoozes: snoozes,
       );
+      final List<Trip> returning = TripSchedule.returningOn(date, trips);
       final List<AlertNotification> plan = <AlertNotification>[
+        if (returning.isNotEmpty)
+          AlertPlanner.tripSummary(
+            TripSummaryBuilder.build(
+              trip: returning.first,
+              items: items,
+              entries: entries,
+            ),
+            dayOffset: day,
+          ),
         ...AlertPlanner.plan(digest, dayOffset: day),
         if (counts.reminderDueOn(date))
           AlertPlanner.countReminder(dayOffset: day),

@@ -42,10 +42,14 @@ final class ShoppingListView {
 /// Groups and orders a list's entries. Pure: no Flutter, no database.
 abstract final class ShoppingListBuilder {
   /// Entries that are on the list today and not yet checked.
-  static int toBuyCount(Iterable<ShoppingEntry> entries, DateTime today) {
+  static int toBuyCount(
+    Iterable<ShoppingEntry> entries,
+    DateTime today, {
+    DateTime? pausedUntil,
+  }) {
     int total = 0;
     for (final ShoppingEntry e in entries) {
-      if (!e.isChecked && e.isDueOn(today)) {
+      if (!e.isChecked && e.isDueOn(today, pausedUntil: pausedUntil)) {
         total++;
       }
     }
@@ -62,6 +66,7 @@ abstract final class ShoppingListBuilder {
     required Map<String, Item> itemsById,
     required List<Category> categories,
     required DateTime today,
+    DateTime? pausedUntil,
   }) {
     final Map<String, Category> categoryById = <String, Category>{
       for (final Category c in categories) c.id: c,
@@ -75,7 +80,7 @@ abstract final class ShoppingListBuilder {
     for (final ShoppingEntry e in entries) {
       if (e.isChecked) {
         basket.add(e);
-      } else if (!e.isDueOn(today)) {
+      } else if (!e.isDueOn(today, pausedUntil: pausedUntil)) {
         upcoming.add(e);
       } else {
         final String? categoryId = itemsById[e.itemId]?.categoryId;
@@ -102,8 +107,8 @@ abstract final class ShoppingListBuilder {
 
     basket.sort(_byName);
     upcoming.sort((ShoppingEntry a, ShoppingEntry b) {
-      final DateTime? da = a.dueOn;
-      final DateTime? db = b.dueOn;
+      final DateTime? da = a.comesBackOn(today, pausedUntil: pausedUntil);
+      final DateTime? db = b.comesBackOn(today, pausedUntil: pausedUntil);
       if (da != null && db != null) {
         final int byDate = da.compareTo(db);
         if (byDate != 0) {

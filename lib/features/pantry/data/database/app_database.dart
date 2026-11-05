@@ -15,6 +15,7 @@ import '../../../shopping/domain/shopping_entities.dart'
 import '../../../shopping/domain/shopping_enums.dart';
 import '../../../sync/data/database/sync_tables.dart';
 import '../../../sync/data/database/sync_triggers.dart';
+import '../../../travel/data/database/trip_tables.dart';
 import '../../domain/consumption_type.dart';
 import '../../domain/default_categories.dart';
 import '../../domain/item_kind.dart';
@@ -48,6 +49,8 @@ part 'app_database.g.dart';
 ///    repeat learned from purchase history; null keeps the built-in repeat).
 ///  - v9 (Phase 12): meal_plan_entries (synced, with its own sync trigger):
 ///    the weekly meal plan.
+///  - v10 (Phase 13): consumption_logs.waste_reason (nullable).
+///  - v11 (Phase 14): trips (synced, with its own sync trigger): travel mode.
 ///
 /// Later phases add tables through migrations in [migration]; never edit a
 /// released version in place.
@@ -70,13 +73,14 @@ part 'app_database.g.dart';
     SavedRecipes,
     RecipeCache,
     MealPlanEntries,
+    Trips,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration {
@@ -196,6 +200,12 @@ class AppDatabase extends _$AppDatabase {
             consumptionLogs.wasteReason,
             'waste_reason',
           );
+        }
+        if (from < 11) {
+          // One new table. Safe to run twice (createTable is IF NOT EXISTS),
+          // because the alert worker may open the database before the app.
+          await m.createTable(trips);
+          await _installSync();
         }
       },
     );

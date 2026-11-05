@@ -97,6 +97,7 @@ class NotificationActionRunner {
       case AlertTarget.countMode:
       case AlertTarget.mealPlan:
       case AlertTarget.recipes:
+      case AlertTarget.trip:
         return _nothing;
     }
 

@@ -78,9 +78,35 @@ final class ShoppingEntry {
 
   /// True when the entry is on the list on [today] (not waiting for its next
   /// repeat date).
-  bool isDueOn(DateTime today) {
+  ///
+  /// With [pausedUntil] (the return day of a trip that holds repeating items
+  /// back), a repeating entry is not on the list before that day.
+  bool isDueOn(DateTime today, {DateTime? pausedUntil}) {
+    if (_isPausedOn(today, pausedUntil)) {
+      return false;
+    }
     final DateTime? due = dueOn;
     return due == null || !due.isAfter(today);
+  }
+
+  /// The day the entry is back on the list when it is waiting, or null when
+  /// it has no date. A repeating entry held back by a trip comes back on the
+  /// return day at the earliest.
+  DateTime? comesBackOn(DateTime today, {DateTime? pausedUntil}) {
+    final DateTime? due = dueOn;
+    if (!_isPausedOn(today, pausedUntil)) {
+      return due;
+    }
+    if (due == null || due.isBefore(pausedUntil!)) {
+      return pausedUntil;
+    }
+    return due;
+  }
+
+  bool _isPausedOn(DateTime today, DateTime? pausedUntil) {
+    return pausedUntil != null &&
+        recurrence.repeats &&
+        today.isBefore(pausedUntil);
   }
 
   /// Days between purchases: the custom number when there is one, else the

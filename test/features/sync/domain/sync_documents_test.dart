@@ -206,6 +206,7 @@ void main() {
       'logs',
       'recipes',
       'mealPlan',
+      'trips',
     ]);
     for (final String collection in SyncSchema.collections) {
       expect(SyncSchema.byCollection(collection), isNotNull);
