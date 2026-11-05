@@ -2,7 +2,9 @@
 """Generates the Akshaya Patra launcher icons and the SVG logo.
 
 Draws the basket logo (the same geometry as lib/core/design/widgets/
-akshaya_logo.dart) with Pillow and writes:
+akshaya_logo.dart). The coloured icons are rendered from a shaded, 3D-style
+SVG with rsvg-convert; the monochrome (themed) icon is a flat silhouette
+drawn with Pillow. Writes:
 
   android/app/src/main/res/mipmap-*/ic_launcher.png            legacy icon
   android/app/src/main/res/drawable-*/ic_launcher_foreground.png   adaptive
@@ -13,7 +15,7 @@ akshaya_logo.dart) with Pillow and writes:
   assets/branding/akshaya_patra_icon_512.png
 
 Run from the repository root:  python3 tool/generate_launcher_icons.py
-Needs Pillow (pip install pillow). Colours are the light-theme tokens from
+Needs Pillow (pip install pillow) and rsvg-convert (librsvg). Colours are the light-theme tokens from
 lib/core/design/tokens/akshaya_colors.dart.
 """
 
@@ -21,6 +23,7 @@ from __future__ import annotations
 
 import math
 import os
+import subprocess
 
 from PIL import Image, ImageDraw
 
@@ -149,6 +152,132 @@ def draw_logo(img, size, content_height_px, mono=False):
     c.circle(60, 85, 2.6, TURMERIC, hole=True)
 
 
+# The 3D-style artwork on the 120-unit grid (content spans x 27..93, y 14..108).
+# Light comes from the top left: every body has a lit left edge, a shaded right
+# edge and a soft highlight, and the basket casts a blurred shadow.
+ART = """
+  <defs>
+    <linearGradient id="basket" x1="0" y1="0" x2="1" y2="0.35">
+      <stop offset="0" stop-color="#E07A52"/>
+      <stop offset="0.45" stop-color="#B5502D"/>
+      <stop offset="1" stop-color="#7A2F14"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6B4A35"/>
+      <stop offset="0.5" stop-color="#2B1D14"/>
+      <stop offset="1" stop-color="#150D08"/>
+    </linearGradient>
+    <linearGradient id="bottle" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5BA4D1"/>
+      <stop offset="0.5" stop-color="#245F85"/>
+      <stop offset="1" stop-color="#143A55"/>
+    </linearGradient>
+    <linearGradient id="cap" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFD66B"/>
+      <stop offset="1" stop-color="#C88A0C"/>
+    </linearGradient>
+    <linearGradient id="carrot" x1="0" y1="0" x2="1" y2="0.2">
+      <stop offset="0" stop-color="#FFC24A"/>
+      <stop offset="0.55" stop-color="#E3A21A"/>
+      <stop offset="1" stop-color="#B07304"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7FB868"/>
+      <stop offset="0.5" stop-color="#3F6F2E"/>
+      <stop offset="1" stop-color="#27481B"/>
+    </linearGradient>
+    <linearGradient id="leaf2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A9CF96"/>
+      <stop offset="1" stop-color="#5E8A4C"/>
+    </linearGradient>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#2B1D14" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#2B1D14" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="62" cy="106" rx="34" ry="5" fill="url(#shadow)"/>
+  <path d="M36 60 C36 12 84 12 84 60" fill="none" stroke="#150D08" stroke-width="5" stroke-linecap="round" opacity="0.35" transform="translate(1.2 1.8)"/>
+  <path d="M36 60 C36 12 84 12 84 60" fill="none" stroke="url(#rim)" stroke-width="4" stroke-linecap="round"/>
+  <rect x="39" y="34" width="14" height="28" rx="3.5" fill="url(#bottle)"/>
+  <rect x="41" y="36" width="3" height="22" rx="1.5" fill="#FFFFFF" fill-opacity="0.35"/>
+  <rect x="42" y="28" width="8" height="7.5" rx="2.2" fill="url(#cap)"/>
+  <rect x="43" y="29" width="6" height="2" rx="1" fill="#FFFFFF" fill-opacity="0.5"/>
+  <path d="M58 62 L70 62 L64 34 Z" fill="url(#carrot)"/>
+  <path d="M60.5 60 L64 40" stroke="#FFFFFF" stroke-opacity="0.4" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M63 50 L67.5 50 M62 56 L68.6 56" stroke="#B07304" stroke-opacity="0.55" stroke-width="1" stroke-linecap="round"/>
+  <path d="M64 34 C58 24 60 20 64 18 C68 20 70 24 64 34 Z" fill="url(#leaf)"/>
+  <path d="M63.2 31 C61.5 26 62 22 64 20.5" stroke="#FFFFFF" stroke-opacity="0.4" stroke-width="1" fill="none" stroke-linecap="round"/>
+  <ellipse cx="78" cy="48" rx="5" ry="13" transform="rotate(22 78 48)" fill="url(#leaf)"/>
+  <ellipse cx="76.4" cy="44" rx="1.3" ry="7" transform="rotate(22 76.4 44)" fill="#FFFFFF" fill-opacity="0.35"/>
+  <ellipse cx="85" cy="52" rx="4" ry="11" transform="rotate(50 85 52)" fill="url(#leaf2)"/>
+  <path d="M30 63 L90 63 L84 99 Q83.5 103 79.5 103 L40.5 103 Q36.5 103 36 99 Z" fill="url(#basket)"/>
+  <path d="M33 66 L37.5 98" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2" stroke-linecap="round"/>
+  <g fill="none" stroke-linecap="round">
+    <g stroke="#4A1E0C" stroke-opacity="0.55" stroke-width="2.4">
+      <line x1="34" y1="80.2" x2="86" y2="80.2"/>
+      <line x1="36" y1="92.2" x2="84" y2="92.2"/>
+      <line x1="48.8" y1="68" x2="46.8" y2="100"/>
+      <line x1="60.8" y1="68" x2="60.8" y2="100"/>
+      <line x1="72.8" y1="68" x2="74.8" y2="100"/>
+    </g>
+    <g stroke="#FFE2CF" stroke-opacity="0.85" stroke-width="1.7">
+      <line x1="34" y1="79" x2="86" y2="79"/>
+      <line x1="36" y1="91" x2="84" y2="91"/>
+      <line x1="48" y1="68" x2="46" y2="100"/>
+      <line x1="60" y1="68" x2="60" y2="100"/>
+      <line x1="72" y1="68" x2="74" y2="100"/>
+    </g>
+  </g>
+  <rect x="27" y="58" width="66" height="9" rx="4.5" fill="url(#rim)"/>
+  <rect x="30" y="59.2" width="60" height="2.6" rx="1.3" fill="url(#gloss)"/>
+  <circle cx="60" cy="85" r="3.2" fill="url(#cap)"/>
+  <circle cx="59" cy="84" r="1" fill="#FFFFFF" fill-opacity="0.7"/>
+"""
+
+TILE_DEFS = """
+  <defs>
+    <radialGradient id="tile" cx="0.3" cy="0.2" r="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.55" stop-color="#FBF5EC"/>
+      <stop offset="1" stop-color="#EBD9BF"/>
+    </radialGradient>
+  </defs>
+"""
+
+
+def svg_icon(size, content_fraction, tile=False):
+    """The coloured artwork as an SVG sized [size] px, centred like render()."""
+    scale = size * content_fraction / HEIGHT
+    # The artwork's visual centre is (60, 60).
+    transform = f"translate({size / 2} {size / 2}) scale({scale}) translate(-60 -60)"
+    background = ""
+    if tile:
+        background = (
+            TILE_DEFS
+            + f'  <rect width="{size}" height="{size}" rx="{size * 0.22}" fill="url(#tile)"/>\n'
+        )
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
+        f'viewBox="0 0 {size} {size}">\n{background}<g transform="{transform}">{ART}</g>\n</svg>\n'
+    )
+
+
+def render_svg(size, content_fraction, tile=False):
+    svg = svg_icon(size, content_fraction, tile)
+    png = subprocess.run(
+        ["rsvg-convert", "-w", str(size), "-h", str(size)],
+        input=svg.encode("utf-8"),
+        check=True,
+        capture_output=True,
+    ).stdout
+    import io
+    return Image.open(io.BytesIO(png)).convert("RGBA")
+
+
 def render(size, content_fraction, background=None, mono=False, tile=False):
     big = size * SUPERSAMPLE
     img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
@@ -171,7 +300,7 @@ def save(img, path):
 def main():
     legacy = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
     for name, px in legacy.items():
-        save(render(px, 0.82, tile=True), f"{RES}/mipmap-{name}/ic_launcher.png")
+        save(render_svg(px, 0.82, tile=True), f"{RES}/mipmap-{name}/ic_launcher.png")
 
     # Adaptive icons: 108 dp canvas; the artwork is 60 dp tall (was 50) and
     # still inside the 66 dp safe circle: the farthest points (handle top,
@@ -180,7 +309,7 @@ def main():
     density = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
     for name, factor in density.items():
         px = round(108 * factor)
-        save(render(px, 60 / 108), f"{RES}/drawable-{name}/ic_launcher_foreground.png")
+        save(render_svg(px, 60 / 108), f"{RES}/drawable-{name}/ic_launcher_foreground.png")
         save(render(px, 60 / 108, mono=True),
              f"{RES}/drawable-{name}/ic_launcher_monochrome.png")
 
@@ -202,7 +331,7 @@ def main():
             "</resources>\n"
         )
 
-    save(render(512, 0.82, tile=True), "assets/branding/akshaya_patra_icon_512.png")
+    save(render_svg(512, 0.82, tile=True), "assets/branding/akshaya_patra_icon_512.png")
     write_svg("assets/branding/akshaya_patra_logo.svg")
 
 
@@ -212,30 +341,10 @@ def hexs(rgb):
 
 def write_svg(path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="512" height="512" role="img">
-  <title>Akshaya Patra</title>
-  <rect x="2" y="2" width="116" height="116" rx="28" fill="{hexs(CREAM)}"/>
-  <path d="M36 60 C36 12 84 12 84 60" fill="none" stroke="{hexs(BROWN)}" stroke-width="3.5" stroke-linecap="round"/>
-  <rect x="39" y="34" width="14" height="28" rx="3" fill="{hexs(BOTTLE)}"/>
-  <rect x="42" y="28" width="8" height="7" rx="2" fill="{hexs(TURMERIC)}"/>
-  <path d="M58 62 L70 62 L64 34 Z" fill="{hexs(TURMERIC)}"/>
-  <path d="M64 34 C58 24 60 20 64 18 C68 20 70 24 64 34 Z" fill="{hexs(LEAF)}"/>
-  <ellipse cx="78" cy="48" rx="5" ry="13" transform="rotate(22 78 48)" fill="{hexs(LEAF)}"/>
-  <ellipse cx="85" cy="52" rx="4" ry="11" transform="rotate(50 85 52)" fill="{hexs(LEAF_LIGHT)}"/>
-  <path d="M30 63 L90 63 L84 99 Q83.5 103 79.5 103 L40.5 103 Q36.5 103 36 99 Z" fill="{hexs(TERRACOTTA)}"/>
-  <rect x="27" y="58" width="66" height="9" rx="4.5" fill="{hexs(BROWN)}"/>
-  <g stroke="{hexs(CREAM)}" stroke-width="2.2" stroke-linecap="round" fill="none">
-    <line x1="34" y1="79" x2="86" y2="79"/>
-    <line x1="36" y1="91" x2="84" y2="91"/>
-    <line x1="48" y1="68" x2="46" y2="100"/>
-    <line x1="60" y1="68" x2="60" y2="100"/>
-    <line x1="72" y1="68" x2="74" y2="100"/>
-  </g>
-  <circle cx="60" cy="85" r="2.6" fill="{hexs(TURMERIC)}"/>
-</svg>
-"""
     with open(path, "w", encoding="utf-8") as f:
-        f.write(svg)
+        f.write(svg_icon(512, 0.82, tile=True).replace(
+            "<svg ", '<svg role="img" ', 1).replace(
+            "\n<g ", "\n<title>Akshaya Patra</title>\n<g ", 1))
     print("wrote", path)
 
 

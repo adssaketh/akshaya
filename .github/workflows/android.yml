@@ -184,13 +184,14 @@ jobs:
           echo "Release APK is signed with:"
           "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk | grep -E "SHA-1|SHA-256"
           rm -f "$RUNNER_TEMP/release.jks"
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/akshayapatra-release.apk
           echo "RELEASE_BUILT=true" >> "$GITHUB_ENV"
       - name: Upload the signed release APK
         if: env.RELEASE_BUILT == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: akshaya-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/akshayapatra-release.apk
 
   rules-tests:
     # Firestore security rules, run against the local emulator (no Firebase

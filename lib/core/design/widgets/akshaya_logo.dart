@@ -70,6 +70,20 @@ class _LogoPainter extends CustomPainter {
     canvas.scale(scale);
 
     Paint fill(Color color) => Paint()..color = color;
+    // Lit from the top left: a body goes from a lighter to a darker shade of
+    // its colour across its bounds.
+    Paint shaded(Color color, Rect bounds) => Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: <Color>[
+          Color.lerp(color, colors.surface, 0.28)!,
+          color,
+          Color.lerp(color, colors.textPrimary, 0.38)!,
+        ],
+        stops: const <double>[0, 0.5, 1],
+      ).createShader(bounds);
+    Paint shine() => fill(colors.surface.withValues(alpha: 0.4));
     Paint stroke(Color color, double width) => Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -82,6 +96,14 @@ class _LogoPainter extends CustomPainter {
     final Color leaf = colors.fresh.foreground;
     final Color bottle = colors.lowStock.foreground;
 
+    // Soft shadow under the basket.
+    canvas.drawOval(
+      const Rect.fromLTWH(28, 101, 68, 9),
+      Paint()
+        ..color = brown.withValues(alpha: 0.28)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
+
     // Handle.
     canvas.drawPath(
       Path()
@@ -91,19 +113,22 @@ class _LogoPainter extends CustomPainter {
     );
 
     // Bottle and its cap.
+    const Rect bottleRect = Rect.fromLTWH(39, 34, 14, 28);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTWH(39, 34, 14, 28),
-        const Radius.circular(3),
-      ),
-      fill(bottle),
+      RRect.fromRectAndRadius(bottleRect, const Radius.circular(3.5)),
+      shaded(bottle, bottleRect),
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        const Rect.fromLTWH(42, 28, 8, 7),
-        const Radius.circular(2),
+        const Rect.fromLTWH(41, 36, 3, 22),
+        const Radius.circular(1.5),
       ),
-      fill(turmeric),
+      shine(),
+    );
+    const Rect capRect = Rect.fromLTWH(42, 28, 8, 7.5);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(capRect, const Radius.circular(2.2)),
+      shaded(turmeric, capRect),
     );
 
     // Carrot with its leaves.
@@ -113,7 +138,12 @@ class _LogoPainter extends CustomPainter {
         ..lineTo(70, 62)
         ..lineTo(64, 34)
         ..close(),
-      fill(turmeric),
+      shaded(turmeric, const Rect.fromLTWH(58, 34, 12, 28)),
+    );
+    canvas.drawLine(
+      const Offset(60.5, 60),
+      const Offset(64, 40),
+      stroke(colors.surface.withValues(alpha: 0.4), 1.4),
     );
     canvas.drawPath(
       Path()
@@ -121,13 +151,13 @@ class _LogoPainter extends CustomPainter {
         ..cubicTo(58, 24, 60, 20, 64, 18)
         ..cubicTo(68, 20, 70, 24, 64, 34)
         ..close(),
-      fill(leaf),
+      shaded(leaf, const Rect.fromLTWH(60, 18, 8, 16)),
     );
 
     // Leafy greens.
     _ellipse(
       canvas,
-      fill(leaf),
+      shaded(leaf, const Rect.fromLTWH(70, 35, 16, 26)),
       cx: 78,
       cy: 48,
       rx: 5,
@@ -154,14 +184,17 @@ class _LogoPainter extends CustomPainter {
         ..lineTo(40.5, 103)
         ..quadraticBezierTo(36.5, 103, 36, 99)
         ..close(),
-      fill(terracotta),
+      shaded(terracotta, const Rect.fromLTWH(30, 63, 60, 40)),
     );
+    canvas.drawLine(
+      const Offset(33, 66),
+      const Offset(37.5, 98),
+      stroke(colors.surface.withValues(alpha: 0.28), 2),
+    );
+    const Rect rimRect = Rect.fromLTWH(27, 58, 66, 9);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTWH(27, 58, 66, 9),
-        const Radius.circular(4.5),
-      ),
-      fill(brown),
+      RRect.fromRectAndRadius(rimRect, const Radius.circular(4.5)),
+      shaded(brown, rimRect),
     );
 
     // Weave.
