@@ -73,7 +73,8 @@ final class SyncTableSpec {
   List<String> get fields => <String>[for (final SyncColumn c in columns) c.field];
 }
 
-/// The synced tables (schema from Phase 1 to 4) and their documents.
+/// The synced tables (schema from Phase 1 to 4, plus recipes from Phase 7) and
+/// their documents.
 abstract final class SyncSchema {
   static const List<SyncColumn> _shared = <SyncColumn>[
     SyncColumn('id', SyncColumnKind.text, required: true),
@@ -176,6 +177,25 @@ abstract final class SyncSchema {
     ],
   );
 
+  /// Recipes the household kept (Phase 7). Ingredients and steps travel as
+  /// JSON text inside the document.
+  static const SyncTableSpec recipes = SyncTableSpec(
+    table: 'saved_recipes',
+    collection: 'recipes',
+    columns: <SyncColumn>[
+      ..._shared,
+      SyncColumn('title', SyncColumnKind.text, required: true),
+      SyncColumn('cuisine', SyncColumnKind.text),
+      SyncColumn('time_minutes', SyncColumnKind.integer, required: true),
+      SyncColumn('servings', SyncColumnKind.integer, required: true),
+      SyncColumn('diet', SyncColumnKind.text, required: true),
+      SyncColumn('ingredients_json', SyncColumnKind.text, required: true),
+      SyncColumn('steps_json', SyncColumnKind.text, required: true),
+      SyncColumn('source', SyncColumnKind.text, required: true),
+      SyncColumn('saved_at', SyncColumnKind.integer, required: true),
+    ],
+  );
+
   /// Push and pull order: things other rows point at come first.
   static const List<SyncTableSpec> tables = <SyncTableSpec>[
     categories,
@@ -184,6 +204,7 @@ abstract final class SyncSchema {
     batches,
     entries,
     logs,
+    recipes,
   ];
 
   /// The spec for a Firestore collection name, or null.

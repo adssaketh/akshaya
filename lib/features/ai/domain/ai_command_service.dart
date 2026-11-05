@@ -144,7 +144,22 @@ final class AiCommandService {
     return text;
   }
 
-  Future<String> _callWithRetries(Future<String> Function() call) async {
+  /// Runs [call] through the same gate as command reading: the on/off switch,
+  /// the privacy notice, the daily cap (every attempt counts), the quota
+  /// cooldown and the retries. Other AI features (recipes) use this so there
+  /// is one cap and one cooldown for the whole app. [timeout] replaces the
+  /// default 20 seconds for slower requests. Throws an [AiFailure].
+  Future<String> guardedCall(
+    Future<String> Function() call, {
+    Duration? timeout,
+  }) {
+    return _callWithRetries(call, limit: timeout);
+  }
+
+  Future<String> _callWithRetries(
+    Future<String> Function() call, {
+    Duration? limit,
+  }) async {
     AiFailure? last;
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
       final AiUsage usage = await usageStore.read();
@@ -158,7 +173,7 @@ final class AiCommandService {
         usage.incremented(DateTime(current.year, current.month, current.day)),
       );
       try {
-        return await call().timeout(timeout);
+        return await call().timeout(limit ?? timeout);
       } on Object catch (error) {
         final AiFailure failure = classify(error);
         last = failure;

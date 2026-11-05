@@ -102,6 +102,7 @@ void main() {
       'batches',
       'entries',
       'logs',
+      'recipes',
     ]);
     for (final String collection in SyncSchema.collections) {
       expect(SyncSchema.byCollection(collection), isNotNull);

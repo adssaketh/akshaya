@@ -5,6 +5,7 @@
 
 import 'package:drift/drift.dart';
 
+import '../../../recipes/data/database/recipe_tables.dart';
 import '../../../scanning/data/database/scanning_tables.dart';
 import '../../../settings/data/database/settings_tables.dart';
 import '../../../shopping/data/database/shopping_tables.dart';
@@ -35,6 +36,8 @@ part 'app_database.g.dart';
 ///  - v5 (Phase 6): sync_state, sync_cursors, sync_batch_bases,
 ///    household_members (all local only) and the triggers that mark edited
 ///    rows as waiting to be synced.
+///  - v6 (Phase 7): saved_recipes (synced, with its own sync trigger) and
+///    recipe_cache (local only: the last AI recipe ideas).
 ///
 /// Later phases add tables through migrations in [migration]; never edit a
 /// released version in place.
@@ -54,13 +57,15 @@ part 'app_database.g.dart';
     SyncCursors,
     SyncBatchBases,
     HouseholdMembers,
+    SavedRecipes,
+    RecipeCache,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -116,6 +121,13 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(syncCursors);
           await m.createTable(syncBatchBases);
           await m.createTable(householdMembers);
+        }
+        if (from < 6) {
+          await m.createTable(savedRecipes);
+          await m.createTable(recipeCache);
+          // The sync triggers cover every synced table, including
+          // saved_recipes, so they are installed once all tables exist (this
+          // also covers a jump from v4 straight to v6).
           await _installSync();
         }
       },

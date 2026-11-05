@@ -74,6 +74,24 @@ function batch(uid, over = {}) {
   };
 }
 
+function recipe(uid, over = {}) {
+  return {
+    id: 'r1', householdId: H, createdAt: 1, updatedAt: 2, updatedBy: uid, isDeleted: false,
+    syncedAt: serverTimestamp(), title: 'Tomato rice', timeMinutes: 30, servings: 2,
+    diet: 'veg', ingredientsJson: '[]', stepsJson: '[]', source: 'ai', savedAt: 1,
+    ...over,
+  };
+}
+
+test('members can save recipes; bad recipe documents are rejected', async () => {
+  const ref = doc(as('member'), 'households', H, 'recipes', 'r1');
+  await assertSucceeds(setDoc(ref, recipe('member')));
+  await assertFails(setDoc(ref, recipe('member', { timeMinutes: '30' })));
+  await assertFails(setDoc(ref, recipe('member', { ingredientsJson: 'x'.repeat(20001) })));
+  await assertFails(setDoc(ref, recipe('owner')));
+  await assertFails(setDoc(doc(as('stranger'), 'households', H, 'recipes', 'r1'), recipe('stranger')));
+});
+
 test('a non-member cannot read or write household data', async () => {
   const db = as('stranger');
   await assertFails(getDoc(doc(db, 'households', H, 'entries', 'e1')));

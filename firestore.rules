@@ -4,7 +4,7 @@ rules_version = '2';
 //
 //   households/{h}                       name, ownerId, inviteCode, createdAt
 //   households/{h}/members/{uid}         displayName, role, joinedAt
-//   households/{h}/{categories|items|shoppingLists|batches|entries|logs}/{id}
+//   households/{h}/{categories|items|shoppingLists|batches|entries|logs|recipes}/{id}
 //   inviteCodes/{code}                   householdId, ownerId
 //   users/{uid}                          householdId (pointer, own account only)
 //
@@ -202,6 +202,21 @@ service cloud.firestore {
           && isText(request.resource.data.unit, 32)
           && request.resource.data.date is int
           && isText(request.resource.data.type, 32);
+        allow delete: if isMember(h) && resource.data.isDeleted == true;
+      }
+
+      match /recipes/{id} {
+        allow read: if isMember(h);
+        allow create, update: if isMember(h) && syncedBase(h, id)
+          && isText(request.resource.data.title, 200)
+          && request.resource.data.timeMinutes is int
+          && request.resource.data.servings is int
+          && isText(request.resource.data.diet, 32)
+          && request.resource.data.ingredientsJson is string
+          && request.resource.data.ingredientsJson.size() <= 20000
+          && request.resource.data.stepsJson is string
+          && request.resource.data.stepsJson.size() <= 20000
+          && request.resource.data.savedAt is int;
         allow delete: if isMember(h) && resource.data.isDeleted == true;
       }
     }

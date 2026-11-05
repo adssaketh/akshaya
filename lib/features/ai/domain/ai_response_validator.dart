@@ -52,6 +52,11 @@ abstract final class AiResponseValidator {
   static final RegExp _datePattern = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
   static final RegExp _controlChars = RegExp(r'[\u0000-\u001F\u007F]');
 
+  /// The unit the AI (or a saved recipe) means by [text] ("kg", "litre",
+  /// "pcs"...), or null when it is not one of the app's units. Other AI
+  /// features share this spelling table.
+  static Unit? parseUnit(String text) => _unitNames[text.trim().toLowerCase()];
+
   /// Turns the AI's JSON text into actions, or throws
   /// [AiInvalidResponseFailure].
   static List<CommandAction> parse(String text) {

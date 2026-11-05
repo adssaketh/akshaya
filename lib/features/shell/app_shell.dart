@@ -10,11 +10,12 @@ import '../alerts/presentation/providers.dart';
 import '../commands/presentation/voice_mic_button.dart';
 import '../pantry/presentation/pantry_screen.dart';
 import '../pantry/presentation/providers.dart';
+import '../recipes/presentation/recipes_screen.dart';
 import '../settings/settings_screen.dart';
 import '../shopping/presentation/shopping_screen.dart';
 
 /// Bottom navigation: Home, Pantry, Shopping, Recipes, Settings.
-/// Pantry, Shopping and Settings are live; Home and Recipes are placeholders.
+/// Pantry, Shopping, Recipes and Settings are live; Home is a placeholder.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
@@ -94,11 +95,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
           PantryScreen(),
           ShoppingScreen(),
-          _Placeholder(
-            icon: Icons.soup_kitchen_rounded,
-            title: 'Recipes',
-            body: 'Recipe ideas for expiring food arrive in Phase 7.',
-          ),
+          RecipesScreen(),
           SettingsScreen(),
         ],
       ),

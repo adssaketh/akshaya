@@ -13,7 +13,8 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 4 Local notifications and background checks | Done. CI green, APK installed and checklist passed. |
 | 5 Multilingual input (offline parser, then Gemini with daily cap) | Done. CI green after fix rounds, APK installed and checklist passed. |
 | 6 Firebase auth, household sharing, sync, security rules | Done. CI green (incl. rules tests), Google sign-in, create/join by code and QR, two-way sync checked on two devices. |
-| 7 to 8 | Not started |
+| 7 Recipe suggestions | Built, pushed; waiting for CI and your device check. |
+| 8 | Not started |
 
 ## Phase 2: what is built
 
@@ -443,9 +444,87 @@ Set up first: `docs/FIREBASE_SETUP.md` (Google + Email providers, Firestore, rul
 - A member removed while offline learns about it on the next connection.
 - Usage numbers are an estimate of this phone only (other members' usage counts against the same project quota).
 - Firestore setup lessons: create the database (Standard edition, `(default)`, production mode) and publish `firestore.rules` before first use; add every Google account you test with as a Test user (or publish the consent screen); the debug APK is signed with the cached CI keystore (SHA-1 D6:15:75:44:…:BE registered in Firebase).
-- The six composite indexes (`firestore.indexes.json`) are only for the daily purge of 30-day-old deletes; deploy them when you want that clean-up to work.
+- The seven composite indexes (`firestore.indexes.json`) are only for the daily purge of 30-day-old deletes; deploy them when you want that clean-up to work.
 
-## Next: Phase 7 (recipe suggestions)
+## Phase 7: what is built
+
+Recipes tab (replaces the placeholder): AI recipe ideas from the pantry (expiring first), preferences (diet, cuisine, max time, people, avoid list), ideas ranked by expiring items used, recipe detail with live "in pantry / short / missing" labels, "Add missing" to the selected shopping list, "I cooked this" (confirm, edit amounts, FIFO deduction logged as cooked in recipe, Undo), saved recipes (synced to the household), last ideas cached for offline reading, no re-ask when the pantry and preferences are unchanged. Drift schema v6 with a real migration.
+
+### Files (new or changed in Phase 7)
+
+```
+assets/prompts/generate_recipes.txt                 NEW recipe prompt template (separate file, as specified)
+firestore.rules                                     + recipes/{id}
+firestore.indexes.json                              + recipes index (now seven)
+docs/FIREBASE_SETUP.md                              seven indexes
+firebase/test/firestore.rules.test.js               + recipe rules test
+lib/features/ai/domain/ai_command_service.dart      + guardedCall (recipes share the one cap and cooldown)
+lib/features/ai/domain/ai_response_validator.dart   + public parseUnit
+lib/features/pantry/data/database/app_database.dart schema v6 (saved_recipes, recipe_cache)
+lib/features/sync/domain/sync_schema.dart           + recipes spec
+lib/features/sync/data/database/sync_triggers.dart  + saved_recipes
+lib/features/sync/data/sync_store.dart              pending count + Clear data cover recipes
+lib/features/shell/app_shell.dart                   Recipes tab is live
+lib/features/recipes/domain/
+  recipe_models.dart                                diet, cuisine, preferences, Recipe, SavedRecipe, cache entry
+  recipe_pantry.dart                                cookable pantry lines, expiring map
+  recipe_fingerprint.dart                           "pantry unchanged" code
+  recipe_matcher.dart                               ingredient to pantry matching + ranking
+  recipe_validator.dart                             JSON schema check + diet / avoid safety filter
+  recipe_prompt.dart                                fills the template (no personal data)
+  ai_recipe_service.dart                            Gemini call through the shared AI gate
+  cook_plan.dart                                    "I cooked this" plan, executor, undo
+  recipe_shopping.dart                              missing ingredients to shopping drafts
+  recipe_repository.dart                            interface
+lib/features/recipes/data/
+  database/recipe_tables.dart                       SavedRecipes (synced), RecipeCache (local)
+  drift_recipe_repository.dart
+  firebase_recipe_backend.dart                      Firebase AI Logic, JSON response schema
+lib/features/recipes/presentation/
+  providers.dart, recipes_screen.dart, recipe_card.dart, recipe_detail_screen.dart,
+  cook_sheet.dart, preferences_sheet.dart
+test/features/recipes/domain/                       models, pantry + fingerprint, matcher + ranker, validator + safety,
+                                                    prompt, AI service, cook plan, shopping planner, shared support
+test/features/recipes/data/                         repository + v5 to v6 migration
+test/features/recipes/presentation/                 widget tests + controller tests
+test/features/sync/domain/sync_documents_test.dart  collections list includes recipes
+```
+
+### Key decisions (Phase 7)
+
+- **Schema v6:** `saved_recipes` is synced (standard sync columns; ingredients and steps are JSON text; collection `recipes`). `recipe_cache` is local only (one row, the last AI answer). `Clear data` also clears both.
+- **Spec deviations:** a `diet` column (veg / egg / non_veg) replaces `isVeg`, so eggetarian works. The ingredient `in pantry / missing` flag from the AI is ignored; the app recomputes it from the live pantry on every change. Water and salt are assumed on hand and never shopped for or deducted.
+- **Diet and avoid list are enforced in the app**, not only in the prompt. The avoid match is deliberately wide ("nut" also catches "coconut"). Default diet is vegetarian.
+- **One AI budget:** recipes use `AiCommandService.guardedCall`, so the on/off switch, privacy notice, daily cap (every attempt counts), quota cooldown and retries are the same as for commands. An unusable answer is never retried.
+- **Privacy:** the prompt carries only item names, amounts, units, dates and the cooking preferences. Free text is stripped of control characters and template markers.
+- **No re-ask:** a fingerprint of cookable stock (name, quantity, unit, expiry) plus preferences is stored with the cache. Same fingerprint means "Ask again anyway" instead of "Get recipe ideas". Changing preferences or stock allows a new request.
+- **Offline / AI off or capped:** cached ideas and saved recipes stay visible with the reason shown ("AI limit reached for today, using offline mode."). There is no offline recipe engine (your choice).
+- **Matching is a heuristic** (stemming, brackets, aliases, dictionary synonyms, blocklist like powder/flour/paste). "I cooked this" shows every line with an editable amount; lines without a convertible amount start unticked.
+- **Saved recipes** remember the matched item id per ingredient as a hint only.
+
+## Test checklist (you), Phase 7
+
+1. Open CI; confirm analyze, tests, the rules tests and the APK are green. Install the APK over the old one (the database upgrades from v5).
+2. Pantry has food with a few items expiring within 3 days. Recipes tab shows the "Use these first" chips and your preferences line. Tap the line, change diet, cuisine, time, people and add an allergy ("peanuts"), save.
+3. First time: "Get recipe ideas" shows the privacy notice. Allow. 3 to 5 recipes appear, those using expiring food first, each with a chip (uses N expiring / ready to cook / N missing). No recipe breaks your diet or contains your avoid word.
+4. Tap the button again without changing the pantry: it now says "Ask again anyway" and a plain tap does not call AI (Settings, Usage shows no new call). "Ask again anyway" does call it.
+5. Open a recipe: ingredients show In pantry / Short / Missing; salt and water show Assumed. Use an item in the Pantry, come back: labels update by themselves.
+6. "Add missing": the Shopping tab shows only the missing/short items, noted "For <recipe>".
+7. "I cooked this": amounts match the recipe, untick one, change one, confirm. The Pantry quantities drop (oldest batch first). Undo restores them. Item detail history shows "cooked in recipe".
+8. Heart: recipe appears in Saved. Remove it, Undo brings it back. With the second device signed in to the same household, the saved recipe appears there too.
+9. Airplane mode or AI off: cached ideas and saved recipes still open; the message explains why nothing new is generated. Reaching the daily cap shows "AI limit reached for today, using offline mode."
+10. Settings, Clear data: Recipes ideas and Saved are cleared on this phone.
+
+## Known issues (Phase 7)
+
+- Written without a local Flutter SDK; CI is the compiler. Send me any analyzer or test errors.
+- Not yet linked from the dashboard (arrives with the dashboard in Phase 8) or from expiry notifications (needs a new alert target; planned with Phase 8's dashboard).
+- Ingredient matching can miss odd names (it errs towards "missing"); "I cooked this" lets you correct any line.
+- Recipe quality and quantities are the model's; check amounts before cooking. The recipe is stored as you saw it, not re-generated.
+- Deploy the new rules and the recipes index (`firebase deploy --only firestore:rules,firestore:indexes`) or saved recipes will not sync (rules reject unknown collections).
+- Removing a saved recipe on one phone and saving the same recipe on another at once can leave two copies.
+
+## Next: Phase 8 (dashboard, insights, backup/export, settings and usage)
 
 Start in a new chat when you say so.
 
