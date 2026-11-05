@@ -68,6 +68,8 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
     final AppSettings settings = ref.watch(appSettingsProvider);
     // Prices everywhere use the chosen symbol.
     currentCurrencySymbol = settings.currencySymbol;
+    // Motion everywhere follows the Settings switch.
+    AppMotion.userEnabled = settings.animations;
     return MaterialApp(
       title: 'Akshaya Patra',
       debugShowCheckedModeBanner: false,

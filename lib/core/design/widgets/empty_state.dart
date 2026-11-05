@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../motion/reveal.dart';
 import '../theme/design_context.dart';
 import '../tokens/layout_tokens.dart';
 import 'sarukulu_motif.dart';
@@ -32,30 +33,46 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Stack(
-              alignment: Alignment.center,
-              children: <Widget>[
-                const SarukuluMotif(size: AppSizes.sarukuluEmpty),
-                Icon(icon, size: AppSizes.iconXl, color: colors.primary),
-              ],
+            Reveal(
+              scaleFrom: 0.8,
+              distance: 12,
+              child: Stack(
+                alignment: Alignment.center,
+                children: <Widget>[
+                  const SarukuluMotif(size: AppSizes.sarukuluEmpty),
+                  Icon(icon, size: AppSizes.iconXl, color: colors.primary),
+                ],
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: context.akText.titleLarge,
+            Reveal(
+              index: 1,
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: context.akText.titleLarge,
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style: context.akText.bodyMedium!.copyWith(
-                color: colors.textSecondary,
+            Reveal(
+              index: 2,
+              child: Text(
+                body,
+                textAlign: TextAlign.center,
+                style: context.akText.bodyMedium!.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
             ),
             if (actionLabel != null) ...<Widget>[
               const SizedBox(height: AppSpacing.xl),
-              FilledButton(onPressed: onAction, child: Text(actionLabel!)),
+              Reveal(
+                index: 3,
+                child: FilledButton(
+                  onPressed: onAction,
+                  child: Text(actionLabel!),
+                ),
+              ),
             ],
           ],
         ),

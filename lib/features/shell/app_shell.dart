@@ -99,15 +99,18 @@ class _AppShellState extends ConsumerState<AppShell> {
       body: IndexedStack(
         index: _index,
         children: <Widget>[
-          HomeScreen(
-            onShowPantry: _showPantry,
-            onShowShopping: () => setState(() => _index = _shoppingTab),
-            onShowRecipes: () => setState(() => _index = _recipesTab),
+          TabPane(
+            active: _index == 0,
+            child: HomeScreen(
+              onShowPantry: _showPantry,
+              onShowShopping: () => setState(() => _index = _shoppingTab),
+              onShowRecipes: () => setState(() => _index = _recipesTab),
+            ),
           ),
-          const PantryScreen(),
-          const ShoppingScreen(),
-          const RecipesScreen(),
-          const SettingsScreen(),
+          TabPane(active: _index == 1, child: const PantryScreen()),
+          TabPane(active: _index == 2, child: const ShoppingScreen()),
+          TabPane(active: _index == 3, child: const RecipesScreen()),
+          TabPane(active: _index == 4, child: const SettingsScreen()),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -116,27 +119,27 @@ class _AppShellState extends ConsumerState<AppShell> {
         destinations: const <NavigationDestination>[
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
+            selectedIcon: PopIn(child: Icon(Icons.home_rounded)),
             label: 'Home',
           ),
           NavigationDestination(
             icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2_rounded),
+            selectedIcon: PopIn(child: Icon(Icons.inventory_2_rounded)),
             label: 'Pantry',
           ),
           NavigationDestination(
             icon: Icon(Icons.shopping_basket_outlined),
-            selectedIcon: Icon(Icons.shopping_basket_rounded),
+            selectedIcon: PopIn(child: Icon(Icons.shopping_basket_rounded)),
             label: 'Shopping',
           ),
           NavigationDestination(
             icon: Icon(Icons.soup_kitchen_outlined),
-            selectedIcon: Icon(Icons.soup_kitchen_rounded),
+            selectedIcon: PopIn(child: Icon(Icons.soup_kitchen_rounded)),
             label: 'Recipes',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings_rounded),
+            selectedIcon: PopIn(child: Icon(Icons.settings_rounded)),
             label: 'Settings',
           ),
         ],

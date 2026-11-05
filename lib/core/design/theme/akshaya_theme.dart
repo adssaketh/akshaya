@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../motion/motion_page_transitions.dart';
 import '../tokens/akshaya_colors.dart';
 import '../tokens/layout_tokens.dart';
 import '../typography/akshaya_text.dart';
@@ -69,6 +70,12 @@ abstract final class AkshayaTheme {
       textTheme: text,
       scaffoldBackgroundColor: c.background,
       extensions: <ThemeExtension<dynamic>>[c],
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: <TargetPlatform, PageTransitionsBuilder>{
+          TargetPlatform.android: AkshayaPageTransitionsBuilder(),
+          TargetPlatform.iOS: AkshayaPageTransitionsBuilder(),
+        },
+      ),
       dividerTheme: DividerThemeData(
         color: c.outline,
         thickness: AppSizes.borderWidth,

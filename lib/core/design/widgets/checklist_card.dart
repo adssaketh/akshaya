@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../motion/app_motion.dart';
+import '../motion/pressable.dart';
+import '../motion/reveal.dart';
 import '../theme/design_context.dart';
 import '../tokens/layout_tokens.dart';
 
@@ -19,6 +22,7 @@ class ChecklistCard extends StatelessWidget {
     this.trailing,
     this.onChanged,
     this.onTap,
+    this.revealIndex,
   });
 
   final String title;
@@ -32,6 +36,9 @@ class ChecklistCard extends StatelessWidget {
   /// Tapping the body of the card (the checkbox has its own target).
   final VoidCallback? onTap;
 
+  /// Position in a list: when set, the card slides in with a stagger.
+  final int? revealIndex;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.akColors;
@@ -40,11 +47,18 @@ class ChecklistCard extends StatelessWidget {
       decoration: checked ? TextDecoration.lineThrough : TextDecoration.none,
     );
 
-    return Material(
-      color: checked ? colors.surfaceAlt : colors.surface,
-      borderRadius: AppRadius.cardBorder,
+    final bool animate = AppMotion.of(context);
+    final Widget card = AnimatedContainer(
+      duration: animate ? AppMotion.base : Duration.zero,
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        color: checked ? colors.surfaceAlt : colors.surface,
+        borderRadius: AppRadius.cardBorder,
+      ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(
@@ -53,12 +67,17 @@ class ChecklistCard extends StatelessWidget {
           ),
           child: Row(
             children: <Widget>[
-              Checkbox(
-                value: checked,
-                semanticLabel: title,
-                onChanged: onChanged == null
-                    ? null
-                    : (bool? value) => onChanged!(value ?? false),
+              AnimatedScale(
+                scale: checked ? 1.12 : 1,
+                duration: animate ? AppMotion.fast : Duration.zero,
+                curve: AppMotion.pop,
+                child: Checkbox(
+                  value: checked,
+                  semanticLabel: title,
+                  onChanged: onChanged == null
+                      ? null
+                      : (bool? value) => onChanged!(value ?? false),
+                ),
               ),
               Expanded(
                 child: Padding(
@@ -67,11 +86,12 @@ class ChecklistCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Text(
-                        title,
+                      AnimatedDefaultTextStyle(
+                        style: titleStyle,
+                        duration: animate ? AppMotion.base : Duration.zero,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: titleStyle,
+                        child: Text(title),
                       ),
                       if (subtitle != null)
                         Text(
@@ -94,7 +114,13 @@ class ChecklistCard extends StatelessWidget {
             ],
           ),
         ),
+        ),
       ),
     );
+
+    final Widget pressable = Pressable(child: card);
+    return revealIndex == null
+        ? pressable
+        : Reveal(index: revealIndex!, child: pressable);
   }
 }

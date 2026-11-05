@@ -4,6 +4,12 @@
 /// `import 'package:akshaya/core/design/design.dart';`
 library;
 
+export 'motion/animated_count.dart';
+export 'motion/app_motion.dart';
+export 'motion/motion_page_transitions.dart';
+export 'motion/pop_in.dart';
+export 'motion/pressable.dart';
+export 'motion/reveal.dart';
 export 'theme/akshaya_theme.dart';
 export 'theme/design_context.dart';
 export 'tokens/akshaya_colors.dart';

@@ -35,14 +35,15 @@ class ShoppingScreen extends ConsumerWidget {
     return Scaffold(
       floatingActionButton: selected == null
           ? null
-          : FloatingActionButton.extended(
+          : PopIn(
+              child: FloatingActionButton.extended(
               // Every tab keeps its own FAB alive; unique tags avoid Hero
               // clashes when a screen is pushed.
               heroTag: 'shopping-add-fab',
               onPressed: () => openEntryForm(context, listId: selected.id),
               icon: const Icon(Icons.add_rounded),
               label: const Text('Add item'),
-            ),
+            )),
       bottomNavigationBar: (selected == null || basket.isEmpty)
           ? null
           : Padding(
@@ -204,6 +205,7 @@ class _ListBody extends ConsumerWidget {
         ref.watch(suggestionsProvider);
     final DateTime today = ref.watch(todayProvider);
 
+    int rowIndex = 0;
     final List<Widget> children = <Widget>[
       if (suggestions.isNotEmpty)
         Padding(
@@ -222,12 +224,12 @@ class _ListBody extends ConsumerWidget {
       for (final ShoppingSection section in view.sections) ...<Widget>[
         SectionHeader(title: '${section.title} (${section.entries.length})'),
         for (final ShoppingEntry entry in section.entries)
-          _EntryRow(entry: entry, today: today),
+          _EntryRow(entry: entry, today: today, index: rowIndex++),
       ],
       if (view.basket.isNotEmpty) ...<Widget>[
         SectionHeader(title: 'In basket (${view.basket.length})'),
         for (final ShoppingEntry entry in view.basket)
-          _EntryRow(entry: entry, today: today),
+          _EntryRow(entry: entry, today: today, index: rowIndex++),
       ],
       if (view.upcoming.isNotEmpty)
         _UpcomingSection(entries: view.upcoming, today: today),
@@ -246,10 +248,17 @@ class _ListBody extends ConsumerWidget {
 }
 
 class _EntryRow extends ConsumerWidget {
-  const _EntryRow({required this.entry, required this.today});
+  const _EntryRow({
+    required this.entry,
+    required this.today,
+    required this.index,
+  });
 
   final ShoppingEntry entry;
   final DateTime today;
+
+  /// Position in the list, for the staggered entrance.
+  final int index;
 
   /// Repeating entries waiting for their next date cannot be ticked.
   bool get _waiting => !entry.isDueOn(today);
@@ -336,6 +345,7 @@ class _EntryRow extends ConsumerWidget {
           return false;
         },
         child: ChecklistCard(
+          revealIndex: index < 8 ? index : null,
           title: entry.name,
           checked: entry.isChecked,
           subtitle: _subtitle,
@@ -382,7 +392,7 @@ class _UpcomingSection extends StatelessWidget {
       ),
       children: <Widget>[
         for (final ShoppingEntry entry in entries)
-          _EntryRow(entry: entry, today: today),
+          _EntryRow(entry: entry, today: today, index: 99),
       ],
     );
   }

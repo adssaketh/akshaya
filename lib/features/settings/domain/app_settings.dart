@@ -6,6 +6,7 @@ abstract final class AppSettingKeys {
   static const String currency = 'app.currency';
   static const String defaultUnit = 'app.default_unit';
   static const String appLock = 'app.lock';
+  static const String animations = 'app.animations';
 }
 
 /// Light, dark, or follow the phone.
@@ -39,6 +40,7 @@ final class AppSettings {
     this.currencySymbol = '₹',
     this.defaultUnit = Unit.pcs,
     this.appLock = false,
+    this.animations = true,
   });
 
   factory AppSettings.fromMap(Map<String, String> values) {
@@ -48,6 +50,7 @@ final class AppSettings {
       currencySymbol: kCurrencyChoices.contains(currency) ? currency : '₹',
       defaultUnit: _unitFromSymbol(values[AppSettingKeys.defaultUnit]),
       appLock: values[AppSettingKeys.appLock] == 'true',
+      animations: values[AppSettingKeys.animations] != 'false',
     );
   }
 
@@ -57,6 +60,9 @@ final class AppSettings {
   /// The unit a new item starts with.
   final Unit defaultUnit;
   final bool appLock;
+
+  /// Whether the app plays its transitions and animations.
+  final bool animations;
 
   static Unit _unitFromSymbol(String? symbol) {
     for (final Unit u in Unit.values) {

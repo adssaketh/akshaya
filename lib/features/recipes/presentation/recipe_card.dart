@@ -7,10 +7,18 @@ import '../domain/recipe_models.dart';
 /// One recipe in a list: title, time and servings, and one chip saying what
 /// matters most (uses expiring food, ready to cook, or what is missing).
 class RecipeCard extends StatelessWidget {
-  const RecipeCard({super.key, required this.ranked, required this.onTap});
+  const RecipeCard({
+    super.key,
+    required this.ranked,
+    required this.onTap,
+    this.revealIndex,
+  });
 
   final RankedRecipe ranked;
   final VoidCallback onTap;
+
+  /// Position in the list, for the staggered entrance.
+  final int? revealIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +50,7 @@ class RecipeCard extends StatelessWidget {
       status: status,
       statusLabel: label,
       onTap: onTap,
+      revealIndex: revealIndex,
     );
   }
 }

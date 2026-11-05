@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../motion/pressable.dart';
+import '../motion/reveal.dart';
 import '../theme/design_context.dart';
 import '../tokens/layout_tokens.dart';
 import '../tokens/status_kind.dart';
@@ -17,6 +19,7 @@ class ItemCard extends StatelessWidget {
     required this.status,
     this.statusLabel,
     this.onTap,
+    this.revealIndex,
   });
 
   final String name;
@@ -28,11 +31,15 @@ class ItemCard extends StatelessWidget {
   final String? statusLabel;
   final VoidCallback? onTap;
 
+  /// Position in a list: when set, the card slides in with a stagger the
+  /// first time it appears.
+  final int? revealIndex;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.akColors;
 
-    return Material(
+    final Widget card = Material(
       color: colors.surface,
       borderRadius: AppRadius.cardBorder,
       clipBehavior: Clip.antiAlias,
@@ -81,5 +88,10 @@ class ItemCard extends StatelessWidget {
         ),
       ),
     );
+
+    final Widget pressable = Pressable(enabled: onTap != null, child: card);
+    return revealIndex == null
+        ? pressable
+        : Reveal(index: revealIndex!, child: pressable);
   }
 }

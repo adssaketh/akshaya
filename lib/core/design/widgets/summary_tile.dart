@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../motion/animated_count.dart';
+import '../motion/pressable.dart';
+import '../motion/reveal.dart';
 import '../theme/design_context.dart';
 import '../tokens/layout_tokens.dart';
 import '../tokens/status_kind.dart';
@@ -14,6 +17,7 @@ class SummaryTile extends StatelessWidget {
     required this.label,
     this.icon,
     this.onTap,
+    this.revealIndex,
   });
 
   final StatusKind kind;
@@ -24,11 +28,14 @@ class SummaryTile extends StatelessWidget {
   final IconData? icon;
   final VoidCallback? onTap;
 
+  /// Position among the tiles: when set, the tile pops in with a stagger.
+  final int? revealIndex;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.akColors.forStatus(kind);
 
-    return Semantics(
+    final Widget tile = Semantics(
       container: true,
       button: onTap != null,
       label: '$count $label',
@@ -52,8 +59,8 @@ class SummaryTile extends StatelessWidget {
                   color: colors.foreground,
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  '$count',
+                AnimatedCount(
+                  value: count,
                   style: context.akText.headlineMedium!.copyWith(
                     color: colors.foreground,
                   ),
@@ -72,5 +79,10 @@ class SummaryTile extends StatelessWidget {
         ),
       ),
     );
+
+    final Widget pressable = Pressable(enabled: onTap != null, child: tile);
+    return revealIndex == null
+        ? pressable
+        : Reveal(index: revealIndex!, scaleFrom: 0.92, child: pressable);
   }
 }

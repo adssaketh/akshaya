@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../motion/app_motion.dart';
 import '../theme/design_context.dart';
 import '../tokens/layout_tokens.dart';
 import '../tokens/status_kind.dart';
@@ -22,7 +23,8 @@ class StatusChip extends StatelessWidget {
     final colors = context.akColors.forStatus(kind);
     final String text = label ?? kind.label;
 
-    return ConstrainedBox(
+    final Widget chip = ConstrainedBox(
+      key: ValueKey<String>('${kind.name}|$text'),
       constraints: const BoxConstraints(maxWidth: AppSizes.chipMaxWidth),
       child: DecoratedBox(
         decoration: ShapeDecoration(
@@ -53,6 +55,18 @@ class StatusChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    // A changed status or label fades and scales into place.
+    return AnimatedSwitcher(
+      duration: AppMotion.of(context) ? AppMotion.fast : Duration.zero,
+      switchInCurve: AppMotion.pop,
+      transitionBuilder: (Widget child, Animation<double> animation) =>
+          FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(scale: animation, child: child),
+      ),
+      child: chip,
     );
   }
 }

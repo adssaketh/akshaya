@@ -126,6 +126,7 @@ class _Content extends ConsumerWidget {
                   width: width,
                   child: SummaryTile(
                     kind: StatusKind.expiring,
+                    revealIndex: 0,
                     count: _count(StatusKind.expiring),
                     label: 'Expiring soon',
                     onTap: () => onShowPantry(StatusKind.expiring),
@@ -135,6 +136,7 @@ class _Content extends ConsumerWidget {
                   width: width,
                   child: SummaryTile(
                     kind: StatusKind.expired,
+                    revealIndex: 1,
                     count: _count(StatusKind.expired),
                     label: 'Expired',
                     onTap: () => onShowPantry(StatusKind.expired),
@@ -144,6 +146,7 @@ class _Content extends ConsumerWidget {
                   width: width,
                   child: SummaryTile(
                     kind: StatusKind.lowStock,
+                    revealIndex: 2,
                     count: _count(StatusKind.lowStock) +
                         _count(StatusKind.outOfStock),
                     label: 'Low or out of stock',
@@ -154,6 +157,7 @@ class _Content extends ConsumerWidget {
                   width: width,
                   child: SummaryTile(
                     kind: StatusKind.fresh,
+                    revealIndex: 3,
                     count: shoppingCount,
                     label: 'On shopping lists',
                     icon: Icons.shopping_basket_rounded,
@@ -164,6 +168,7 @@ class _Content extends ConsumerWidget {
                   width: width,
                   child: SummaryTile(
                     kind: StatusKind.fresh,
+                    revealIndex: 4,
                     count: stocks.length,
                     label: 'Items in pantry',
                     icon: Icons.inventory_2_rounded,
@@ -199,10 +204,11 @@ class _Content extends ConsumerWidget {
               ),
             )
           else
-            for (final ItemStock s in urgent.take(kUseFirstShown))
+            for (final (int i, ItemStock s) in urgent.take(kUseFirstShown).indexed)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: ItemCard(
+                  revealIndex: i + 5,
                   name: s.item.name,
                   subtitle: '${s.primaryLocation.label} · ${s.remainingLabel} left',
                   icon: categoryIcon(categories[s.item.categoryId]?.iconKey),

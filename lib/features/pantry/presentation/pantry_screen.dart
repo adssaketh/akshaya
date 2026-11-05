@@ -46,7 +46,8 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
         ref.watch(pantrySectionsProvider);
 
     return Scaffold(
-      floatingActionButton: Column(
+      floatingActionButton: PopIn(
+          child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: <Widget>[
@@ -64,7 +65,7 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
             label: const Text('Add item'),
           ),
         ],
-      ),
+      )),
       body: SafeArea(
         child: Column(
           children: <Widget>[
@@ -233,6 +234,7 @@ class _PantryList extends ConsumerWidget {
           child: _PantryRow(
             stock: stock,
             icon: categoryIcon(categories[stock.item.categoryId]?.iconKey),
+            revealIndex: index < 8 ? index : null,
           ),
         );
       },
@@ -241,10 +243,15 @@ class _PantryList extends ConsumerWidget {
 }
 
 class _PantryRow extends ConsumerWidget {
-  const _PantryRow({required this.stock, required this.icon});
+  const _PantryRow({
+    required this.stock,
+    required this.icon,
+    this.revealIndex,
+  });
 
   final ItemStock stock;
   final IconData icon;
+  final int? revealIndex;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -286,6 +293,7 @@ class _PantryRow extends ConsumerWidget {
           status: stock.status,
           statusLabel: stock.statusLabel,
           onTap: () => openItemDetail(context, stock.item.id),
+          revealIndex: revealIndex,
         ),
       ),
     );

@@ -13,6 +13,16 @@ void main() {
       expect(s.currencySymbol, '₹');
       expect(s.defaultUnit, Unit.pcs);
       expect(s.appLock, isFalse);
+      expect(s.animations, isTrue);
+    });
+
+    test('animations can be switched off', () {
+      expect(
+        AppSettings.fromMap(const <String, String>{
+          AppSettingKeys.animations: 'false',
+        }).animations,
+        isFalse,
+      );
     });
 
     test('reads stored values', () {

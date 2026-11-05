@@ -143,6 +143,13 @@ class GeneralSection extends ConsumerWidget {
           subtitle: Text('Fridge, Freezer, Pantry and Other (fixed)'),
         ),
         SwitchListTile(
+          secondary: const Icon(Icons.animation_rounded),
+          title: const Text('Animations'),
+          subtitle: const Text('Transitions and motion throughout the app'),
+          value: settings.animations,
+          onChanged: (bool v) => _write(ref, AppSettingKeys.animations, '$v'),
+        ),
+        SwitchListTile(
           secondary: const Icon(Icons.fingerprint_rounded),
           title: const Text('App lock'),
           subtitle: const Text('Ask for fingerprint, face or screen lock'),

@@ -65,17 +65,30 @@ class InsightsScreen extends ConsumerWidget {
             children: <Widget>[
               _MonthBar(month: month),
               const SizedBox(height: AppSpacing.md),
-              _SpendCard(records: records, categories: categories, month: month),
-              const SizedBox(height: AppSpacing.lg),
-              _WasteCard(
-                report: Insights.wasteReport(records, logs, month),
+              Reveal(
+                index: 1,
+                child: _SpendCard(
+                  records: records,
+                  categories: categories,
+                  month: month,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              _RunOutCard(
-                estimates: Insights.runOutEstimates(records, logs, today),
+              Reveal(
+                index: 2,
+                child: _WasteCard(
+                  report: Insights.wasteReport(records, logs, month),
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              _PriceCard(records: records),
+              Reveal(
+                index: 3,
+                child: _RunOutCard(
+                  estimates: Insights.runOutEstimates(records, logs, today),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Reveal(index: 4, child: _PriceCard(records: records)),
             ],
           );
         },
@@ -227,11 +240,22 @@ class _SpendCard extends StatelessWidget {
                     const SizedBox(height: AppSpacing.xs),
                     ClipRRect(
                       borderRadius: AppRadius.controlBorder,
-                      child: LinearProgressIndicator(
-                        value: total <= 0 ? 0 : (c.amount / total).clamp(0, 1),
-                        minHeight: AppSpacing.sm,
-                        color: colors.primary,
-                        backgroundColor: colors.surfaceAlt,
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween<double>(
+                          begin: 0,
+                          end: total <= 0 ? 0 : (c.amount / total).clamp(0, 1),
+                        ),
+                        duration: AppMotion.of(context)
+                            ? AppMotion.slow
+                            : Duration.zero,
+                        curve: AppMotion.enter,
+                        builder: (BuildContext _, double value, Widget? __) =>
+                            LinearProgressIndicator(
+                          value: value,
+                          minHeight: AppSpacing.sm,
+                          color: colors.primary,
+                          backgroundColor: colors.surfaceAlt,
+                        ),
                       ),
                     ),
                   ],
@@ -264,6 +288,8 @@ class _TrendChart extends StatelessWidget {
     return SizedBox(
       height: 140,
       child: BarChart(
+        duration: AppMotion.of(context) ? AppMotion.slow : Duration.zero,
+        curve: AppMotion.enter,
         BarChartData(
           maxY: maxY * 1.15,
           alignment: BarChartAlignment.spaceAround,
@@ -537,6 +563,8 @@ class _PriceChart extends StatelessWidget {
     return SizedBox(
       height: 160,
       child: LineChart(
+        duration: AppMotion.of(context) ? AppMotion.slow : Duration.zero,
+        curve: AppMotion.enter,
         LineChartData(
           minY: (low - pad).clamp(0, double.infinity),
           maxY: high + pad,

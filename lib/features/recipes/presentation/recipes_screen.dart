@@ -245,10 +245,14 @@ class _IdeasTab extends ConsumerWidget {
                   'what you have. Only item names, amounts and dates are sent.',
             )
           else
-            for (final RankedRecipe r in ideas)
+            for (final (int i, RankedRecipe r) in ideas.indexed)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: RecipeCard(ranked: r, onTap: () => onOpen(r.recipe)),
+                child: RecipeCard(
+                  ranked: r,
+                  revealIndex: i,
+                  onTap: () => onOpen(r.recipe),
+                ),
               ),
         ],
       ],
@@ -332,10 +336,11 @@ class _SavedTab extends ConsumerWidget {
             AppSpacing.xxl,
           ),
           children: <Widget>[
-            for (final SavedRecipe s in list)
+            for (final (int i, SavedRecipe s) in list.indexed)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: RecipeCard(
+                  revealIndex: i,
                   ranked: rankOne(ref, s.recipe),
                   onTap: () => onOpen(s.recipe),
                 ),
