@@ -39,20 +39,17 @@ final class ActionOutcome {
 /// appeared never acts on stale facts: what the notification listed is worked
 /// out again, and anything that has been dealt with since is left alone.
 class NotificationActionRunner {
-  NotificationActionRunner({
-    required PantryRepository pantry,
-    required ShoppingRepository shopping,
-    required SettingsRepository settings,
-    required DateTime Function() clock,
-  })  : _pantry = pantry,
-        _shopping = shopping,
-        _settings = settings,
-        _clock = clock;
+  const NotificationActionRunner({
+    required this.pantry,
+    required this.shopping,
+    required this.settings,
+    required this.clock,
+  });
 
-  final PantryRepository _pantry;
-  final ShoppingRepository _shopping;
-  final SettingsRepository _settings;
-  final DateTime Function() _clock;
+  final PantryRepository pantry;
+  final ShoppingRepository shopping;
+  final SettingsRepository settings;
+  final DateTime Function() clock;
 
   static const ActionOutcome _nothing = ActionOutcome('Nothing to do.');
 
@@ -62,12 +59,12 @@ class NotificationActionRunner {
       return _nothing;
     }
 
-    final Map<String, String> stored = await _settings.readAll();
-    final AlertSettings settings = AlertSettings.fromMap(stored);
+    final Map<String, String> stored = await settings.readAll();
+    final AlertSettings alertSettings = AlertSettings.fromMap(stored);
     final AlertSnoozes snoozes = AlertSnoozes.fromMap(stored);
-    final DateTime today = dateOnly(_clock());
-    final List<ItemWithBatches> items = await _pantry.watchItems().first;
-    final List<ShoppingEntry> entries = await _shopping.watchEntries().first;
+    final DateTime today = dateOnly(clock());
+    final List<ItemWithBatches> items = await pantry.watchItems().first;
+    final List<ShoppingEntry> entries = await shopping.watchEntries().first;
 
     // The group the notification listed, as it stands now. The type switches
     // are forced on: the notification exists, so its group does too.
@@ -75,7 +72,7 @@ class NotificationActionRunner {
       items: items,
       entries: entries,
       today: today,
-      settings: settings.copyWith(
+      settings: alertSettings.copyWith(
         expired: true,
         expiring: true,
         lowStock: true,
@@ -133,7 +130,7 @@ class NotificationActionRunner {
               : AddedReason.manual,
         );
       case AlertAction.usedIt:
-        return _usedIt(groupStocks, only, today, settings.warningDays);
+        return _usedIt(groupStocks, only, today, alertSettings.warningDays);
       case AlertAction.showRecipes:
         return _nothing;
     }
@@ -156,7 +153,7 @@ class NotificationActionRunner {
     if (ids.isEmpty) {
       return _nothing;
     }
-    await _settings.writeAll(snoozes.snooze(ids, today: today).toMap());
+    await settings.writeAll(snoozes.snooze(ids, today: today).toMap());
     return ActionOutcome(
       ids.length == 1 ? 'Snoozed for a day.' : 'Snoozed ${ids.length} items.',
       changed: true,
@@ -183,7 +180,7 @@ class NotificationActionRunner {
     if (drafts.isEmpty) {
       return const ActionOutcome('Already on your list.');
     }
-    await _shopping.addEntries(drafts);
+    await shopping.addEntries(drafts);
     return ActionOutcome(
       drafts.length == 1
           ? 'Added 1 item to your list.'
@@ -240,7 +237,7 @@ class NotificationActionRunner {
       return _nothing;
     }
     try {
-      await _pantry.useStock(
+      await pantry.useStock(
         itemId: only,
         quantity: amount,
         unit: unit,
@@ -252,7 +249,7 @@ class NotificationActionRunner {
       if (isZeroQty(failure.available)) {
         return _nothing;
       }
-      await _pantry.useStock(
+      await pantry.useStock(
         itemId: only,
         quantity: failure.available,
         unit: unit,
