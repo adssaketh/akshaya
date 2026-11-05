@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
-import '../settings/domain/app_settings.dart';
 import '../settings/presentation/providers.dart';
 
 /// Asks the phone to confirm the person (fingerprint, face or screen lock).

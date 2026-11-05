@@ -27,26 +27,24 @@ class PlatformBackupFiles implements BackupFiles {
     required Uint8List bytes,
     required String dialogTitle,
   }) async {
-    final String? path = await FilePicker.saveFile(
+    final Uri? saved = await FilePicker.saveFile(
       dialogTitle: dialogTitle,
       fileName: fileName,
       bytes: bytes,
     );
-    return path != null;
+    return saved != null;
   }
 
   @override
   Future<Uint8List?> pickBackup() async {
-    final FilePickerResult? result = await FilePicker.pickFiles(
+    final PlatformFile? file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const <String>['json'],
-      withData: true,
     );
-    if (result == null || result.files.isEmpty) {
+    if (file == null) {
       return null;
     }
-    final PlatformFile file = result.files.single;
-    return file.bytes ?? await file.xFile.readAsBytes();
+    return file.readAsBytes();
   }
 }
 
