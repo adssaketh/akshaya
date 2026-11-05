@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../alerts/domain/alert_plan.dart';
 import '../alerts/presentation/first_run_prompt.dart';
 import '../alerts/presentation/providers.dart';
-import '../commands/presentation/voice_mic_button.dart';
+import '../home/presentation/home_screen.dart';
 import '../pantry/presentation/pantry_screen.dart';
 import '../pantry/presentation/providers.dart';
 import '../recipes/presentation/recipes_screen.dart';
@@ -15,7 +15,7 @@ import '../settings/settings_screen.dart';
 import '../shopping/presentation/shopping_screen.dart';
 
 /// Bottom navigation: Home, Pantry, Shopping, Recipes, Settings.
-/// Pantry, Shopping, Recipes and Settings are live; Home is a placeholder.
+/// Home is the dashboard; the other four tabs are the feature screens.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
@@ -26,7 +26,8 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell> {
   static const int _pantryTab = 1;
   static const int _shoppingTab = 2;
-  int _index = _pantryTab;
+  static const int _recipesTab = 3;
+  int _index = 0;
 
   @override
   void initState() {
@@ -82,21 +83,31 @@ class _AppShellState extends ConsumerState<AppShell> {
     ref.read(alertTargetProvider.notifier).clear();
   }
 
+  /// Opens the Pantry tab, filtered to [status] (or unfiltered when null).
+  void _showPantry(StatusKind? status) {
+    final PantryQueryNotifier query = ref.read(pantryQueryProvider.notifier)
+      ..clearFilters();
+    if (status != null) {
+      query.setStatus(status);
+    }
+    setState(() => _index = _pantryTab);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
         index: _index,
-        children: const <Widget>[
-          _Placeholder(
-            icon: Icons.home_rounded,
-            title: 'Home',
-            body: 'Your dashboard arrives in a later phase.',
+        children: <Widget>[
+          HomeScreen(
+            onShowPantry: _showPantry,
+            onShowShopping: () => setState(() => _index = _shoppingTab),
+            onShowRecipes: () => setState(() => _index = _recipesTab),
           ),
-          PantryScreen(),
-          ShoppingScreen(),
-          RecipesScreen(),
-          SettingsScreen(),
+          const PantryScreen(),
+          const ShoppingScreen(),
+          const RecipesScreen(),
+          const SettingsScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -128,30 +139,6 @@ class _AppShellState extends ConsumerState<AppShell> {
             selectedIcon: Icon(Icons.settings_rounded),
             label: 'Settings',
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Placeholder extends StatelessWidget {
-  const _Placeholder({
-    required this.icon,
-    required this.title,
-    required this.body,
-  });
-
-  final IconData icon;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        children: <Widget>[
-          const AkshayaHeader(actions: <Widget>[VoiceMicButton()]),
-          Expanded(child: EmptyState(icon: icon, title: title, body: body)),
         ],
       ),
     );

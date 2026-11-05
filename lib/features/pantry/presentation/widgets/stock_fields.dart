@@ -337,8 +337,8 @@ class StockFields extends StatelessWidget {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: const InputDecoration(
-                      labelText: 'Price paid ($kCurrencySymbol)',
+                    decoration: InputDecoration(
+                      labelText: 'Price paid ($currentCurrencySymbol)',
                     ),
                     validator: _validatePrice,
                   ),

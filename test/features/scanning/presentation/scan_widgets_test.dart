@@ -3,6 +3,7 @@ import 'package:akshaya/features/pantry/domain/entities.dart';
 import 'package:akshaya/features/pantry/domain/unit.dart';
 import 'package:akshaya/features/pantry/presentation/add_item_screen.dart';
 import 'package:akshaya/features/pantry/presentation/providers.dart';
+import 'package:akshaya/features/settings/presentation/providers.dart';
 import 'package:akshaya/features/scanning/domain/product_info.dart';
 import 'package:akshaya/features/scanning/domain/scan_service.dart';
 import 'package:akshaya/features/scanning/presentation/barcode_scan_screen.dart';
@@ -12,11 +13,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../pantry/domain/test_data.dart';
 import '../../pantry/presentation/fake_repository.dart';
+import '../../settings/fake_settings_repository.dart';
 
 Widget host(FakePantryRepository repo, Widget home) {
   return ProviderScope(
     overrides: [
       pantryRepositoryProvider.overrideWithValue(repo),
+      settingsRepositoryProvider.overrideWithValue(FakeSettingsRepository()),
     ],
     child: MaterialApp(theme: AkshayaTheme.light(), home: home),
   );

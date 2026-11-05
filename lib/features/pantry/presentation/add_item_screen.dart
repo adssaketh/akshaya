@@ -9,6 +9,7 @@ import '../../scanning/domain/product_info.dart';
 import '../../scanning/domain/scan_service.dart';
 import '../../scanning/presentation/barcode_scan_screen.dart';
 import '../../scanning/presentation/scan_flow.dart';
+import '../../settings/presentation/providers.dart';
 import '../domain/entities.dart';
 import '../domain/pantry_query.dart';
 import '../domain/pantry_repository.dart';
@@ -60,7 +61,10 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     final DateTime today = ref.read(todayProvider);
 
     _existing = initial;
-    _itemFields = ItemFieldsController(item: initial);
+    _itemFields = ItemFieldsController(
+      item: initial,
+      fallbackUnit: ref.read(appSettingsProvider).defaultUnit,
+    );
     _stock = StockFieldsController(
       today: today,
       unit: initial?.defaultUnit ?? _itemFields.unit,

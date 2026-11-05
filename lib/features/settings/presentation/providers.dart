@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/time/clock.dart';
 import '../../pantry/presentation/providers.dart';
 import '../data/drift_settings_repository.dart';
+import '../domain/app_settings.dart';
 import '../domain/settings_repository.dart';
 
 final Provider<SettingsRepository> settingsRepositoryProvider =
@@ -17,4 +18,11 @@ final Provider<SettingsRepository> settingsRepositoryProvider =
 final StreamProvider<Map<String, String>> settingsMapProvider =
     StreamProvider<Map<String, String>>((Ref ref) {
   return ref.watch(settingsRepositoryProvider).watchAll();
+});
+
+/// The general settings (defaults until they have loaded).
+final Provider<AppSettings> appSettingsProvider = Provider<AppSettings>((Ref ref) {
+  final Map<String, String> stored =
+      ref.watch(settingsMapProvider).value ?? const <String, String>{};
+  return AppSettings.fromMap(stored);
 });

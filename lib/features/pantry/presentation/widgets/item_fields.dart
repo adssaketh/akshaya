@@ -12,9 +12,9 @@ import '../providers.dart';
 /// Form state for an item definition (everything except its name, which each
 /// screen handles itself).
 class ItemFieldsController extends ChangeNotifier {
-  ItemFieldsController({Item? item})
+  ItemFieldsController({Item? item, Unit fallbackUnit = Unit.pcs})
       : categoryId = item?.categoryId ?? kDefaultCategoryId,
-        unit = item?.defaultUnit ?? Unit.pcs,
+        unit = item?.defaultUnit ?? fallbackUnit,
         location = item?.defaultStorageLocation ?? StorageLocation.pantry,
         essential = item?.isEssential ?? false,
         aliases = List<String>.of(item?.aliases ?? const <String>[]),

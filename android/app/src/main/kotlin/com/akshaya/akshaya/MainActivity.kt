@@ -1,5 +1,6 @@
 package com.akshaya.akshaya
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// local_auth (the biometric app lock) needs a FragmentActivity.
+class MainActivity : FlutterFragmentActivity()

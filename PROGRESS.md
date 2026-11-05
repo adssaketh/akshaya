@@ -13,8 +13,8 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 4 Local notifications and background checks | Done. CI green, APK installed and checklist passed. |
 | 5 Multilingual input (offline parser, then Gemini with daily cap) | Done. CI green after fix rounds, APK installed and checklist passed. |
 | 6 Firebase auth, household sharing, sync, security rules | Done. CI green (incl. rules tests), Google sign-in, create/join by code and QR, two-way sync checked on two devices. |
-| 7 Recipe suggestions | Built, pushed; waiting for CI and your device check. |
-| 8 | Not started |
+| 7 Recipe suggestions | Done. CI green, checked on device. |
+| 8 Dashboard, insights, backup/export, settings and usage | Built, pushed; waiting for CI and your device check. |
 
 ## Phase 2: what is built
 
@@ -524,9 +524,55 @@ test/features/sync/domain/sync_documents_test.dart  collections list includes re
 - Deploy the new rules and the recipes index (`firebase deploy --only firestore:rules,firestore:indexes`) or saved recipes will not sync (rules reject unknown collections).
 - Removing a saved recipe on one phone and saving the same recipe on another at once can leave two copies.
 
-## Next: Phase 8 (dashboard, insights, backup/export, settings and usage)
+## Phase 8: what is built
 
-Start in a new chat when you say so.
+Home dashboard (summary tiles, quick actions Voice / Scan / Add / Shopping, "Use these first" with "Get recipe ideas", Insights button), Insights (monthly spend trend and by category, waste report, "runs out in ~N days", price history by item and store), backup (JSON export/import via the system file picker, CSV of pantry and of usage history), expanded Settings, optional biometric app lock.
+
+### Files
+```
+pubspec.yaml                                   + fl_chart, local_auth, file_picker
+android/.../MainActivity.kt                    FlutterFragmentActivity (local_auth)
+android/.../res/values/styles.xml              AppCompat launch theme (local_auth)
+android/.../AndroidManifest.xml                + USE_BIOMETRIC
+lib/app.dart                                   theme choice, currency symbol, AppLockGate
+lib/core/util/money.dart                       currentCurrencySymbol
+lib/features/home/presentation/home_screen.dart            NEW dashboard
+lib/features/shell/app_shell.dart              Home tab wired
+lib/features/insights/domain/insights.dart     NEW pure calculators
+lib/features/insights/presentation/{providers,insights_screen}.dart   NEW
+lib/features/backup/data/backup_service.dart   NEW JSON export + merge import
+lib/features/backup/domain/{csv,backup_csv}.dart   NEW
+lib/features/backup/presentation/{backup_files,backup_section}.dart  NEW
+lib/features/lock/app_lock.dart                NEW lock gate + authenticator seam
+lib/features/settings/domain/app_settings.dart NEW
+lib/features/settings/presentation/{general_section,categories_screen}.dart  NEW
+lib/features/settings/settings_screen.dart     rewritten
+lib/features/pantry/...                        category add/rename/delete, watchAllHistory, default unit
+test/...                                       insights, backup, app settings, app lock, categories
+```
+
+### Decisions
+- Import merges by id; a row is replaced only when the file's `updated_at` is newer. All-or-nothing in one transaction. Settings and caches are not in backups.
+- Currency is a global symbol (display only, no conversion).
+- App lock keeps the app mounted underneath (state survives) and never locks a phone with no screen lock.
+- Storage locations stay a fixed set (Fridge, Freezer, Pantry, Other).
+
+## Test checklist (you), Phase 8
+1. Home: tiles show right counts; tapping a tile opens the Pantry filtered; quick actions work; "Use these first" and "Get recipe ideas".
+2. Insights: spend, waste, run-out and price history after a few purchases/uses.
+3. Settings: theme, currency (prices relabel), default unit (new item), diet preferences, categories add/rename/icon/delete.
+4. Backup: save JSON, restore on same phone (nothing duplicates), restore on a second phone/after clear; CSV files open in a spreadsheet.
+5. App lock: turn on (prompts), background and reopen, unlock; turn off.
+6. Usage sections (AI calls, Firestore writes) still show.
+
+## Known issues (Phase 8)
+- Recipes are not linked from expiry notifications.
+- Storage locations are not editable.
+- Currency symbol refreshes on screens when they rebuild; reopen a screen to see it.
+- Category deletion has a confirmation, not an Undo.
+- `file_picker`/`local_auth` calls are untested on device until your check.
+
+## Next: Phase 9 (v2 roadmap), only when you say so.
 
 ## Phase 0: what was built (unchanged)
 

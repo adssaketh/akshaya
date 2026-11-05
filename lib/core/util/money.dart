@@ -1,5 +1,8 @@
-/// Currency symbol. Becomes a setting in Phase 8.
+/// The default currency symbol.
 const String kCurrencySymbol = '₹';
+
+/// The symbol in use (a setting; the app root keeps it up to date).
+String currentCurrencySymbol = kCurrencySymbol;
 
 /// "₹120" for whole amounts, "₹120.50" otherwise.
 String formatMoney(double amount) {
@@ -7,7 +10,7 @@ String formatMoney(double amount) {
   final String body = rounded == rounded.truncateToDouble()
       ? rounded.toInt().toString()
       : rounded.toStringAsFixed(2);
-  return '$kCurrencySymbol$body';
+  return '$currentCurrencySymbol$body';
 }
 
 /// Reads a price typed by a person: "1250", "1,250", "1,25,000" (Indian
@@ -16,8 +19,11 @@ String formatMoney(double amount) {
 /// number; the caller decides whether a negative amount is acceptable.
 double? parseMoney(String input) {
   String text = input.trim();
-  if (text.startsWith(kCurrencySymbol)) {
-    text = text.substring(kCurrencySymbol.length);
+  for (final String symbol in <String>{currentCurrencySymbol, kCurrencySymbol}) {
+    if (text.startsWith(symbol)) {
+      text = text.substring(symbol.length);
+      break;
+    }
   }
   text = text.replaceAll(',', '').replaceAll(RegExp(r'\s'), '');
   if (text.isEmpty) {

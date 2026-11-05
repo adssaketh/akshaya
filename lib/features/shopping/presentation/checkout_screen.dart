@@ -238,8 +238,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
-                labelText: 'Price paid ($kCurrencySymbol, optional)',
+              decoration: InputDecoration(
+                labelText: 'Price paid ($currentCurrencySymbol, optional)',
               ),
               validator: _validatePrice,
             ),

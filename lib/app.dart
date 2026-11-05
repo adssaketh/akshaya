@@ -5,7 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/time/clock.dart';
+import 'core/util/money.dart';
 import 'features/alerts/presentation/providers.dart';
+import 'features/lock/app_lock.dart';
+import 'features/settings/domain/app_settings.dart';
+import 'features/settings/presentation/providers.dart';
 import 'features/shell/app_shell.dart';
 import 'features/sync/presentation/providers.dart';
 
@@ -48,14 +52,30 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
     super.dispose();
   }
 
+  static ThemeMode _mode(AppThemeChoice choice) {
+    switch (choice) {
+      case AppThemeChoice.system:
+        return ThemeMode.system;
+      case AppThemeChoice.light:
+        return ThemeMode.light;
+      case AppThemeChoice.dark:
+        return ThemeMode.dark;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final AppSettings settings = ref.watch(appSettingsProvider);
+    // Prices everywhere use the chosen symbol.
+    currentCurrencySymbol = settings.currencySymbol;
     return MaterialApp(
       title: 'Akshaya Patra',
       debugShowCheckedModeBanner: false,
       theme: AkshayaTheme.light(),
       darkTheme: AkshayaTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: _mode(settings.theme),
+      builder: (BuildContext context, Widget? child) =>
+          AppLockGate(child: child ?? const SizedBox.shrink()),
       home: const AppShell(),
     );
   }

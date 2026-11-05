@@ -5,6 +5,7 @@ import '../../../core/util/barcode.dart';
 import '../../../core/util/date_only.dart';
 import '../../../core/util/quantity.dart';
 import '../domain/consumption_type.dart';
+import '../domain/default_categories.dart';
 import '../domain/entities.dart';
 import '../domain/failures.dart';
 import '../domain/fifo.dart';
@@ -167,6 +168,129 @@ class DriftPantryRepository implements PantryRepository {
     return query.watch().map(
           (List<ConsumptionLogRow> rows) => rows.map(_log).toList(),
         );
+  }
+
+  @override
+  Stream<List<ConsumptionEntry>> watchAllHistory() {
+    final SimpleSelectStatement<$ConsumptionLogsTable, ConsumptionLogRow>
+        query = _db.select(_db.consumptionLogs)
+          ..where((t) => t.isDeleted.equals(false))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)]);
+    return query.watch().map(
+          (List<ConsumptionLogRow> rows) => rows.map(_log).toList(),
+        );
+  }
+
+  // ---------------------------------------------------------------------
+  // Categories
+  // ---------------------------------------------------------------------
+
+  String _categoryName(String name) {
+    final String clean = name.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (clean.isEmpty) {
+      throw const InvalidInputFailure('Give the category a name.');
+    }
+    if (clean.length > 60) {
+      throw const InvalidInputFailure('That name is too long (60 letters).');
+    }
+    return clean;
+  }
+
+  Future<bool> _categoryNameTaken(String name, {String? exceptId}) async {
+    final List<CategoryRow> rows = await (_db.select(_db.categories)
+          ..where((t) => t.isDeleted.equals(false)))
+        .get();
+    final String wanted = name.toLowerCase();
+    for (final CategoryRow r in rows) {
+      if (r.id != exceptId && r.name.toLowerCase() == wanted) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @override
+  Future<Category> addCategory({
+    required String name,
+    required String iconKey,
+  }) {
+    final String clean = _categoryName(name);
+    return _db.transaction<Category>(() async {
+      if (await _categoryNameTaken(clean)) {
+        throw InvalidInputFailure('"$clean" already exists.');
+      }
+      final List<CategoryRow> rows = await (_db.select(_db.categories)
+            ..where((t) => t.isDeleted.equals(false)))
+          .get();
+      int last = -1;
+      for (final CategoryRow r in rows) {
+        if (r.sortOrder > last) {
+          last = r.sortOrder;
+        }
+      }
+      final String id = _newId();
+      final DateTime now = _now();
+      await _db.into(_db.categories).insert(
+            CategoriesCompanion.insert(
+              id: id,
+              name: clean,
+              iconKey: iconKey,
+              sortOrder: last + 1,
+              createdAt: now,
+              updatedAt: now,
+              updatedBy: Value<String?>(_userId),
+            ),
+          );
+      return Category(id: id, name: clean, iconKey: iconKey, sortOrder: last + 1);
+    });
+  }
+
+  @override
+  Future<void> updateCategory({
+    required String id,
+    required String name,
+    required String iconKey,
+  }) {
+    final String clean = _categoryName(name);
+    return _db.transaction<void>(() async {
+      if (await _categoryNameTaken(clean, exceptId: id)) {
+        throw InvalidInputFailure('"$clean" already exists.');
+      }
+      await (_db.update(_db.categories)..where((t) => t.id.equals(id))).write(
+        CategoriesCompanion(
+          name: Value<String>(clean),
+          iconKey: Value<String>(iconKey),
+          updatedAt: Value<DateTime>(_now()),
+          updatedBy: Value<String?>(_userId),
+        ),
+      );
+    });
+  }
+
+  @override
+  Future<void> deleteCategory(String id) {
+    return _db.transaction<void>(() async {
+      if (id == kDefaultCategoryId) {
+        throw const InvalidInputFailure('"Other" cannot be removed.');
+      }
+      final List<ItemRow> used = await (_db.select(_db.items)
+            ..where((t) => t.categoryId.equals(id) & t.isDeleted.equals(false)))
+          .get();
+      if (used.isNotEmpty) {
+        throw InvalidInputFailure(
+          used.length == 1
+              ? '1 item still uses this category. Move it first.'
+              : '${used.length} items still use this category. Move them first.',
+        );
+      }
+      await (_db.update(_db.categories)..where((t) => t.id.equals(id))).write(
+        CategoriesCompanion(
+          isDeleted: const Value<bool>(true),
+          updatedAt: Value<DateTime>(_now()),
+          updatedBy: Value<String?>(_userId),
+        ),
+      );
+    });
   }
 
   // ---------------------------------------------------------------------

@@ -18,6 +18,24 @@ abstract interface class PantryRepository {
   /// Usage history of one item, newest first.
   Stream<List<ConsumptionEntry>> watchHistory(String itemId);
 
+  /// Every usage entry of every item, newest first (for Insights).
+  Stream<List<ConsumptionEntry>> watchAllHistory();
+
+  /// Adds a category at the end of the list. Throws `InvalidInputFailure`
+  /// for an empty or duplicate name.
+  Future<Category> addCategory({required String name, required String iconKey});
+
+  /// Changes a category's name and icon (its id never changes).
+  Future<void> updateCategory({
+    required String id,
+    required String name,
+    required String iconKey,
+  });
+
+  /// Removes a category nobody uses. Throws `InvalidInputFailure` when items
+  /// still belong to it or when it is the catch-all "Other" category.
+  Future<void> deleteCategory(String id);
+
   /// Case-insensitive exact match on the canonical name.
   Future<Item?> findItemByName(String name);
 

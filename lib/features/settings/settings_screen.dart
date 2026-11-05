@@ -7,12 +7,13 @@ import '../../core/ui/feedback.dart';
 import '../ai/presentation/ai_voice_section.dart';
 import '../alerts/presentation/alerts_section.dart';
 import '../commands/presentation/voice_mic_button.dart';
+import '../backup/presentation/backup_section.dart';
 import '../pantry/presentation/providers.dart';
+import 'presentation/general_section.dart';
 import '../sync/presentation/sync_section.dart';
 
-/// Temporary Settings tab: the daily alert settings (Phase 4), sample data and
-/// the design gallery. The full settings (theme, AI, usage and so on) arrive
-/// in Phase 8.
+/// The Settings tab: general options, alerts, AI and voice (with usage),
+/// sync, backup and export, sample data and the design gallery.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -22,11 +23,15 @@ class SettingsScreen extends ConsumerWidget {
       child: ListView(
         children: <Widget>[
           const AkshayaHeader(actions: <Widget>[VoiceMicButton()]),
+          const GeneralSection(),
+          const Divider(),
           const AlertsSection(),
           const Divider(),
           const AiVoiceSection(),
           const Divider(),
           const SyncSection(),
+          const Divider(),
+          const BackupSection(),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.science_outlined),
@@ -56,15 +61,6 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push<void>(
               MaterialPageRoute<void>(
                 builder: (BuildContext _) => const DesignGalleryPage(),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Text(
-              'More settings arrive in Phase 8.',
-              style: context.akText.bodySmall!.copyWith(
-                color: context.akColors.textSecondary,
               ),
             ),
           ),
