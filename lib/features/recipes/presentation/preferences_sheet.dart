@@ -79,12 +79,14 @@ class _PreferencesSheetState extends State<_PreferencesSheet> {
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.sm,
               children: <Widget>[
+                // Non-veg is only offered to someone who already chose it.
                 for (final RecipeDiet diet in RecipeDiet.values)
-                  ChoiceChip(
-                    label: Text(diet.label),
-                    selected: _diet == diet,
-                    onSelected: (_) => setState(() => _diet = diet),
-                  ),
+                  if (diet != RecipeDiet.nonVeg || _diet == RecipeDiet.nonVeg)
+                    ChoiceChip(
+                      label: Text(diet.label),
+                      selected: _diet == diet,
+                      onSelected: (_) => setState(() => _diet = diet),
+                    ),
               ],
             ),
             const SizedBox(height: AppSpacing.lg),

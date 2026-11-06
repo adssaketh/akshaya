@@ -19,6 +19,7 @@ import 'features/shell/app_shell.dart';
 import 'features/sync/presentation/providers.dart';
 import 'features/travel/presentation/back_home_coordinator.dart';
 import 'features/widgets/presentation/widget_providers.dart';
+import 'features/orders/presentation/providers.dart';
 
 class AkshayaApp extends ConsumerStatefulWidget {
   const AkshayaApp({super.key});
@@ -66,6 +67,8 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
     ref.read(backHomeCoordinatorProvider);
     // Keeps the home screen widgets and app shortcuts up to date.
     ref.read(widgetCoordinatorProvider);
+    // Collects order screenshots shared from the quick-commerce apps.
+    ref.read(shareCoordinatorProvider);
     _lifecycle = AppLifecycleListener(
       onPause: () {
         Diag.info('app', 'Paused');

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/time/clock.dart';
 import '../../../core/ui/feedback.dart';
 import '../../../core/util/quantity.dart';
+import '../../orders/presentation/order_import_flow.dart';
 import '../../scanning/domain/product_info.dart';
 import '../../scanning/domain/scan_service.dart';
 import '../../scanning/presentation/barcode_scan_screen.dart';
@@ -333,6 +336,14 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
       appBar: AppBar(
         title: Text(_title(existing)),
         actions: <Widget>[
+          if (existing == null)
+            IconButton(
+              tooltip: 'Add from an order screenshot',
+              icon: const Icon(Icons.receipt_long_rounded),
+              onPressed: _saving
+                  ? null
+                  : () => unawaited(pickOrderPictures(context, ref)),
+            ),
           IconButton(
             tooltip: 'Scan barcode',
             icon: const Icon(Icons.qr_code_scanner_rounded),

@@ -12,6 +12,8 @@ import '../commands/domain/command_models.dart';
 import '../commands/presentation/command_flow.dart';
 import '../count/presentation/count_flow.dart';
 import '../home/presentation/home_screen.dart';
+import '../orders/presentation/order_import_flow.dart';
+import '../orders/presentation/providers.dart';
 import '../pantry/presentation/pantry_actions.dart';
 import '../pantry/presentation/pantry_screen.dart';
 import '../planner/presentation/meal_planner_screen.dart';
@@ -74,6 +76,12 @@ class _AppShellState extends ConsumerState<AppShell> {
         _openQuickLaunch(next);
       }
     });
+    // Order screenshots shared from a shopping app.
+    ref.listenManual<List<String>>(sharedPicturesProvider, (previous, next) {
+      if (next.isNotEmpty) {
+        _openSharedPictures();
+      }
+    });
     // Providers cannot be changed while the first frame builds, so anything
     // pending from start-up (an alert that launched the app) waits for it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -82,7 +90,9 @@ class _AppShellState extends ConsumerState<AppShell> {
       }
       final AlertTarget? pending = ref.read(alertTargetProvider);
       final QuickLaunch? launch = ref.read(quickLaunchProvider);
-      if (launch != null) {
+      if (ref.read(sharedPicturesProvider).isNotEmpty) {
+        _openSharedPictures();
+      } else if (launch != null) {
         _openQuickLaunch(launch);
       } else if (pending != null) {
         _openAlertTarget(pending);
@@ -134,6 +144,22 @@ class _AppShellState extends ConsumerState<AppShell> {
         );
     }
     ref.read(alertTargetProvider.notifier).clear();
+  }
+
+  /// Reads the order screenshots that were shared to the app and opens the
+  /// review screen.
+  void _openSharedPictures() {
+    if (!mounted) {
+      return;
+    }
+    final List<String> paths = ref.read(sharedPicturesProvider);
+    if (paths.isEmpty) {
+      return;
+    }
+    ref.read(sharedPicturesProvider.notifier).clear();
+    // Back to the tabs if a form or detail screen is open.
+    Navigator.of(context).popUntil((Route<dynamic> route) => route.isFirst);
+    unawaited(openOrderImport(context, ref, paths));
   }
 
   /// Opens what a widget button or app shortcut asked for.

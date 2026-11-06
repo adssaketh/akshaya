@@ -23,6 +23,7 @@ App name: Akshaya Patra (spec placeholder "Pantry" is replaced everywhere; code 
 | 14 Home screen widgets, app shortcuts, travel mode | Built in 1.0.1. CI green (analyzer, tests, rules, signed APK); waiting for your device check. Needs a Firestore rules + indexes redeploy (trips). |
 | In-app user guide with search (1.0.3) | Built. Waiting for CI and your device check. No schema change, no new packages, no rules redeploy. |
 | Shortcut icons and smaller APK (1.0.4) | Built. Waiting for CI and your device check. Build config only. |
+| Order screenshot import (1.0.9) | Built. Waiting for CI and your device check. One new package (ML Kit text recognition), no schema change, no rules redeploy. |
 
 ## Phase 2: what is built
 
@@ -1102,3 +1103,63 @@ test/features/diagnostics/{domain/diag_report_test,presentation/diagnostics_scre
 - The screen refreshes itself after a short pause when the app logs something; lines written by a background task while the screen is open need the Refresh button.
 - Route names are types (`MaterialPageRoute<void>`, `ModalBottomSheetRoute`), so the "open/close" lines say that something opened, not which screen. Tab lines say where you were.
 - Cache or data clearing by Android deletes the log with the rest of the app's files.
+
+### 1.0.9: order screenshot import (CI pending, waiting for device check)
+
+Share a screenshot of an order from Blinkit, Zepto, Amazon Now, Swiggy Instamart or Flipkart Minutes to Akshaya Patra; it reads the items, shows a review screen and adds the ticked lines to the pantry. Written without a local Flutter SDK; CI is the compiler. The parsing logic was first checked in a Python prototype against layouts laid out from your five screenshots, and the Dart tests use the same fixtures.
+
+#### How it works
+1. **Share target:** Android share menu > Akshaya Patra (image/*, one or several pictures). `MainActivity.kt` copies each picture into the cache and hands the paths to Dart over the `akshaya/share` channel (at start-up and while the app is open). Pictures can also be picked from Add item > receipt icon.
+2. **On-device reading:** Google ML Kit text recognition (bundled Latin model, offline). Nothing leaves the phone at this step.
+3. **Rows from positions:** `OrderRowParser` uses where each line sits. Two layouts: name lines + a pack line (`1 kg x 1`, `1 pc (500 ml) . 2 units`, `100 g . 2 units`, `1 x 500 ml`) with the price on the right (the lower of two prices; coin counts after `+` ignored), or one `1 x Garlic` line per product. Pack size times packs gives the quantity (1000 g becomes 1 kg, 1000 ml becomes 1 L). The shop is guessed from its fixed headings.
+4. **Naming and filing:** `OrderClassifier` uses the existing dictionary (138 products) plus your pantry names and aliases: brand removed, English name, category, where it is kept (fridge for dairy, eggs, leafy veg and fruit; pantry for onion, potato, garlic and packaged goods), and a "keeps for" guess only for fresh food (veg 5 days, roots 14, fruit 5, milk and curd 3, bread 3, eggs 14). Packaged goods get no expiry guess. Cleaning, personal care, paper, batteries, thermometers: **Not food**. Chicken, fish, meat: **Not vegetarian**. Both start unticked. Masala powders are spices, not meat. Eggs are food.
+5. **AI only when hard:** if the page gives no products although it has text, or most names are unknown (3 or more rows and 60% unrecognised), the app asks Gemini (`parse_order.txt`) with the same gate as every other AI call (AI on, privacy notice, daily cap, quota cooldown). Only product-looking text lines are sent: headings, bills, addresses, phone numbers and e-mail are dropped first. The AI answer is validated; if it has fewer items than the offline reading, the offline result stays. If AI is off or capped, the offline result is shown with a note.
+6. **Review screen, then add:** tick or untick, tap a line to edit name, amount, unit, price, category, place and expiry. Nothing is saved until "Add N items to pantry". Each line becomes one new batch (bought today, store applied to all) on the matching existing item, else on a new item with the English name; the printed name is saved as an alias so the next order matches without guessing. One bad line fails alone. **Undo** removes the new items and batches.
+
+#### Files
+```
+pubspec.yaml                                        1.0.9+10; + google_mlkit_text_recognition
+android/app/src/main/AndroidManifest.xml            SEND / SEND_MULTIPLE image/* intent filters
+android/app/src/main/kotlin/com/akshaya/akshaya/MainActivity.kt   share channel, copies pictures to cache
+assets/prompts/parse_order.txt
+lib/features/orders/domain/
+  ocr_models.dart, order_models.dart, order_row_parser.dart, order_classifier.dart,
+  order_ai.dart, order_import_service.dart, order_commit.dart
+lib/features/orders/data/
+  mlkit_screenshot_reader.dart, firebase_order_backend.dart, shared_images_gateway.dart
+lib/features/orders/presentation/
+  providers.dart, order_import_flow.dart, order_review_screen.dart, order_draft_sheet.dart
+lib/app.dart                                        reads shareCoordinatorProvider
+lib/features/shell/app_shell.dart                   opens the flow for shared pictures
+lib/features/pantry/presentation/add_item_screen.dart   "Add from an order screenshot" action
+lib/features/recipes/presentation/preferences_sheet.dart   Non-veg diet chip hidden unless already chosen
+test/features/orders/
+  order_fixtures.dart, order_row_parser_test.dart, order_classifier_test.dart,
+  order_import_service_test.dart, order_ai_test.dart, order_commit_test.dart
+```
+
+#### Key decisions
+- **ML Kit plugin** is the one new dependency. If CI rejects it (for example an AGP 9 / Kotlin plugin clash), send me the CI log; the fallback is another on-device reader or a picture-to-Gemini path (that would send the picture itself, so it would need your OK first).
+- **Truncated names** ("Tata Sampann White...") cannot be repaired by AI either (the text is not in the picture); they are flagged "Name was cut off" for you to fix.
+- **Non-veg:** no section added. The recipe diet chip "Non-veg" is hidden unless it is already selected; the enum stays so old settings and backups still load. Rename "Meat & Eggs" yourself in Settings > Categories if you like.
+- **Prices** are what you paid for the line; a misread price is editable in the review sheet.
+- **No schema change, no sync change:** it only uses the existing add-item and add-batch calls, so household sync works as before.
+
+#### Test checklist (you)
+1. `verify` and `build-apk` are green (CI commits an updated `pubspec.lock`: `git pull --rebase` before the next push).
+2. Open a Blinkit order, take a screenshot, Share > Akshaya Patra. "Reading your order..." then the review screen lists every product with a sensible English name, amount, price and category. Repeat for Zepto, Amazon Now, Swiggy Instamart, Flipkart Minutes.
+3. Zepto milk shows 1 L, eggs 10 pcs, Amazon green chilli 200 g. Swiggy lines say "Pack size not shown". Flipkart cut-off names say "Name was cut off".
+4. Harpic, Dettol, shampoo, thermometer, baking paper start unticked as "Not food". Everest Chicken Masala stays ticked.
+5. Vegetables and milk show a "keeps about" date; dals and masalas do not. Change one date and one amount in the edit sheet.
+6. Tap Add: pantry has the items, expiring-soon ones show correct chips, snackbar Undo removes them.
+7. Share the same order again later: lines whose names you saved match the same pantry items (no duplicates).
+8. Share two overlapping screenshots of one long order: each product appears once.
+9. Share while the app is closed, and while it is open on another screen.
+10. Turn AI off in Settings and share a screenshot of some other shop: the review shows a note instead of crashing. Add item > receipt icon picks from the gallery.
+11. Recipe preferences: the Non-veg chip is gone.
+
+#### Known issues
+- Written without a local Flutter SDK; if CI is red, send me the log first.
+- Other shops' layouts or a new app version may not parse offline; they fall back to AI (or show an empty review with a hint).
+- Text that ML Kit misreads (for example a rupee sign read as 2) can give a wrong price; check prices on the review screen.
+- Share handling copies up to 6 pictures per share.
