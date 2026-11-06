@@ -133,24 +133,6 @@ class _ListBar extends ConsumerWidget {
     final Map<String, int> counts = ref.watch(toBuyCountsProvider);
 
     return ChipRow(
-      children: <Widget>[
-        for (final ShoppingList list in lists)
-          ChoiceChip(
-            label: Text(
-              (counts[list.id] ?? 0) > 0
-                  ? '${list.name} · ${counts[list.id]}'
-                  : list.name,
-            ),
-            selected: list.id == selected.id,
-            onSelected: (bool _) =>
-                ref.read(selectedListIdProvider.notifier).select(list.id),
-          ),
-        ActionChip(
-          avatar: const Icon(Icons.add_rounded, size: AppSizes.iconSm),
-          label: const Text('New list'),
-          onPressed: () => createListFlow(context, ref),
-        ),
-      ],
       trailing: PopupMenuButton<_ListAction>(
           tooltip: 'List options',
           onSelected: (_ListAction action) async {
@@ -183,6 +165,24 @@ class _ListBar extends ConsumerWidget {
             ),
           ],
       ),
+      children: <Widget>[
+        for (final ShoppingList list in lists)
+          ChoiceChip(
+            label: Text(
+              (counts[list.id] ?? 0) > 0
+                  ? '${list.name} · ${counts[list.id]}'
+                  : list.name,
+            ),
+            selected: list.id == selected.id,
+            onSelected: (bool _) =>
+                ref.read(selectedListIdProvider.notifier).select(list.id),
+          ),
+        ActionChip(
+          avatar: const Icon(Icons.add_rounded, size: AppSizes.iconSm),
+          label: const Text('New list'),
+          onPressed: () => createListFlow(context, ref),
+        ),
+      ],
     );
   }
 }
