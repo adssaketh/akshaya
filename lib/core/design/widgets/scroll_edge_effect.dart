@@ -60,24 +60,37 @@ class ScrollEdgeEffect extends StatelessWidget {
     if (kind == ScrollEdgeKind.off || barHeight <= 0) {
       return child;
     }
-    final Color opaque = context.akColors.surface;
+    final Color page = context.akColors.background;
     final double hideAt = hide;
     final double fullAt = full;
 
-    final Widget faded = ShaderMask(
-      blendMode: BlendMode.dstIn,
-      shaderCallback: (Rect rect) {
-        final double h = rect.height <= 0 ? 1 : rect.height;
-        final double a = ((h - fullAt) / h).clamp(0.0, 1.0);
-        final double b = ((h - hideAt) / h).clamp(a, 1.0);
-        return LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[opaque, opaque, Colors.transparent],
-          stops: <double>[0, a, b],
-        ).createShader(rect);
-      },
-      child: child,
+    // A gradient from the page colour (opaque at the bar, clear at the top of
+    // the zone) painted over the list. Unlike a ShaderMask this needs no
+    // offscreen layer, so scrolling stays cheap on every frame.
+    final double opaqueFrom =
+        fullAt <= 0 ? 1.0 : ((fullAt - hideAt) / fullAt).clamp(0.0, 1.0);
+    final Widget faded = Stack(
+      children: <Widget>[
+        Positioned.fill(child: child),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: fullAt,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[page.withValues(alpha: 0), page, page],
+                  stops: <double>[0, opaqueFrom, 1],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
     if (kind == ScrollEdgeKind.fade) {
       return faded;

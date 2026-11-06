@@ -8,16 +8,16 @@ abstract final class AppMotion {
   static bool userEnabled = true;
 
   /// Quick feedback: presses, chip swaps.
-  static const Duration fast = Duration(milliseconds: 160);
+  static const Duration fast = Duration(milliseconds: 120);
 
   /// Most transitions.
-  static const Duration base = Duration(milliseconds: 280);
+  static const Duration base = Duration(milliseconds: 220);
 
   /// Entrances and page changes.
-  static const Duration slow = Duration(milliseconds: 420);
+  static const Duration slow = Duration(milliseconds: 320);
 
   /// Gap between neighbours in a staggered entrance.
-  static const Duration stagger = Duration(milliseconds: 45);
+  static const Duration stagger = Duration(milliseconds: 35);
 
   /// Rows beyond this appear together, so long lists never feel slow.
   static const int maxStaggered = 10;

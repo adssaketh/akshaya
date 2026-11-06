@@ -821,6 +821,12 @@ No schema change (local `app_settings` keys `app.bar_style`, `app.glass_alpha`, 
 - Tests: `app_settings_test.dart` (bar style group), `nav_bar_test.dart` (glass has BackdropFilter and taps; solid has none).
 - Device check: Settings > Bar style > Glass; scroll a list behind the bar: it should blur through; slider, blur chips and edge switch change the bar live; switch back to Solid.
 
+### Smoothness pass
+- `MainActivity` asks Android for the highest refresh rate at the same resolution (90/120 Hz); before, the app could stay at 60 Hz.
+- Scroll edge fade is now a plain gradient over the list (no ShaderMask, so no offscreen layer every frame); blur bands 10 to 6.
+- Motion tokens shortened: fast 160 to 120 ms, base 280 to 220, slow 420 to 320, stagger 45 to 35.
+- Not profiled on a device (no device here). If something still feels slow, note which screen and I will profile it.
+
 ## Next: Phase 14 (v2 roadmap), only when you say so.
 
 ## Phase 0: what was built (unchanged)

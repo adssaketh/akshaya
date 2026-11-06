@@ -76,7 +76,7 @@ abstract final class AppSizes {
   static const double edgeBlurLight = 3;
   static const double edgeBlurMedium = 5;
   static const double edgeBlurStrong = 8;
-  static const int edgeBlurBands = 10;
+  static const int edgeBlurBands = 6;
   static const double edgeBlurEase = 2;
   static const double edgeSolidHideFactor = 0.45;
   static const double edgeGlassFullFactor = 0.8;

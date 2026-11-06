@@ -29,14 +29,15 @@ void main() {
 
   testWidgets('fade masks the page without blurring', (tester) async {
     await tester.pumpWidget(_host(ScrollEdgeKind.fade));
-    expect(find.byType(ShaderMask), findsOneWidget);
+    // No offscreen layer: the fade is a plain gradient over the list.
+    expect(find.byType(ShaderMask), findsNothing);
     expect(find.byType(BackdropFilter), findsNothing);
     expect(find.text('Row 0'), findsOneWidget);
   });
 
   testWidgets('blur adds one backdrop band per step', (tester) async {
     await tester.pumpWidget(_host(ScrollEdgeKind.blur, glass: true));
-    expect(find.byType(ShaderMask), findsOneWidget);
+    expect(find.byType(ShaderMask), findsNothing);
     expect(find.byType(BackdropFilter), findsNWidgets(AppSizes.edgeBlurBands));
   });
 
