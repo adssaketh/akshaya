@@ -92,7 +92,7 @@ abstract final class OrderAiValidator {
     final Object? q = raw['quantity'];
     final bool quantityGiven =
         q is num && q.isFinite && q > 0 && q <= maxQuantity;
-    double quantity = quantityGiven ? (q as num).toDouble() : 1;
+    double quantity = quantityGiven ? q.toDouble() : 1;
     Unit unit = Unit.pcs;
     bool sized = false;
     final Object? u = raw['unit'];

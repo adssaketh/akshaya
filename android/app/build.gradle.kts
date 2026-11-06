@@ -59,6 +59,10 @@ android {
 
     buildTypes {
         release {
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             // Signed with the release key when CI (or you) provides it through
             // RELEASE_KEYSTORE_PATH and friends; otherwise falls back to the
             // debug key so `flutter run --release` still works.
