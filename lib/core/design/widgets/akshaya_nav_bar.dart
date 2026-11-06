@@ -100,61 +100,75 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.akColors;
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    final Color shadow = Theme.of(context).shadowColor.withValues(
+          alpha: dark ? AppSizes.navShadowAlphaDark : AppSizes.navShadowAlpha,
+        );
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.navBar),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: colors.textPrimary.withValues(alpha: 0.10),
-            blurRadius: AppSizes.navShadowBlur,
-            offset: const Offset(0, AppSizes.navShadowOffset),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSizes.navPadding),
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints box) {
-            final double slot = box.maxWidth / destinations.length;
-            final double left = slot * selectedIndex +
-                (slot - AppSizes.navIndicatorWidth) / 2;
-            return Stack(
-              children: <Widget>[
-                // The indicator slides between tabs instead of fading.
-                AnimatedPositioned(
-                  duration: animate ? AppMotion.base : Duration.zero,
-                  curve: AppMotion.pop,
-                  left: left,
-                  top: AppSpacing.xs / 2,
-                  width: AppSizes.navIndicatorWidth,
-                  height: AppSizes.navIndicatorHeight,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: colors.surfaceAlt,
-                      borderRadius: BorderRadius.circular(
-                        AppSizes.navIndicatorHeight,
-                      ),
-                    ),
-                  ),
-                ),
-                Row(
+    // At least navBarHeight tall; grows when the system font is enlarged.
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppSizes.navBarHeight),
+      child: DecoratedBox(
+        // Tinted bar (not the page colour) so it stands out in light and dark.
+        decoration: BoxDecoration(
+          color: colors.surfaceAlt,
+          borderRadius: BorderRadius.circular(AppRadius.navBar),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: shadow,
+              blurRadius: AppSizes.navShadowBlur,
+              offset: const Offset(0, AppSizes.navShadowOffset),
+            ),
+          ],
+        ),
+        child: Center(
+          heightFactor: 1,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSizes.navPadding,
+            ),
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints box) {
+                final double slot = box.maxWidth / destinations.length;
+                final double left = slot * selectedIndex +
+                    (slot - AppSizes.navIndicatorWidth) / 2;
+                return Stack(
                   children: <Widget>[
-                    for (final (int i, AkshayaNavDestination d)
-                        in destinations.indexed)
-                      Expanded(
-                        child: _Item(
-                          destination: d,
-                          selected: i == selectedIndex,
-                          onTap: () => onSelected(i),
+                    // The indicator slides between tabs instead of fading.
+                    AnimatedPositioned(
+                      duration: animate ? AppMotion.base : Duration.zero,
+                      curve: AppMotion.pop,
+                      left: left,
+                      top: AppSpacing.xs / 2,
+                      width: AppSizes.navIndicatorWidth,
+                      height: AppSizes.navIndicatorHeight,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: colors.primary,
+                          borderRadius: BorderRadius.circular(
+                            AppSizes.navIndicatorHeight,
+                          ),
                         ),
                       ),
+                    ),
+                    Row(
+                      children: <Widget>[
+                        for (final (int i, AkshayaNavDestination d)
+                            in destinations.indexed)
+                          Expanded(
+                            child: _Item(
+                              destination: d,
+                              selected: i == selectedIndex,
+                              onTap: () => onSelected(i),
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
-                ),
-              ],
-            );
-          },
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -175,7 +189,7 @@ class _Item extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.akColors;
-    final TextStyle base = context.akText.labelSmall!;
+    final TextStyle base = context.akText.labelMedium!;
 
     return Semantics(
       button: true,
@@ -199,7 +213,7 @@ class _Item extends StatelessWidget {
                       child: Icon(
                         selected ? destination.selectedIcon : destination.icon,
                         size: AppSizes.navIcon,
-                        color: selected ? colors.primary : colors.textSecondary,
+                        color: selected ? colors.onPrimary : colors.textSecondary,
                       ),
                     ),
                   ),
@@ -211,9 +225,9 @@ class _Item extends StatelessWidget {
                     style: base.copyWith(
                       color:
                           selected ? colors.textPrimary : colors.textSecondary,
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                       fontVariations: <FontVariation>[
-                        FontVariation('wght', selected ? 800 : 600),
+                        FontVariation('wght', selected ? 700 : 500),
                       ],
                     ),
                   ),

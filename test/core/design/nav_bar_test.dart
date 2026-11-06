@@ -53,6 +53,7 @@ void main() {
     final double screen = tester.view.physicalSize.height /
         tester.view.devicePixelRatio;
     final Size bar = tester.getSize(find.byType(AkshayaNavBar));
+    expect(bar.height, greaterThanOrEqualTo(AppSizes.navBarHeight));
     expect(bar.height, lessThan(120));
     expect(tester.getBottomLeft(find.byType(AkshayaNavBar)).dy, screen);
     expect(tester.getSize(find.byKey(const Key('body'))).height,
