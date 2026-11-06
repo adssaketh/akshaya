@@ -893,10 +893,10 @@ Widget _barcodeScan(BuildContext context) {
   final AkshayaColors colors = context.akColors;
   return Column(
     mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: <Widget>[
-      SizedBox(
-        height: AppSizes.scanFrameHeight,
-        width: double.infinity,
+      ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppSizes.scanFrameHeight),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: colors.surfaceAlt,
@@ -907,21 +907,24 @@ Widget _barcodeScan(BuildContext context) {
             ),
           ),
           child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(
-                  Icons.qr_code_scanner_rounded,
-                  size: AppSizes.iconXl,
-                  color: colors.primary,
-                ),
-                _gapSm,
-                Text(
-                  'Hold the barcode inside the frame',
-                  textAlign: TextAlign.center,
-                  style: context.akText.bodyMedium,
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(
+                    Icons.qr_code_scanner_rounded,
+                    size: AppSizes.iconXl,
+                    color: colors.primary,
+                  ),
+                  _gapSm,
+                  Text(
+                    'Hold the barcode inside the frame',
+                    textAlign: TextAlign.center,
+                    style: context.akText.bodyMedium,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -80,7 +80,11 @@ void main() {
       await tester.pumpAndSettle();
 
       final Finder chip = find.widgetWithText(ChoiceChip, 'Alerts');
-      await tester.ensureVisible(chip);
+      await tester.scrollUntilVisible(
+        chip,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       await tester.tap(chip);
       await tester.pumpAndSettle();
@@ -126,7 +130,11 @@ void main() {
 
       final GuideTopic next = guideTopicById(topic.related.first)!;
       final Finder chip = find.widgetWithText(ActionChip, next.title);
-      await tester.ensureVisible(chip);
+      await tester.scrollUntilVisible(
+        chip,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       await tester.tap(chip);
       await tester.pumpAndSettle();
