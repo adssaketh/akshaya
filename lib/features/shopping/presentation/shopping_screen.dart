@@ -50,11 +50,12 @@ class ShoppingScreen extends ConsumerWidget {
       bottomNavigationBar: (selected == null || basket.isEmpty)
           ? null
           : Padding(
-              padding: const EdgeInsets.fromLTRB(
+              // Sits above the floating navigation bar.
+              padding: EdgeInsets.fromLTRB(
                 AppSpacing.lg,
                 AppSpacing.sm,
                 AppSpacing.lg,
-                AppSpacing.lg,
+                AppSpacing.sm + context.navClearance,
               ),
               child: FilledButton.icon(
                 onPressed: () => openCheckout(
@@ -67,6 +68,7 @@ class ShoppingScreen extends ConsumerWidget {
               ),
             ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: <Widget>[
             AkshayaHeader(
@@ -238,11 +240,11 @@ class _ListBody extends ConsumerWidget {
     ];
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.sm,
         AppSpacing.lg,
-        AppSizes.fab + AppSpacing.xxl,
+        AppSizes.fab + AppSpacing.xxl + context.navClearance,
       ),
       children: children,
     );

@@ -156,6 +156,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // The tabs run behind the floating bar, so nothing is cut off in a
+      // straight line above it.
+      extendBody: true,
       body: IndexedStack(
         index: _index,
         children: <Widget>[

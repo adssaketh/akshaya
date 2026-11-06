@@ -45,7 +45,9 @@ class AkshayaFabCluster extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.akColors;
     return PopIn(
-      child: Column(
+      child: Padding(
+        padding: EdgeInsets.only(bottom: context.navBarInset),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: <Widget>[
@@ -67,6 +69,7 @@ class AkshayaFabCluster extends StatelessWidget {
             label: Text(label),
           ),
         ],
+        ),
       ),
     );
   }

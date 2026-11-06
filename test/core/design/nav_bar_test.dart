@@ -34,6 +34,35 @@ Widget _host({required int index, required ValueChanged<int> onSelected}) {
 }
 
 void main() {
+  testWidgets('with extendBody the page runs behind the bar and reports the '
+      'clearance', (tester) async {
+    double? clearance;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AkshayaTheme.light(),
+        home: Scaffold(
+          extendBody: true,
+          body: Builder(
+            builder: (BuildContext context) {
+              clearance = context.navClearance;
+              return const SizedBox.expand(key: Key('body'));
+            },
+          ),
+          bottomNavigationBar: AkshayaNavBar(
+            destinations: _tabs,
+            selectedIndex: 0,
+            onSelected: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final double screen =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(tester.getSize(find.byKey(const Key('body'))).height, screen);
+    expect(clearance, greaterThanOrEqualTo(AppSizes.navBarHeight));
+  });
+
   testWidgets('sits at the bottom and leaves the body its height',
       (tester) async {
     await tester.pumpWidget(

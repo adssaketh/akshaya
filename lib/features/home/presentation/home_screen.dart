@@ -65,8 +65,9 @@ class HomeScreen extends ConsumerWidget {
         toBuy.values.fold<int>(0, (int sum, int n) => sum + n);
 
     return SafeArea(
+      bottom: false,
       child: ListView(
-        padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
+        padding: EdgeInsets.only(bottom: AppSpacing.xxl + context.navClearance),
         children: <Widget>[
           const AkshayaHeader(
             actions: <Widget>[GuideButton(), VoiceMicButton()],

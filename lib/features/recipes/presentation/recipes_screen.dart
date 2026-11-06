@@ -63,6 +63,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
+      bottom: false,
       child: Column(
         children: <Widget>[
           AkshayaHeader(
@@ -147,11 +148,11 @@ class _IdeasTab extends ConsumerWidget {
         (availability.isReady ? null : availability.message);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.sm,
         AppSpacing.lg,
-        AppSpacing.xxl,
+        AppSpacing.xxl + context.navClearance,
       ),
       children: <Widget>[
         Material(
@@ -335,11 +336,11 @@ class _SavedTab extends ConsumerWidget {
           );
         }
         return ListView(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             AppSpacing.lg,
             AppSpacing.sm,
             AppSpacing.lg,
-            AppSpacing.xxl,
+            AppSpacing.xxl + context.navClearance,
           ),
           children: <Widget>[
             for (final (int i, SavedRecipe s) in list.indexed)

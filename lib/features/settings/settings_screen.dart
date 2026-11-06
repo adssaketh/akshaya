@@ -93,7 +93,9 @@ class SettingsScreen extends ConsumerWidget {
     ];
 
     return SafeArea(
+      bottom: false,
       child: ListView.builder(
+        padding: EdgeInsets.only(bottom: context.navClearance),
         physics: const ClampingScrollPhysics(),
         addAutomaticKeepAlives: false,
         itemCount: sections.length + 1,

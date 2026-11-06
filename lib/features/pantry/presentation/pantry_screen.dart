@@ -72,6 +72,7 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
         ],
       ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: <Widget>[
             AkshayaHeader(
@@ -217,11 +218,11 @@ class _PantryList extends ConsumerWidget {
     };
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.sm,
         AppSpacing.lg,
-        AppSizes.fab + AppSpacing.xxl,
+        AppSizes.fab + AppSpacing.xxl + context.navClearance,
       ),
       itemCount: rows.length,
       // Rows keep their identity when the list is searched, filtered or
