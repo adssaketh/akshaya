@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -47,6 +48,13 @@ class ScrollEdgeEffect extends StatelessWidget {
           fadeExtra * AppSizes.edgeGlassExtraFactor
       : barHeight + fadeExtra;
 
+  /// Blur of band [i] (0 is next to the bar): strongest there, near zero at
+  /// the top band so the zone has no visible upper edge.
+  double _sigma(int i) {
+    final double t = 1 - i / AppSizes.edgeBlurBands;
+    return blurSigma * math.pow(t, AppSizes.edgeBlurEase).toDouble();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (kind == ScrollEdgeKind.off || barHeight <= 0) {
@@ -75,8 +83,9 @@ class ScrollEdgeEffect extends StatelessWidget {
       return faded;
     }
 
-    // Blur: a few bands, strongest next to the bar, none where content is
-    // fully visible. A real gradient blur is not available, so bands step.
+    // Blur: thin bands, strongest next to the bar and easing to nothing where
+    // content is fully visible. A real gradient blur is not available, so the
+    // steps are made small enough (and eased) that no edge can be seen.
     final double band = fullAt / AppSizes.edgeBlurBands;
     return Stack(
       children: <Widget>[
@@ -91,8 +100,8 @@ class ScrollEdgeEffect extends StatelessWidget {
               child: ClipRect(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(
-                    sigmaX: blurSigma * (1 - i / AppSizes.edgeBlurBands),
-                    sigmaY: blurSigma * (1 - i / AppSizes.edgeBlurBands),
+                    sigmaX: _sigma(i),
+                    sigmaY: _sigma(i),
                   ),
                   child: const SizedBox.expand(),
                 ),
