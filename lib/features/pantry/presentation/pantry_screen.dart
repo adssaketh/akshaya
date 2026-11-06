@@ -52,90 +52,59 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
         ref.watch(pantrySectionsProvider);
 
     return Scaffold(
-      floatingActionButton: PopIn(
-          child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: <Widget>[
-          FloatingActionButton.small(
+      floatingActionButton: AkshayaFabCluster(
+        heroTag: 'pantry-add-fab',
+        label: 'Add item',
+        onPressed: () => openAddItem(context),
+        minis: <MiniFab>[
+          MiniFab(
             heroTag: 'pantry-cooked-fab',
             tooltip: 'Add cooked or homemade food',
+            icon: Icons.soup_kitchen_rounded,
             onPressed: () => showQuickAddMadeAtHome(context),
-            child: const Icon(Icons.soup_kitchen_rounded),
           ),
-          const SizedBox(height: AppSpacing.md),
-          FloatingActionButton.small(
+          MiniFab(
             heroTag: 'pantry-scan-fab',
             tooltip: 'Scan barcode',
+            icon: Icons.qr_code_scanner_rounded,
             onPressed: () => openScanToAdd(context, ref),
-            child: const Icon(Icons.qr_code_scanner_rounded),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          FloatingActionButton.extended(
-            heroTag: 'pantry-add-fab',
-            onPressed: () => openAddItem(context),
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Add item'),
           ),
         ],
-      )),
+      ),
       body: SafeArea(
         child: Column(
           children: <Widget>[
             AkshayaHeader(
               actions: <Widget>[
-                IconButton(
+                HeaderAction(
                   tooltip: 'Count mode',
-                  constraints: const BoxConstraints(
-                    minWidth: AppSizes.touchTarget,
-                    minHeight: AppSizes.touchTarget,
-                  ),
-                  icon: const Icon(Icons.fact_check_outlined),
+                  icon: Icons.fact_check_outlined,
                   onPressed: () => unawaited(openCountMode(context)),
                 ),
                 const VoiceMicButton(commandContext: CommandContext.pantry),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: TextField(
+            ToolbarRow(
+              child: AkshayaSearchField(
                 controller: _search,
+                hint: 'Search items, brands or other names',
                 onChanged: notifier.setText,
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  hintText: 'Search items, brands or other names',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: query.text.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: 'Clear search',
-                          icon: const Icon(Icons.close_rounded),
-                          onPressed: () {
-                            _search.clear();
-                            notifier.setText('');
-                          },
-                        ),
-                ),
               ),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            ToolbarRow(
               child: Row(
                 children: <Widget>[
                   Expanded(
-                    child: SegmentedButton<PantryGroup>(
-                      showSelectedIcon: false,
-                      segments: <ButtonSegment<PantryGroup>>[
+                    child: AkshayaSegmented<PantryGroup>(
+                      segments: <AkshayaSegment<PantryGroup>>[
                         for (final PantryGroup g in PantryGroup.values)
-                          ButtonSegment<PantryGroup>(
+                          AkshayaSegment<PantryGroup>(
                             value: g,
-                            label: Text(g.label),
+                            label: g.label,
                           ),
                       ],
-                      selected: <PantryGroup>{query.group},
-                      onSelectionChanged: (Set<PantryGroup> selection) =>
-                          notifier.setGroup(selection.first),
+                      selected: query.group,
+                      onChanged: notifier.setGroup,
                     ),
                   ),
                   PopupMenuButton<PantrySort>(
@@ -155,41 +124,33 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
                 ],
               ),
             ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Row(
-                children: <Widget>[
+            ChipRow(
+              children: <Widget>[
+                ChoiceChip(
+                  label: const Text('All'),
+                  selected: query.statusFilter == null,
+                  onSelected: (bool _) => notifier.setStatus(null),
+                ),
+                for (final StatusKind kind in StatusKind.values)
                   ChoiceChip(
-                    label: const Text('All'),
-                    selected: query.statusFilter == null,
-                    onSelected: (bool _) => notifier.setStatus(null),
+                    label: Text(kind.label),
+                    selected: query.statusFilter == kind,
+                    onSelected: (bool _) => notifier.setStatus(
+                      query.statusFilter == kind ? null : kind,
+                    ),
                   ),
-                  for (final StatusKind kind in StatusKind.values) ...<Widget>[
-                    const SizedBox(width: AppSpacing.sm),
-                    ChoiceChip(
-                      label: Text(kind.label),
-                      selected: query.statusFilter == kind,
-                      onSelected: (bool _) => notifier.setStatus(
-                        query.statusFilter == kind ? null : kind,
-                      ),
+                for (final ItemKind kind in const <ItemKind>[
+                  ItemKind.cooked,
+                  ItemKind.homemade,
+                ])
+                  ChoiceChip(
+                    label: Text(kind.label),
+                    selected: query.kindFilter == kind,
+                    onSelected: (bool _) => notifier.setKind(
+                      query.kindFilter == kind ? null : kind,
                     ),
-                  ],
-                  for (final ItemKind kind in const <ItemKind>[
-                    ItemKind.cooked,
-                    ItemKind.homemade,
-                  ]) ...<Widget>[
-                    const SizedBox(width: AppSpacing.sm),
-                    ChoiceChip(
-                      label: Text(kind.label),
-                      selected: query.kindFilter == kind,
-                      onSelected: (bool _) => notifier.setKind(
-                        query.kindFilter == kind ? null : kind,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+                  ),
+              ],
             ),
             Expanded(
               child: stocks.when(
@@ -208,9 +169,7 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
                       icon: Icons.inventory_2_rounded,
                       title: 'Your pantry is empty',
                       body: 'Add what you have at home to track quantities '
-                          'and expiry dates.',
-                      actionLabel: 'Add item',
-                      onAction: () => openAddItem(context),
+                          'and expiry dates. Use the Add item button below.',
                     );
                   }
                   final List<PantrySection> list =

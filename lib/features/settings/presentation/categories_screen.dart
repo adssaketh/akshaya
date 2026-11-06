@@ -104,10 +104,10 @@ class CategoriesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Categories')),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: AkshayaFabCluster(
+        heroTag: 'categories-add-fab',
+        label: 'Add category',
         onPressed: () => _edit(context, ref),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add category'),
       ),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 96),

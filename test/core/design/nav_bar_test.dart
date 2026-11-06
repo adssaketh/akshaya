@@ -1,0 +1,88 @@
+import 'package:akshaya/core/design/design.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+const List<AkshayaNavDestination> _tabs = <AkshayaNavDestination>[
+  AkshayaNavDestination(
+    icon: Icons.home_outlined,
+    selectedIcon: Icons.home_rounded,
+    label: 'Home',
+  ),
+  AkshayaNavDestination(
+    icon: Icons.inventory_2_outlined,
+    selectedIcon: Icons.inventory_2_rounded,
+    label: 'Pantry',
+  ),
+  AkshayaNavDestination(
+    icon: Icons.settings_outlined,
+    selectedIcon: Icons.settings_rounded,
+    label: 'Settings',
+  ),
+];
+
+Widget _host({required int index, required ValueChanged<int> onSelected}) {
+  return MaterialApp(
+    theme: AkshayaTheme.light(),
+    home: Scaffold(
+      bottomNavigationBar: AkshayaNavBar(
+        destinations: _tabs,
+        selectedIndex: index,
+        onSelected: onSelected,
+      ),
+    ),
+  );
+}
+
+void main() {
+  testWidgets('shows every label and the selected icon', (tester) async {
+    await tester.pumpWidget(_host(index: 1, onSelected: (_) {}));
+    await tester.pumpAndSettle();
+    for (final String label in <String>['Home', 'Pantry', 'Settings']) {
+      expect(find.text(label), findsOneWidget);
+    }
+    expect(find.byIcon(Icons.inventory_2_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.home_outlined), findsOneWidget);
+  });
+
+  testWidgets('tapping a tab reports its index', (tester) async {
+    int? tapped;
+    await tester.pumpWidget(_host(index: 0, onSelected: (i) => tapped = i));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    expect(tapped, 2);
+  });
+
+  testWidgets('the indicator slides to the selected tab', (tester) async {
+    await tester.pumpWidget(_host(index: 0, onSelected: (_) {}));
+    await tester.pumpAndSettle();
+    final double before = tester
+        .getTopLeft(find.byType(AnimatedPositioned))
+        .dx;
+    await tester.pumpWidget(_host(index: 2, onSelected: (_) {}));
+    await tester.pumpAndSettle();
+    final double after = tester.getTopLeft(find.byType(AnimatedPositioned)).dx;
+    expect(after, greaterThan(before));
+  });
+
+  testWidgets('large text does not overflow', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AkshayaTheme.light(),
+        builder: (BuildContext context, Widget? app) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2)),
+          child: app!,
+        ),
+        home: Scaffold(
+          bottomNavigationBar: AkshayaNavBar(
+            destinations: _tabs,
+            selectedIndex: 0,
+            onSelected: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+}

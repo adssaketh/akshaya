@@ -1,3 +1,4 @@
+import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
 
 import 'guide_screen.dart';
@@ -9,10 +10,9 @@ class GuideButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
+    return HeaderAction(
       tooltip: 'User guide',
-      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-      icon: const Icon(Icons.help_outline_rounded),
+      icon: Icons.help_outline_rounded,
       onPressed: () => openGuide(context),
     );
   }

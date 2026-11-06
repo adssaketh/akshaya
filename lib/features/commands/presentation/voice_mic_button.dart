@@ -1,3 +1,4 @@
+import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,10 +19,9 @@ class VoiceMicButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return IconButton(
+    return HeaderAction(
       tooltip: 'Voice or text command',
-      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-      icon: const Icon(Icons.mic_rounded),
+      icon: Icons.mic_rounded,
       onPressed: () => runCommandFlow(
         context,
         ref,

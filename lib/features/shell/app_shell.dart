@@ -173,33 +173,33 @@ class _AppShellState extends ConsumerState<AppShell> {
           TabPane(active: _index == 4, child: const SettingsScreen()),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: AkshayaNavBar(
         selectedIndex: _index,
-        onDestinationSelected: (int i) => setState(() => _index = i),
-        destinations: const <NavigationDestination>[
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: PopIn(child: Icon(Icons.home_rounded)),
+        onSelected: (int i) => setState(() => _index = i),
+        destinations: const <AkshayaNavDestination>[
+          AkshayaNavDestination(
+            icon: Icons.home_outlined,
+            selectedIcon: Icons.home_rounded,
             label: 'Home',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: PopIn(child: Icon(Icons.inventory_2_rounded)),
+          AkshayaNavDestination(
+            icon: Icons.inventory_2_outlined,
+            selectedIcon: Icons.inventory_2_rounded,
             label: 'Pantry',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.shopping_basket_outlined),
-            selectedIcon: PopIn(child: Icon(Icons.shopping_basket_rounded)),
+          AkshayaNavDestination(
+            icon: Icons.shopping_basket_outlined,
+            selectedIcon: Icons.shopping_basket_rounded,
             label: 'Shopping',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.soup_kitchen_outlined),
-            selectedIcon: PopIn(child: Icon(Icons.soup_kitchen_rounded)),
+          AkshayaNavDestination(
+            icon: Icons.soup_kitchen_outlined,
+            selectedIcon: Icons.soup_kitchen_rounded,
             label: 'Recipes',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: PopIn(child: Icon(Icons.settings_rounded)),
+          AkshayaNavDestination(
+            icon: Icons.settings_outlined,
+            selectedIcon: Icons.settings_rounded,
             label: 'Settings',
           ),
         ],

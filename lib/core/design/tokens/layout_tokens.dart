@@ -17,6 +17,12 @@ abstract final class AppRadius {
   static const double sheet = 28;
   static const double fab = 28;
 
+  /// Fully rounded (search box, buttons, chips, segmented switches).
+  static const double pill = 999;
+
+  /// Floating bottom navigation bar (a rounded pill, as in Ping).
+  static const double navBar = 32;
+
   static const BorderRadius controlBorder =
       BorderRadius.all(Radius.circular(control));
   static const BorderRadius cardBorder =
@@ -52,6 +58,16 @@ abstract final class AppSizes {
   static const double qrCode = 180;
 
   static const double navBarHeight = 72;
+
+  /// Floating navigation bar: indicator pill behind the selected icon, icon
+  /// size, inner padding and the widest the bar grows on tablets.
+  static const double navIndicatorWidth = 56;
+  static const double navIndicatorHeight = 32;
+  static const double navIcon = 22;
+  static const double navPadding = 6;
+  static const double navMaxWidth = 576;
+  static const double navShadowBlur = 16;
+  static const double navShadowOffset = 4;
   static const double fab = 56;
 
   /// Status chips ellipsise beyond this so large font scales never overflow.

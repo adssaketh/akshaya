@@ -40,15 +40,13 @@ class ShoppingScreen extends ConsumerWidget {
     return Scaffold(
       floatingActionButton: selected == null
           ? null
-          : PopIn(
-              child: FloatingActionButton.extended(
+          : AkshayaFabCluster(
               // Every tab keeps its own FAB alive; unique tags avoid Hero
               // clashes when a screen is pushed.
               heroTag: 'shopping-add-fab',
+              label: 'Add item',
               onPressed: () => openEntryForm(context, listId: selected.id),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Add item'),
-            )),
+            ),
       bottomNavigationBar: (selected == null || basket.isEmpty)
           ? null
           : Padding(
@@ -73,9 +71,9 @@ class ShoppingScreen extends ConsumerWidget {
           children: <Widget>[
             AkshayaHeader(
               actions: <Widget>[
-                IconButton(
+                HeaderAction(
                   tooltip: 'What should I buy?',
-                  icon: const Icon(Icons.auto_graph_rounded),
+                  icon: Icons.auto_graph_rounded,
                   onPressed: () => openWhatToBuy(context),
                 ),
                 const VoiceMicButton(commandContext: CommandContext.shopping),
@@ -134,38 +132,26 @@ class _ListBar extends ConsumerWidget {
         ref.watch(shoppingListsProvider).value ?? const <ShoppingList>[];
     final Map<String, int> counts = ref.watch(toBuyCountsProvider);
 
-    return Row(
+    return ChipRow(
       children: <Widget>[
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.only(left: AppSpacing.lg),
-            child: Row(
-              children: <Widget>[
-                for (final ShoppingList list in lists) ...<Widget>[
-                  ChoiceChip(
-                    label: Text(
-                      (counts[list.id] ?? 0) > 0
-                          ? '${list.name} · ${counts[list.id]}'
-                          : list.name,
-                    ),
-                    selected: list.id == selected.id,
-                    onSelected: (bool _) => ref
-                        .read(selectedListIdProvider.notifier)
-                        .select(list.id),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                ],
-                ActionChip(
-                  avatar: const Icon(Icons.add_rounded, size: AppSizes.iconSm),
-                  label: const Text('New list'),
-                  onPressed: () => createListFlow(context, ref),
-                ),
-              ],
+        for (final ShoppingList list in lists)
+          ChoiceChip(
+            label: Text(
+              (counts[list.id] ?? 0) > 0
+                  ? '${list.name} · ${counts[list.id]}'
+                  : list.name,
             ),
+            selected: list.id == selected.id,
+            onSelected: (bool _) =>
+                ref.read(selectedListIdProvider.notifier).select(list.id),
           ),
+        ActionChip(
+          avatar: const Icon(Icons.add_rounded, size: AppSizes.iconSm),
+          label: const Text('New list'),
+          onPressed: () => createListFlow(context, ref),
         ),
-        PopupMenuButton<_ListAction>(
+      ],
+      trailing: PopupMenuButton<_ListAction>(
           tooltip: 'List options',
           onSelected: (_ListAction action) async {
             switch (action) {
@@ -196,8 +182,7 @@ class _ListBar extends ConsumerWidget {
               child: const Text('Delete list'),
             ),
           ],
-        ),
-      ],
+      ),
     );
   }
 }
@@ -236,9 +221,7 @@ class _ListBody extends ConsumerWidget {
           icon: Icons.shopping_basket_rounded,
           title: 'Nothing to buy',
           body: 'Add what you need. Akshaya also suggests items here when '
-              'your pantry runs low.',
-          actionLabel: 'Add item',
-          onAction: () => openEntryForm(context, listId: list.id),
+              'your pantry runs low. Use the Add item button below.',
         ),
       for (final ShoppingSection section in view.sections) ...<Widget>[
         SectionHeader(title: '${section.title} (${section.entries.length})'),

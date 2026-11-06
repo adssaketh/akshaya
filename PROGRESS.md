@@ -785,6 +785,35 @@ Schema v10 adds one nullable column, `consumption_logs.waste_reason`, which sync
 - Use sheet "Wasted" (from the swipe/Use screen) does not ask for a reason yet; it is recorded as Not recorded.
 - Quiet hours drop (not defer) household alerts.
 
+## UI consistency pass and Ping-style navigation bar (post Phase 13; CI pending, waiting for device check)
+
+No schema, sync or rules change.
+
+**What changed**
+- **Bottom navigation** is now `AkshayaNavBar`, the same look as Ping's: a floating, fully rounded pill (radius 32) on a soft shadow, an indicator pill that slides with a small overshoot behind the selected icon, bold label under the selected tab, slide-up entrance, max width 576 on tablets. Respects "Remove animations".
+- **One header action style:** `HeaderAction` (48 dp, 24 dp icon, one colour) used by Voice, Guide, Count mode, What should I buy?, Meal plan.
+- **One toolbar under the header:** `ToolbarRow` (same side margin and gap), `AkshayaSearchField` (pill), `AkshayaSegmented` (Category/Location, Ideas/Saved), `ChipRow` (filter chips, Shopping lists + "New list" + list menu).
+- **One FAB pattern:** `AkshayaFabCluster`: one extended primary action, secondary actions as small tonal buttons above it. Used on Pantry (Add item + scan + cooked food), Shopping, Categories, Travel.
+- **One add action per screen:** the empty states of Pantry, Shopping and Travel no longer repeat the FAB as a second "Add item" button; the text points to the FAB instead. Empty states that have no FAB (Home, errors, "No matches") keep their button.
+- **Theme-level rules (apply to every screen, including ones not touched):** buttons, FABs, segmented switches and chips are pills; cards stay 20, sheets 28, fields 16; icon buttons share size and colour; segmented and popup menus are themed.
+- New tokens: `AppRadius.pill`, `AppRadius.navBar`, `AppSizes.navIndicatorWidth/Height`, `navIcon`, `navPadding`, `navMaxWidth`, `navShadowBlur`, `navShadowOffset`.
+
+**Files:** new `core/design/widgets/{akshaya_nav_bar,header_action,akshaya_search_field,toolbar,fab_cluster}.dart`, `test/core/design/nav_bar_test.dart`. Changed: `design.dart`, `theme/akshaya_theme.dart`, `tokens/layout_tokens.dart`, `shell/app_shell.dart`, `pantry_screen.dart`, `shopping_screen.dart`, `recipes_screen.dart`, `categories_screen.dart`, `travel_screen.dart`, `voice_mic_button.dart`, `guide_button.dart`.
+
+**Test checklist (device)**
+1. The bar floats with rounded ends and a shadow; tapping a tab slides the indicator across; the selected label is bold. Dark mode and 200% font: no overflow.
+2. Pantry, Shopping, Recipes, Home, Settings: header icons all the same size and colour.
+3. Pantry: search box, Category/Location switch and chips line up with the same margins; one "Add item" button (the FAB) on the empty Pantry, with the two small tonal buttons above it.
+4. Shopping: list chips and the three-dot menu on one row; empty list shows only the FAB.
+5. Recipes: the Ideas/Saved switch matches Pantry's.
+6. Settings > Categories and Travel: FAB looks the same.
+
+**Known issues**
+- Written without a local Flutter SDK; CI is the compiler. If red, paste the log.
+- The bar is solid (Ping also has an optional glass style); not ported.
+- The tonal mini-FAB colours come from the theme, so they follow your colour choice in Settings.
+- Not touched: AppBar screens (item detail, insights, planner) keep their app bars; they pick up the theme-level button, icon and menu changes.
+
 ## Next: Phase 14 (v2 roadmap), only when you say so.
 
 ## Phase 0: what was built (unchanged)

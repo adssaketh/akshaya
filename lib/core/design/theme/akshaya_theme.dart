@@ -63,6 +63,9 @@ abstract final class AkshayaTheme {
     );
 
     const Size minTarget = Size(AppSizes.touchTarget, AppSizes.touchTarget);
+    // Rule: things you press (buttons, chips, switches, FABs) are pills;
+    // things that hold content (cards, fields) use the control/card radii.
+    const StadiumBorder pressShape = StadiumBorder();
     const RoundedRectangleBorder controlShape = RoundedRectangleBorder(
       borderRadius: AppRadius.controlBorder,
     );
@@ -135,17 +138,45 @@ abstract final class AkshayaTheme {
         focusElevation: 0,
         hoverElevation: 0,
         highlightElevation: 0,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(AppRadius.fab)),
-        ),
+        shape: const StadiumBorder(),
         extendedTextStyle: text.labelLarge,
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: c.textPrimary,
+          minimumSize: minTarget,
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll<Size>(minTarget),
+          shape: const WidgetStatePropertyAll<OutlinedBorder>(pressShape),
+          side: WidgetStatePropertyAll<BorderSide>(BorderSide(color: c.outline)),
+          textStyle: WidgetStatePropertyAll<TextStyle>(text.labelLarge!),
+          backgroundColor: WidgetStateProperty.resolveWith<Color>(
+            (Set<WidgetState> states) => states.contains(WidgetState.selected)
+                ? c.surfaceAlt
+                : c.surface,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith<Color>(
+            (Set<WidgetState> states) => states.contains(WidgetState.selected)
+                ? c.primary
+                : c.textPrimary,
+          ),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: c.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardBorder),
+        textStyle: text.bodyMedium,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: c.primary,
           foregroundColor: c.onPrimary,
           minimumSize: minTarget,
-          shape: controlShape,
+          shape: pressShape,
           textStyle: text.labelLarge,
         ),
       ),
@@ -154,7 +185,7 @@ abstract final class AkshayaTheme {
           foregroundColor: c.primary,
           side: BorderSide(color: c.outline),
           minimumSize: minTarget,
-          shape: controlShape,
+          shape: pressShape,
           textStyle: text.labelLarge,
         ),
       ),

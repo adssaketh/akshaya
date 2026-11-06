@@ -52,11 +52,10 @@ class TravelScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Travel mode')),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: AkshayaFabCluster(
         heroTag: 'travel-add-trip',
+        label: 'Add trip',
         onPressed: () => openTripForm(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add trip'),
       ),
       body: trips.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -72,9 +71,8 @@ class TravelScreen extends ConsumerWidget {
               title: 'No trips yet',
               body: 'Tell Akshaya when you are away. It will warn you about '
                   'food that will go off, pause alerts and repeating items, '
-                  'and remind you to restock before you return.',
-              actionLabel: 'Add trip',
-              onAction: () => openTripForm(context),
+                  'and remind you to restock before you return. '
+                  'Use the Add trip button below.',
             );
           }
           final List<Trip> current = <Trip>[

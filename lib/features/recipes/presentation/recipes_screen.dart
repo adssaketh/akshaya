@@ -67,39 +67,35 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         children: <Widget>[
           AkshayaHeader(
             actions: <Widget>[
-              IconButton(
+              HeaderAction(
                 tooltip: 'Meal plan',
+                icon: Icons.calendar_month_rounded,
                 onPressed: () => openMealPlanner(context),
-                icon: const Icon(Icons.calendar_month_rounded),
               ),
               const VoiceMicButton(),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          ToolbarRow(
             child: SizedBox(
               width: double.infinity,
-              child: SegmentedButton<_RecipesTab>(
-                showSelectedIcon: false,
-                segments: const <ButtonSegment<_RecipesTab>>[
-                  ButtonSegment<_RecipesTab>(
+              child: AkshayaSegmented<_RecipesTab>(
+                segments: const <AkshayaSegment<_RecipesTab>>[
+                  AkshayaSegment<_RecipesTab>(
                     value: _RecipesTab.ideas,
-                    label: Text('Ideas'),
-                    icon: Icon(Icons.lightbulb_outline_rounded),
+                    label: 'Ideas',
+                    icon: Icons.lightbulb_outline_rounded,
                   ),
-                  ButtonSegment<_RecipesTab>(
+                  AkshayaSegment<_RecipesTab>(
                     value: _RecipesTab.saved,
-                    label: Text('Saved'),
-                    icon: Icon(Icons.favorite_border_rounded),
+                    label: 'Saved',
+                    icon: Icons.favorite_border_rounded,
                   ),
                 ],
-                selected: <_RecipesTab>{_tab},
-                onSelectionChanged: (Set<_RecipesTab> s) =>
-                    setState(() => _tab = s.first),
+                selected: _tab,
+                onChanged: (_RecipesTab t) => setState(() => _tab = t),
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: _tab == _RecipesTab.ideas
                 ? _IdeasTab(
