@@ -2,6 +2,7 @@ import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../../core/ui/feedback.dart';
 import '../../pantry/domain/entities.dart';
 import '../../pantry/presentation/providers.dart';
@@ -302,7 +303,7 @@ class AlertsSection extends ConsumerWidget {
         showMessage(messenger, 'Nothing to alert about right now.');
       }
     } on Object catch (error, stack) {
-      debugPrint('Alert preview failed: $error\n$stack');
+      Diag.error('alerts', 'Alert preview failed', error: error, stack: stack);
       showMessage(messenger, failureMessage(error));
     }
   }

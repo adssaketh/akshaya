@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../commands/domain/command_models.dart';
 import '../../commands/domain/voice_language.dart';
 import 'ai_failures.dart';
@@ -177,6 +178,12 @@ final class AiCommandService {
       } on Object catch (error) {
         final AiFailure failure = classify(error);
         last = failure;
+        // Only the kinds of failure: never the request or the answer.
+        Diag.warn(
+          'ai',
+          'Call failed (attempt ${attempt + 1} of $maxAttempts): '
+              '${failure.runtimeType} from ${error.runtimeType}',
+        );
         if (failure is AiQuotaFailure) {
           _cooldownUntil = now().add(cooldown);
           throw failure;

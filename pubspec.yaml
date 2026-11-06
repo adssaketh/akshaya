@@ -1,7 +1,7 @@
 name: akshaya
 description: Akshaya Patra, a grocery and pantry manager.
 publish_to: none
-version: 1.0.6+7
+version: 1.0.8+9
 
 environment:
   sdk: ^3.12.0
@@ -45,6 +45,10 @@ dependencies:
   # Voice: the phone's recogniser, plus a recorder for the Gemini fallback.
   speech_to_text: ^7.0.0
   record: ^6.0.0
+  # Diagnostics: where the log file lives, and which build / phone it came from.
+  path_provider: ^2.1.5
+  package_info_plus: ^8.3.0
+  device_info_plus: ^11.5.0
 
 dev_dependencies:
   flutter_test:

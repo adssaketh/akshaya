@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:quick_actions/quick_actions.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../../core/time/clock.dart';
 import '../../rescue/domain/food_rescue.dart';
 import '../../rescue/presentation/providers.dart';
@@ -99,8 +99,8 @@ final Provider<void> widgetCoordinatorProvider = Provider<void>((Ref ref) {
         if (target != null && !disposed) {
           ref.read(quickLaunchProvider.notifier).open(target);
         }
-      }).catchError((Object error) {
-        debugPrint('Widget launch check failed: $error');
+      }).catchError((Object error, StackTrace stack) {
+        Diag.error('widgets', 'Widget launch check failed', error: error, stack: stack);
       }),
     );
     clicks = HomeWidget.widgetClicked.listen((Uri? uri) {
@@ -109,8 +109,8 @@ final Provider<void> widgetCoordinatorProvider = Provider<void>((Ref ref) {
         ref.read(quickLaunchProvider.notifier).open(target);
       }
     });
-  } on Object catch (error) {
-    debugPrint('Widget clicks unavailable: $error');
+  } on Object catch (error, stack) {
+    Diag.warn('widgets', 'Widget clicks unavailable', error: error, stack: stack);
   }
 
   // Long-press shortcuts on the app icon.
@@ -143,8 +143,8 @@ final Provider<void> widgetCoordinatorProvider = Provider<void>((Ref ref) {
         ),
       ]),
     );
-  } on Object catch (error) {
-    debugPrint('App shortcuts unavailable: $error');
+  } on Object catch (error, stack) {
+    Diag.warn('widgets', 'App shortcuts unavailable', error: error, stack: stack);
   }
 
   ref.onDispose(() {

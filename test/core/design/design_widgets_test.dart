@@ -1,5 +1,4 @@
 import 'package:akshaya/core/design/design.dart';
-import 'package:akshaya/core/design/gallery/design_gallery_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -203,24 +202,5 @@ void main() {
       expect(find.byType(SarukuluMotif), findsNothing);
       expect(find.byIcon(Icons.notifications_none_rounded), findsOneWidget);
     });
-  });
-
-  group('DesignGalleryPage', () {
-    for (final MapEntry<String, ThemeData> entry in <String, ThemeData>{
-      'light': AkshayaTheme.light(),
-      'dark': AkshayaTheme.dark(),
-    }.entries) {
-      testWidgets('builds without errors in ${entry.key} mode',
-          (tester) async {
-        await tester.binding.setSurfaceSize(const Size(390, 2400));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
-        await tester.pumpWidget(
-          MaterialApp(theme: entry.value, home: const DesignGalleryPage()),
-        );
-        expect(tester.takeException(), isNull);
-        expect(find.text('Akshaya Patra'), findsOneWidget);
-        expect(find.text('4 items need attention'), findsOneWidget);
-      });
-    }
   });
 }

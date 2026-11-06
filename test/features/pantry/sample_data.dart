@@ -1,5 +1,8 @@
-import 'storage_location.dart';
-import 'unit.dart';
+import 'package:akshaya/core/util/date_only.dart';
+import 'package:akshaya/features/pantry/domain/entities.dart';
+import 'package:akshaya/features/pantry/domain/pantry_repository.dart';
+import 'package:akshaya/features/pantry/domain/storage_location.dart';
+import 'package:akshaya/features/pantry/domain/unit.dart';
 
 /// One purchase of a sample item, with dates relative to "today" so the
 /// sample data always shows every status.
@@ -236,3 +239,53 @@ const List<SampleItem> kSampleItems = <SampleItem>[
     ],
   ),
 ];
+
+/// Test fixture: adds the sample items through the repository's public API,
+/// skipping names that already exist. Returns how many items were added.
+///
+/// Dates are relative to [now] (default: the current time), so pass the same
+/// instant the repository's clock uses when a test depends on exact dates.
+extension SampleDataFixture on PantryRepository {
+  Future<int> insertSampleData({DateTime? now}) async {
+    final DateTime today = dateOnly(now ?? DateTime.now());
+    int added = 0;
+
+    for (final SampleItem sample in kSampleItems) {
+      if (await findItemByName(sample.name) != null) {
+        continue;
+      }
+      final Item item = await addItem(
+        ItemDraft(
+          name: sample.name,
+          categoryId: sample.categoryId,
+          defaultUnit: sample.unit,
+          aliases: sample.aliases,
+          lowStockThreshold: sample.lowStockThreshold,
+          isEssential: sample.isEssential,
+          defaultStorageLocation: sample.location,
+        ),
+      );
+      for (final SampleStock stock in sample.stocks) {
+        final int? expiresIn = stock.expiresInDays;
+        final int? openedAgo = stock.openedDaysAgo;
+        await addBatch(
+          BatchDraft(
+            itemId: item.id,
+            quantityBought: stock.quantityBought,
+            quantityRemaining: stock.quantityRemaining,
+            unit: sample.unit,
+            purchaseDate: addDays(today, -stock.purchasedDaysAgo),
+            expiryDate: expiresIn == null ? null : addDays(today, expiresIn),
+            openedDate: openedAgo == null ? null : addDays(today, -openedAgo),
+            useWithinDaysAfterOpening: stock.useWithinDays,
+            price: stock.price,
+            store: stock.store,
+            storageLocation: stock.location ?? sample.location,
+          ),
+        );
+      }
+      added++;
+    }
+    return added;
+  }
+}

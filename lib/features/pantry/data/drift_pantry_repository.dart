@@ -11,7 +11,6 @@ import '../domain/failures.dart';
 import '../domain/fifo.dart';
 import '../domain/item_kind.dart';
 import '../domain/pantry_repository.dart';
-import '../domain/sample_data.dart';
 import '../domain/shelf_life.dart';
 import '../domain/stock_count.dart';
 import '../domain/storage_location.dart';
@@ -1355,53 +1354,5 @@ class DriftPantryRepository implements PantryRepository {
         ),
       );
     });
-  }
-
-  // ---------------------------------------------------------------------
-  // Sample data
-  // ---------------------------------------------------------------------
-
-  @override
-  Future<int> insertSampleData() async {
-    final DateTime today = dateOnly(_now());
-    int added = 0;
-
-    for (final SampleItem sample in kSampleItems) {
-      if (await findItemByName(sample.name) != null) {
-        continue;
-      }
-      final Item item = await addItem(
-        ItemDraft(
-          name: sample.name,
-          categoryId: sample.categoryId,
-          defaultUnit: sample.unit,
-          aliases: sample.aliases,
-          lowStockThreshold: sample.lowStockThreshold,
-          isEssential: sample.isEssential,
-          defaultStorageLocation: sample.location,
-        ),
-      );
-      for (final SampleStock stock in sample.stocks) {
-        final int? expiresIn = stock.expiresInDays;
-        final int? openedAgo = stock.openedDaysAgo;
-        await addBatch(
-          BatchDraft(
-            itemId: item.id,
-            quantityBought: stock.quantityBought,
-            quantityRemaining: stock.quantityRemaining,
-            unit: sample.unit,
-            purchaseDate: addDays(today, -stock.purchasedDaysAgo),
-            expiryDate: expiresIn == null ? null : addDays(today, expiresIn),
-            openedDate: openedAgo == null ? null : addDays(today, -openedAgo),
-            useWithinDaysAfterOpening: stock.useWithinDays,
-            price: stock.price,
-            store: stock.store,
-            storageLocation: stock.location ?? sample.location,
-          ),
-        );
-      }
-      added++;
-    }
-    return added;
   }
 }

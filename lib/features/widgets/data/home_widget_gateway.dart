@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../domain/widget_gateway.dart';
 import '../domain/widget_snapshot.dart';
 
@@ -30,9 +30,9 @@ class HomeWidgetGateway implements WidgetGateway {
       for (final String provider in kWidgetProviders) {
         await HomeWidget.updateWidget(qualifiedAndroidName: provider);
       }
-    } on Object catch (error) {
+    } on Object catch (error, stack) {
       // Widgets are a convenience: a failure here never disturbs the app.
-      debugPrint('Could not update the home screen widgets: $error');
+      Diag.error('widgets', 'Could not update the home screen widgets', error: error, stack: stack);
     }
   }
 }

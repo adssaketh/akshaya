@@ -28,7 +28,6 @@ theme/       akshaya_theme.dart   AkshayaTheme.light() / .dark() (Material 3)
              design_context.dart  context.akColors, context.akText
 widgets/     AkshayaHeader, AkshayaLogo, SarukuluMotif, StatusChip, SummaryTile,
              ItemCard, SectionHeader, EmptyState, ChecklistCard
-gallery/     DesignGalleryPage    developer showcase of everything above
 ```
 
 ## Wiring (Phase 1)
@@ -38,7 +37,7 @@ MaterialApp(
   theme: AkshayaTheme.light(),
   darkTheme: AkshayaTheme.dark(),
   themeMode: ThemeMode.system, // user override comes from settings later
-  home: const DesignGalleryPage(), // temporary, to check the design on device
+  home: const AppShell(),
 );
 ```
 

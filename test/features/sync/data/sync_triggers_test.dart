@@ -4,6 +4,8 @@ import 'package:drift/drift.dart' show QueryRow, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../pantry/sample_data.dart';
+
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../../core/time/clock.dart';
 import '../../ai/data/firebase_runtime.dart';
 import '../../ai/presentation/providers.dart' show firebaseRuntimeProvider;
@@ -147,8 +147,8 @@ Future<void> _notifyHouseholdChanges(
     final NotificationGateway gateway = ref.read(notificationGatewayProvider);
     await gateway.initialize();
     await gateway.showNow(alerts);
-  } on Object catch (error) {
-    debugPrint('Could not show the household alert: $error');
+  } on Object catch (error, stack) {
+    Diag.error('sync', 'Could not show the household alert', error: error, stack: stack);
   }
 }
 
@@ -167,8 +167,8 @@ Future<void> _recordUsage(Ref ref, int reads, int writes) async {
     await settings.writeAll(
       current.add(today, moreReads: reads, moreWrites: writes).toMap(),
     );
-  } on Object catch (error) {
-    debugPrint('Could not save Firestore usage: $error');
+  } on Object catch (error, stack) {
+    Diag.error('sync', 'Could not save Firestore usage', error: error, stack: stack);
   }
 }
 
@@ -537,8 +537,8 @@ final Provider<void> syncCoordinatorProvider = Provider<void>((Ref ref) {
         );
         unawaited(ref.read(syncControllerProvider).refreshHousehold());
       }
-    } on Object catch (error) {
-      debugPrint('Could not start sync: $error');
+    } on Object catch (error, stack) {
+      Diag.error('sync', 'Could not start sync', error: error, stack: stack);
     }
   }
 

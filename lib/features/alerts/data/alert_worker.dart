@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:workmanager/workmanager.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../count/domain/count_settings.dart';
 import '../../pantry/data/database/app_database.dart';
 import '../../pantry/data/database/open_database.dart';
@@ -55,8 +55,8 @@ Future<List<ScheduledAlert>> refreshAlertsFromDatabase(
       pantry: pantry,
       today: DateTime.now(),
     );
-  } on Object catch (error) {
-    debugPrint('Back-home essentials failed: $error');
+  } on Object catch (error, stack) {
+    Diag.error('alerts', 'Back-home essentials failed', error: error, stack: stack);
   }
   final List<Trip> trips = await tripRepository.readAll();
   final List<ShoppingEntry> entries = await shopping.watchEntries().first;
@@ -85,6 +85,8 @@ void alertCallbackDispatcher() {
       if (task != kAlertRefreshTaskName) {
         return true;
       }
+      await Diag.init();
+      Diag.info('worker', 'Background check started');
       final AppDatabase db = openAppDatabase();
       try {
         final LocalNotificationGateway gateway = LocalNotificationGateway();
@@ -92,14 +94,15 @@ void alertCallbackDispatcher() {
         // The home screen widgets are redrawn with the daily check too.
         try {
           await refreshWidgetsFromDatabase(db);
-        } on Object catch (error) {
-          debugPrint('Widget refresh failed: $error');
+        } on Object catch (error, stack) {
+          Diag.error('alerts', 'Widget refresh failed', error: error, stack: stack);
         }
         // Household changes are a bonus: never fail the daily alerts for them.
         await checkHouseholdChanges(db, gateway);
+        Diag.info('worker', 'Background check finished');
         return true;
-      } on Object catch (error) {
-        debugPrint('Alert refresh failed: $error');
+      } on Object catch (error, stack) {
+        Diag.error('alerts', 'Alert refresh failed', error: error, stack: stack);
         // Ask WorkManager to try again later.
         return false;
       } finally {

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../../core/time/clock.dart';
 import '../../pantry/presentation/providers.dart';
 import '../../shopping/presentation/providers.dart';
@@ -32,9 +32,9 @@ final Provider<void> backHomeCoordinatorProvider = Provider<void>((Ref ref) {
         pantry: ref.read(pantryRepositoryProvider),
         today: ref.read(todayProvider),
       );
-    } on Object catch (error) {
+    } on Object catch (error, stack) {
       // A convenience: never let a failure here disturb the app.
-      debugPrint('Could not add the back-home essentials: $error');
+      Diag.error('travel', 'Could not add the back-home essentials', error: error, stack: stack);
     } finally {
       running = false;
     }

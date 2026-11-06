@@ -118,7 +118,6 @@ enum GuidePreview {
   settingsCategories,
   settingsLock,
   settingsBackup,
-  settingsSample,
 }
 
 /// One page of the user guide.

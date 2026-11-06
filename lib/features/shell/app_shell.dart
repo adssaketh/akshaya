@@ -4,6 +4,7 @@ import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/diagnostics/diag.dart';
 import '../alerts/domain/alert_plan.dart';
 import '../alerts/presentation/first_run_prompt.dart';
 import '../alerts/presentation/providers.dart';
@@ -37,6 +38,13 @@ class _AppShellState extends ConsumerState<AppShell> {
   static const int _pantryTab = 1;
   static const int _shoppingTab = 2;
   static const int _recipesTab = 3;
+  static const List<String> _tabNames = <String>[
+    'Home',
+    'Pantry',
+    'Shopping',
+    'Recipes',
+    'Settings',
+  ];
   int _index = 0;
 
   /// The glass look for the nav bar, or null when the bar is solid.
@@ -196,7 +204,10 @@ class _AppShellState extends ConsumerState<AppShell> {
       bottomNavigationBar: AkshayaNavBar(
         glass: _glass(ref.watch(appSettingsProvider)),
         selectedIndex: _index,
-        onSelected: (int i) => setState(() => _index = i),
+        onSelected: (int i) {
+          Diag.info('nav', 'Tab ${_tabNames[i]}');
+          setState(() => _index = i);
+        },
         destinations: const <AkshayaNavDestination>[
           AkshayaNavDestination(
             icon: Icons.home_outlined,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../settings/domain/settings_repository.dart';
 import '../../settings/presentation/providers.dart';
 import '../domain/alert_settings.dart';
@@ -66,7 +67,7 @@ Future<void> askForNotificationsOnFirstRun(
       await gateway.requestPermission();
       ref.invalidate(notificationsAllowedProvider);
     }
-  } on Object catch (error) {
-    debugPrint('Notification prompt failed: $error');
+  } on Object catch (error, stack) {
+    Diag.error('alerts', 'Notification prompt failed', error: error, stack: stack);
   }
 }

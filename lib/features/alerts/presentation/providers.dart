@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../../core/time/clock.dart';
 import '../../count/domain/count_settings.dart';
 import '../../count/presentation/providers.dart';
@@ -158,9 +158,9 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
         await work.ensureAlertRefreshRegistered();
         workRegistered = true;
       }
-    } on Object catch (error) {
+    } on Object catch (error, stack) {
       // Alerts are a convenience: never let a failure here disturb the app.
-      debugPrint('Could not update alerts: $error');
+      Diag.error('alerts', 'Could not update alerts', error: error, stack: stack);
     }
   }
 
@@ -236,8 +236,8 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
         if (outcome.changed && !disposed) {
           queue();
         }
-      } on Object catch (error) {
-        debugPrint('Could not run the alert button: $error');
+      } on Object catch (error, stack) {
+        Diag.error('alerts', 'Could not run the alert button', error: error, stack: stack);
       }
     }());
   });
@@ -257,8 +257,8 @@ final Provider<void> alertCoordinatorProvider = Provider<void>((Ref ref) {
       if (launched != null && !disposed) {
         ref.read(alertTargetProvider.notifier).open(launched);
       }
-    } on Object catch (error) {
-      debugPrint('Could not read the launching alert: $error');
+    } on Object catch (error, stack) {
+      Diag.error('alerts', 'Could not read the launching alert', error: error, stack: stack);
     }
   }());
 

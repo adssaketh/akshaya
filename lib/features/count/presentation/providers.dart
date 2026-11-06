@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../../core/time/clock.dart';
 import '../../../core/util/date_only.dart';
 import '../../pantry/domain/entities.dart';
@@ -106,8 +106,8 @@ class CountSessionNotifier extends Notifier<CountSession?> {
         CountSettingKeys.lastCompletedOn: formatIsoDate(ref.read(todayProvider)),
       });
       await repo.remove(CountSettingKeys.session);
-    } on Object catch (error) {
-      debugPrint('Could not save the count: $error');
+    } on Object catch (error, stack) {
+      Diag.error('count', 'Could not save the count', error: error, stack: stack);
     }
   }
 
@@ -116,8 +116,8 @@ class CountSessionNotifier extends Notifier<CountSession?> {
     state = null;
     try {
       await ref.read(settingsRepositoryProvider).remove(CountSettingKeys.session);
-    } on Object catch (error) {
-      debugPrint('Could not discard the count: $error');
+    } on Object catch (error, stack) {
+      Diag.error('count', 'Could not discard the count', error: error, stack: stack);
     }
   }
 
@@ -138,8 +138,8 @@ class CountSessionNotifier extends Notifier<CountSession?> {
           .writeAll(<String, String>{
             CountSettingKeys.session: current.encode(),
           })
-          .catchError((Object error) {
-        debugPrint('Could not save count progress: $error');
+          .catchError((Object error, StackTrace stack) {
+        Diag.error('count', 'Could not save count progress', error: error, stack: stack);
       }),
     );
   }

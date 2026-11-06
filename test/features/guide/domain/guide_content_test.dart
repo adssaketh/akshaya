@@ -74,7 +74,6 @@ void main() {
         'Sign in to share with your household',
         'Save a backup',
         'Restore from a backup',
-        'Load sample data',
         'Daily alert',
         'Quiet hours',
         'Use AI for hard-to-read commands',

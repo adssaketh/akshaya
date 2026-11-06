@@ -1,8 +1,8 @@
 import 'dart:ui' show DartPluginRegistrant;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../pantry/data/database/app_database.dart';
 import '../../pantry/data/database/open_database.dart';
 import '../../pantry/data/drift_pantry_repository.dart';
@@ -31,6 +31,8 @@ Future<void> akshayaNotificationBackgroundHandler(
   if (action == null || action.opensApp || payload == null) {
     return;
   }
+  await Diag.init();
+  Diag.info('alerts', 'Notification button ${action.name} (app closed)');
 
   final AppDatabase db = openAppDatabase();
   try {
@@ -45,8 +47,8 @@ Future<void> akshayaNotificationBackgroundHandler(
     if (outcome.changed) {
       await refreshAlertsFromDatabase(db, LocalNotificationGateway());
     }
-  } on Object catch (error) {
-    debugPrint('Notification button failed: $error');
+  } on Object catch (error, stack) {
+    Diag.error('alerts', 'Notification button failed', error: error, stack: stack);
   } finally {
     await db.close();
   }

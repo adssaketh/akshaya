@@ -12,6 +12,7 @@ import 'package:drift/drift.dart' show QueryRow, Variable, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../pantry/sample_data.dart';
 import 'fake_sync_remote.dart';
 
 void main() {

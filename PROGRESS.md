@@ -1032,3 +1032,73 @@ firebase deploy --only firestore:rules,firestore:indexes
 - Widgets show text only (no item icons) and the shopping widget shows the first six rows of the first list.
 - The widget redraw after a tick in the app can take about a second.
 - Travel mode follows the household's trips: a trip added on one phone shows on the others after sync.
+
+### 1.0.7: development-only leftovers removed (CI pending)
+
+Removed from the shipped app (nothing else changed):
+- Settings > **Load sample data** and **Design gallery** tiles. `SettingsScreen` is now a plain `StatelessWidget`.
+- `lib/core/design/gallery/design_gallery_page.dart` and its widget test (design widgets keep their own tests).
+- `insertSampleData()` from `PantryRepository` and `DriftPantryRepository`. The ten sample items live on as a **test fixture**: `test/features/pantry/sample_data.dart` (`insertSampleData()` extension on `PantryRepository`, used by the sync tests). Its own "inserted once" test was dropped with the production method.
+- Guide topic "Try it with sample data", its `GuidePreview.settingsSample` picture and the matching label in the guide's "names still exist in the app" test.
+- Design README lines about the gallery.
+
+Checked and kept: every design widget and every dependency is still used; `assets/branding/*` and `tool/` are the source of the launcher icons and the offline dictionary.
+
+Version 1.0.7+8. Consequence: to try the app with data you now add items by hand (or restore a backup). Written without a local Flutter SDK; CI is the compiler.
+
+### 1.0.8: diagnostics (CI pending, waiting for device check)
+
+A private on-device log so bugs can be fixed from a report instead of guesses. No schema change, nothing leaves the phone unless you share a report. Written without a local Flutter SDK; CI is the compiler.
+
+#### What it does
+- **Log file** `diagnostics/diagnostics.log` in the app's private files folder (`getApplicationSupportDirectory`), plus one older copy `.1`; each rotates at 256 KB, so at most about 512 KB. The app and its background tasks (alert check, notification buttons, widget taps) all append to the same file.
+- **Captured automatically:** Flutter errors (`FlutterError.onError`), uncaught async errors (`PlatformDispatcher.onError`), and every place that used to swallow an error with `debugPrint` (28 sites in alerts, sync, count, travel, widgets) now logs the error **with its stack trace**. `failureMessage()` also logs the real error behind every generic "Something went wrong" (the same error is logged once, not on every rebuild).
+- **Breadcrumbs (info):** session start (version, build mode, phone, Android), app paused/resumed, tab changes, pages/sheets opened and closed (route type only, routes have no names), database create/upgrade (`v10 -> v11`), sync phase changes, AI call failures (kind only, never the request or answer), background check start/finish.
+- **Privacy rules:** messages never contain item names, notes, recipes, names or e-mail. E-mail addresses, API keys, bearer tokens and `key=` query values are stripped; messages are cut at 600 characters, stacks at 30 lines. Drift error text can still contain item names inside a SQL statement, which is why the screen asks you to glance at a report before sending.
+- **Settings > Diagnostics:** this build (version, build mode, phone, Android, language), counts of what is stored (items, batches, usage history, shopping entries, saved recipes, planned meals, trips, database version, notifications allowed, daily alert, AI on/off and usage, sync phase and waiting rows), the log newest first with filters (Everything / Warnings and errors / Errors), expandable stack traces, Share report (text), Save as file (full report via the file dialog), Copy, Clear log.
+- **How to use it with me:** after something breaks, open Settings > Diagnostics > Share report (or Save as file) and paste or attach it in the chat.
+
+#### Files
+```
+pubspec.yaml                                         1.0.8+9; + path_provider, package_info_plus, device_info_plus
+lib/main.dart                                        error handlers, Diag.init(), session start line
+lib/app.dart                                         lifecycle lines, navigator observer
+lib/core/diagnostics/
+  diag_entry.dart, diag_redactor.dart, diag_sink.dart, diag_log.dart, diag.dart,
+  error_handlers.dart, app_info.dart
+lib/core/ui/feedback.dart                            logs the error behind generic messages
+lib/features/diagnostics/domain/diag_report.dart
+lib/features/diagnostics/presentation/{providers,diagnostics_screen}.dart
+lib/features/settings/settings_screen.dart           Diagnostics entry
+lib/features/shell/app_shell.dart                    tab lines
+lib/features/pantry/data/database/app_database.dart  create/upgrade lines
+lib/features/ai/domain/ai_command_service.dart       failure kind lines
+lib/features/sync/data/sync_engine.dart              phase change lines (+ errors)
+28 catch sites in alerts, sync, count, travel and widgets (debugPrint -> Diag.error / Diag.warn)
+test/core/diagnostics/{diag_entry,diag_redactor,diag_sink,diag_log}_test.dart
+test/features/diagnostics/{domain/diag_report_test,presentation/diagnostics_screen_test}.dart
+```
+
+#### Key decisions
+- **File, not Drift:** no schema migration, and it still works if the database is the thing that is broken.
+- **Always on, local, capped.** There is no switch; Clear log empties it. Say if you want an "off" switch (it would need a marker the log checks before the database is open).
+- **Three small packages:** `path_provider` (already pulled in by drift_flutter), `package_info_plus` and `device_info_plus` (build number, phone model and Android version). If CI complains about any of them, the fallback is to drop that package and show "unknown".
+- **Not logged:** every `catch` that shows its own message to the person (validation, form errors) stays quiet; only unexpected errors are logged.
+- **Not done:** Firebase Crashlytics (opt-in in the spec) needs the google-services Gradle plugin; the build avoids it on purpose, so this log is the substitute.
+
+#### Test checklist (you)
+1. `verify` and `build-apk` are green (CI also commits an updated `pubspec.lock`: `git pull --rebase` before the next push).
+2. Settings > Diagnostics opens. Build rows show the real version `1.0.8+9`, your phone and Android version. Counts match what you have.
+3. Log shows "Session start", Resumed/Paused when you leave and return, and "Tab Pantry" etc. when you switch tabs.
+4. Open Settings > Alerts > Preview, then come back: nothing red. Turn on airplane mode while signed in to a household: Sync lines appear (phase offline).
+5. Filters: Warnings and errors / Errors hide the info lines. Tap an error: its stack opens.
+6. Share report: the share sheet opens with the text. Save as file writes a `.txt` you can open. Copy puts it on the clipboard. Skim it: no e-mail address, no item names.
+7. Clear log: asks first, empties, leaves one "Diagnostics log cleared" line.
+8. Close the app fully, trigger the daily alert preview or wait for the background check, reopen Diagnostics, pull Refresh: "Background check started/finished" lines from the worker are there.
+9. Dark mode and 200% font: no overflow on the screen.
+
+#### Known issues
+- Written without a local Flutter SDK; if CI is red, send me the log first.
+- The screen refreshes itself after a short pause when the app logs something; lines written by a background task while the screen is open need the Refresh button.
+- Route names are types (`MaterialPageRoute<void>`, `ModalBottomSheetRoute`), so the "open/close" lines say that something opened, not which screen. Tab lines say where you were.
+- Cache or data clearing by Android deletes the log with the rest of the app's files.

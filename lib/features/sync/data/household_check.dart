@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../ai/data/firebase_runtime.dart';
 import '../../alerts/domain/alert_plan.dart';
 import '../../alerts/domain/alert_settings.dart';
@@ -126,8 +126,8 @@ Future<int> checkHouseholdChanges(
     }
     await store.advanceCursor(SyncStore.alertKey, newest);
     return alerts.length;
-  } on Object catch (error) {
-    debugPrint('Household change check skipped: $error');
+  } on Object catch (error, stack) {
+    Diag.warn('sync', 'Household change check skipped', error: error, stack: stack);
     return 0;
   }
 }

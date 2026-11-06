@@ -5,6 +5,8 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/diagnostics/diag.dart';
+import 'core/diagnostics/error_handlers.dart';
 import 'core/time/clock.dart';
 import 'core/util/money.dart';
 import 'features/alerts/presentation/providers.dart';
@@ -32,6 +34,9 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
   // wasted work.
   final ThemeData _lightTheme = AkshayaTheme.light();
   final ThemeData _darkTheme = AkshayaTheme.dark();
+
+  // Notes which pages and sheets open, for the diagnostics log.
+  final DiagNavigatorObserver _navigationLog = DiagNavigatorObserver();
 
   // Wallpaper themes, rebuilt only when the wallpaper palette changes.
   ColorScheme? _wallpaperLightScheme;
@@ -63,10 +68,12 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
     ref.read(widgetCoordinatorProvider);
     _lifecycle = AppLifecycleListener(
       onPause: () {
+        Diag.info('app', 'Paused');
         // Live listeners cost reads; they stop while the app is hidden.
         unawaited(ref.read(syncEngineProvider).pauseListening());
       },
       onResume: () {
+        Diag.info('app', 'Resumed');
         unawaited(ref.read(syncEngineProvider).resumeListening());
         // A new day may have started while the app was in the background.
         ref.read(todayProvider.notifier).refresh();
@@ -119,6 +126,7 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
           theme: wallpaper ? _wallpaperLight! : _lightTheme,
           darkTheme: wallpaper ? _wallpaperDark! : _darkTheme,
           themeMode: _mode(settings.theme),
+          navigatorObservers: <NavigatorObserver>[_navigationLog],
           builder: (BuildContext context, Widget? child) =>
               AppLockGate(child: child ?? const SizedBox.shrink()),
           home: const AppShell(),

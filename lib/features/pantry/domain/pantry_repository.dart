@@ -111,8 +111,4 @@ abstract interface class PantryRepository {
 
   /// Reverses a [setStock]. Does nothing when it changed nothing.
   Future<void> undoCount(CountResult result);
-
-  /// Adds the ten sample items (skipping names that exist). Returns how many
-  /// were added.
-  Future<int> insertSampleData();
 }

@@ -54,7 +54,6 @@ extension GuidePreviewCaption on GuidePreview {
         GuidePreview.settingsCategories => 'The Categories settings',
         GuidePreview.settingsLock => 'The App lock setting',
         GuidePreview.settingsBackup => 'The Backup and export settings',
-        GuidePreview.settingsSample => 'The Load sample data setting',
       };
 }
 
@@ -154,7 +153,6 @@ class GuidePreviewView extends StatelessWidget {
       GuidePreview.settingsCategories => _settingsCategories(context),
       GuidePreview.settingsLock => _settingsLock(context),
       GuidePreview.settingsBackup => _settingsBackup(context),
-      GuidePreview.settingsSample => _settingsSample(context),
     };
   }
 }
@@ -2168,13 +2166,5 @@ Widget _settingsBackup(BuildContext context) => _settingsCard(const <Widget>[
       _SettingRow(
         icon: Icons.history_rounded,
         title: 'Export usage history as CSV',
-      ),
-    ]);
-
-Widget _settingsSample(BuildContext context) => _settingsCard(const <Widget>[
-      _SettingRow(
-        icon: Icons.science_outlined,
-        title: 'Load sample data',
-        subtitle: 'Adds 10 common Indian grocery items',
       ),
     ]);

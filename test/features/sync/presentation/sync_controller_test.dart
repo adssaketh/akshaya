@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../pantry/sample_data.dart';
 import '../data/fake_sync_remote.dart';
 
 const AuthUser _asha = AuthUser(uid: 'u1', displayName: 'Asha', email: 'a@x.in');

@@ -95,25 +95,6 @@ const List<GuideTopic> kGuideTopics = <GuideTopic>[
     related: <String>['voice-command', 'scan-barcode', 'add-item'],
   ),
   GuideTopic(
-    id: 'sample-data',
-    area: GuideArea.start,
-    title: 'Try it with sample data',
-    summary: 'Adds ten common Indian grocery items so you can explore the '
-        'app before typing in your own pantry.',
-    whereToFind: 'Settings tab > Load sample data (near the bottom)',
-    preview: GuidePreview.settingsSample,
-    steps: <String>[
-      'Open Settings and scroll to Load sample data.',
-      'Tap it. The items appear in the Pantry.',
-      'Delete them later from the Pantry like any other item.',
-    ],
-    tips: <String>[
-      'Tapping it twice does not add duplicates.',
-    ],
-    keywords: <String>['demo', 'example', 'test', 'try', 'start'],
-    related: <String>['pantry-list'],
-  ),
-  GuideTopic(
     id: 'undo',
     area: GuideArea.start,
     title: 'Undo',

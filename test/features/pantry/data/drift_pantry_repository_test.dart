@@ -181,11 +181,4 @@ void main() {
     final Item again = await repo.addItem(rice());
     expect(again.id, isNot(item.id));
   });
-
-  test('sample data is inserted once', () async {
-    final int first = await repo.insertSampleData();
-    final int second = await repo.insertSampleData();
-    expect(first, 10);
-    expect(second, 0);
-  });
 }

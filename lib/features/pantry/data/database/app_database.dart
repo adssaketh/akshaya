@@ -5,6 +5,7 @@
 
 import 'package:drift/drift.dart';
 
+import '../../../../core/diagnostics/diag.dart';
 import '../../../planner/data/database/planner_tables.dart';
 import '../../../recipes/data/database/recipe_tables.dart';
 import '../../../scanning/data/database/scanning_tables.dart';
@@ -86,12 +87,14 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
+        Diag.info('db', 'Creating a new database (v$schemaVersion)');
         await m.createAll();
         await _seedCategories();
         await _seedDefaultList();
         await _installSync();
       },
       onUpgrade: (Migrator m, int from, int to) async {
+        Diag.info('db', 'Upgrading the database from v$from to v$to');
         if (from < 2) {
           await m.createTable(shoppingLists);
           await m.createTable(shoppingEntries);

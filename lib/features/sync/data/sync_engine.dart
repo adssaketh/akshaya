@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show debugPrint;
 
+import '../../../core/diagnostics/diag.dart';
 import '../domain/change_digest.dart';
 import '../domain/sync_merge.dart';
 import '../domain/sync_models.dart';
@@ -229,8 +229,8 @@ class SyncEngine {
   Future<void> _enqueue(SyncTableSpec spec, List<RemoteDoc> docs) {
     final Future<void> next =
         _applyQueue.then<void>((_) => _applyDocs(spec, docs)).catchError(
-      (Object error) {
-        debugPrint('Applying synced documents failed: $error');
+      (Object error, StackTrace stack) {
+        Diag.error('sync', 'Applying synced documents failed', error: error, stack: stack);
       },
     );
     _applyQueue = next;
@@ -339,8 +339,8 @@ class SyncEngine {
       );
     } on SyncException catch (error) {
       await _onFailure(error);
-    } on Object catch (error) {
-      debugPrint('Sync failed: $error');
+    } on Object catch (error, stack) {
+      Diag.error('sync', 'Sync failed', error: error, stack: stack);
       await _onFailure(
         const SyncException(
           SyncErrorKind.other,
@@ -468,9 +468,9 @@ class SyncEngine {
       }
       await store.purgeLocalDeleted(cutoff);
       await store.advanceCursor(SyncStore.purgeKey, now);
-    } on SyncException catch (error) {
+    } on SyncException catch (error, stack) {
       // Tidying up is not worth failing a sync over; it runs again later.
-      debugPrint('Purge skipped: $error');
+      Diag.warn('sync', 'Purge skipped', error: error, stack: stack);
     }
   }
 
@@ -529,6 +529,14 @@ class SyncEngine {
   // ---------------------------------------------------------------------
 
   void _setInfo(SyncStatusInfo info) {
+    if (info.phase != _info.phase) {
+      final String? why = info.message;
+      Diag.info(
+        'sync',
+        'Status ${_info.phase.name} -> ${info.phase.name} '
+            '(${info.pending} pending)${why == null ? '' : ': $why'}',
+      );
+    }
     _info = info;
     if (!_statusController.isClosed) {
       _statusController.add(info);

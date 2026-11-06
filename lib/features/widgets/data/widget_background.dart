@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:home_widget/home_widget.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../alerts/domain/alert_settings.dart';
 import '../../pantry/data/database/app_database.dart';
 import '../../pantry/data/database/open_database.dart';
@@ -68,6 +69,8 @@ Future<void> widgetBackgroundCallback(Uri? uri) async {
   if (id == null || id.isEmpty) {
     return;
   }
+  await Diag.init();
+  Diag.info('widgets', 'Shopping widget row tapped');
   final AppDatabase db = openAppDatabase();
   try {
     final DriftPantryRepository pantry = DriftPantryRepository(db);
@@ -81,8 +84,8 @@ Future<void> widgetBackgroundCallback(Uri? uri) async {
       }
     }
     await refreshWidgetsFromDatabase(db);
-  } on Object catch (error) {
-    debugPrint('Widget tap failed: $error');
+  } on Object catch (error, stack) {
+    Diag.error('widgets', 'Widget tap failed', error: error, stack: stack);
   } finally {
     await db.close();
   }
@@ -92,7 +95,7 @@ Future<void> widgetBackgroundCallback(Uri? uri) async {
 Future<void> registerWidgetBackgroundCallback() async {
   try {
     await HomeWidget.registerInteractivityCallback(widgetBackgroundCallback);
-  } on Object catch (error) {
-    debugPrint('Could not register the widget callback: $error');
+  } on Object catch (error, stack) {
+    Diag.error('widgets', 'Could not register the widget callback', error: error, stack: stack);
   }
 }
