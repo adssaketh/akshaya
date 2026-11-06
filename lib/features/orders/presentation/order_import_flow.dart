@@ -12,6 +12,9 @@ import '../../../core/diagnostics/diag.dart';
 import '../../ai/domain/ai_failures.dart';
 import '../../ai/domain/ai_gate.dart';
 import '../../ai/presentation/ai_notice_dialog.dart';
+import '../../ai/presentation/providers.dart';
+import '../../commands/presentation/providers.dart';
+import '../../pantry/presentation/providers.dart';
 import '../domain/order_import_service.dart';
 import 'order_review_screen.dart';
 import 'providers.dart';
@@ -29,15 +32,8 @@ Future<void> openOrderImport(
   if (paths.isEmpty) {
     return;
   }
-  final OrderImportService? service = ref.read(orderImportServiceProvider);
   final NavigatorState navigator = Navigator.of(context);
   final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-  if (service == null) {
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Akshaya is still starting. Try again.')),
-    );
-    return;
-  }
 
   unawaited(
     showDialog<void>(
@@ -46,6 +42,29 @@ Future<void> openOrderImport(
       builder: (BuildContext dialogContext) => const _ReadingDialog(),
     ),
   );
+  // When the app was started by the share, the dictionary, the pantry names
+  // and the AI prompts may still be loading. Wait for them (briefly) so the
+  // first share after a cold start works.
+  try {
+    await Future.wait<Object?>(<Future<Object?>>[
+      ref.read(groceryDictionaryProvider.future),
+      ref.read(itemsStreamProvider.future),
+      ref.read(orderPromptProvider.future),
+      ref.read(parsePromptProvider.future),
+    ]).timeout(const Duration(seconds: 15));
+  } on Object catch (error) {
+    Diag.warn('orders', 'App data was slow to load', error: error);
+  }
+  final OrderImportService? service = ref.read(orderImportServiceProvider);
+  if (service == null) {
+    if (navigator.mounted) {
+      navigator.pop();
+    }
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Akshaya is still starting. Try again.')),
+    );
+    return;
+  }
   OrderScan scan;
   String? aiNote;
   try {
