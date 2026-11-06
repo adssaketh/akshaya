@@ -46,12 +46,13 @@ final class MemoryDiagSink implements DiagSink {
 /// file. Each append is one small synchronous write, so lines do not mix.
 final class FileDiagSink implements DiagSink {
   FileDiagSink({
-    required Future<Directory> Function() directory,
+    required this.directory,
     this.maxBytes = 256 * 1024,
     this.fileName = 'diagnostics.log',
-  }) : _directory = directory;
+  });
 
-  final Future<Directory> Function() _directory;
+  /// Finds the folder the log lives in.
+  final Future<Directory> Function() directory;
   final int maxBytes;
   final String fileName;
 
@@ -67,7 +68,7 @@ final class FileDiagSink implements DiagSink {
 
   Future<void> _open() async {
     try {
-      final Directory dir = await _directory();
+      final Directory dir = await directory();
       await dir.create(recursive: true);
       final File file = File('${dir.path}${Platform.pathSeparator}$fileName');
       _size = await file.exists() ? await file.length() : 0;
