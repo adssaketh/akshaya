@@ -1230,7 +1230,14 @@ Widget _notification(
               color: colors.primary,
             ),
             _gapW,
-            Text('Akshaya Patra', style: context.akText.labelMedium),
+            Flexible(
+              child: Text(
+                'Akshaya Patra',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.akText.labelMedium,
+              ),
+            ),
           ],
         ),
         _gapSm,
@@ -1451,7 +1458,15 @@ Widget _mealPlan(BuildContext context) {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
           Icon(Icons.chevron_left_rounded, color: colors.textSecondary),
-          Text('This week', style: context.akText.titleMedium),
+          Flexible(
+            child: Text(
+              'This week',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: context.akText.titleMedium,
+            ),
+          ),
           Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
         ],
       ),
@@ -1581,7 +1596,15 @@ Widget _insights(BuildContext context) {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
           Icon(Icons.chevron_left_rounded, color: colors.textSecondary),
-          Text('November', style: context.akText.titleMedium),
+          Flexible(
+            child: Text(
+              'November',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: context.akText.titleMedium,
+            ),
+          ),
           Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
         ],
       ),

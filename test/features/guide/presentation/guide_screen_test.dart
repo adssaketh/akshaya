@@ -156,6 +156,7 @@ void main() {
             tester.view.devicePixelRatio = 1;
             addTearDown(tester.view.reset);
 
+            final List<String> failures = <String>[];
             for (final GuideTopic topic in kGuideTopics) {
               await tester.pumpWidget(
                 host(
@@ -165,12 +166,13 @@ void main() {
                 ),
               );
               await tester.pump();
-              expect(
-                tester.takeException(),
-                isNull,
-                reason: 'topic ${topic.id}',
-              );
+              final Object? error = tester.takeException();
+              if (error != null) {
+                failures.add('${topic.id}: $error');
+              }
             }
+            // One run lists every page that overflows, not just the first.
+            expect(failures, isEmpty);
           },
         );
       }

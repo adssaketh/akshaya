@@ -857,11 +857,11 @@ Version rule: 1.0.0 was the first signed build. Every change or patch bumps the 
 #### What changed
 - **Long-press shortcut icons were blank** (Voice add, Scan barcode, Shopping list). The icons are looked up by name at run time (`quick_actions`), so release builds treated them as unused and stripped them. `android/app/src/main/res/raw/keep.xml` now keeps the three `ic_shortcut_*` drawables.
 - **APK size.** The workflow built a *debug* APK for all three CPU types (arm64, armv7, x86_64) with the slow, unoptimised debug engine, which is why it was far larger than a store app. Both the debug and the signed release builds now use `--target-platform android-arm64` (every phone from about 2017 on). Expect the debug APK to drop by roughly two thirds. The signed release APK (`akshayapatra-release.apk`) is the small one to install day to day: it is optimised and has unused code and resources removed.
-- Version 1.0.4+5. Follow-up 1.0.5+6 fixes two guide tests CI caught: the scan-barcode picture overflowed by 44 px at 200% text (fixed-height frame, now a minimum height with padding) and the "Read next" test now scrolls to the chip.
+- Version 1.0.4+5. Follow-ups 1.0.5 and 1.0.6 fix guide tests CI caught (1.0.6: the alert, meal-plan and insights pictures had a header row that overflowed at 200% text; the all-pages test now lists every failing page in one run). 1.0.5: the scan-barcode picture overflowed by 44 px at 200% text (fixed-height frame, now a minimum height with padding) and the "Read next" test now scrolls to the chip.
 
 #### Files
 ```
-pubspec.yaml                                     1.0.5+6
+pubspec.yaml                                     1.0.6+7
 android/app/src/main/res/raw/keep.xml            keeps the shortcut icons in release builds
 .github/workflows/android.yml                    --target-platform android-arm64 for debug and release
 ```
