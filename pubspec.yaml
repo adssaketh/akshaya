@@ -46,9 +46,10 @@ dependencies:
   speech_to_text: ^7.0.0
   record: ^6.0.0
   # Diagnostics: where the log file lives, and which build / phone it came from.
+  # Wide ranges: share_plus 13 needs win32 6, so the older majors do not resolve.
   path_provider: ^2.1.5
-  package_info_plus: ^8.3.0
-  device_info_plus: ^11.5.0
+  package_info_plus: ">=8.3.0 <20.0.0"
+  device_info_plus: ">=11.5.0 <20.0.0"
 
 dev_dependencies:
   flutter_test:
