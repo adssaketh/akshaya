@@ -1,8 +1,11 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 import '../motion/app_motion.dart';
 import '../motion/pressable.dart';
 import '../theme/design_context.dart';
+import '../tokens/akshaya_colors.dart';
 import '../tokens/layout_tokens.dart';
 
 /// One tab of [AkshayaNavBar].
@@ -19,6 +22,22 @@ class AkshayaNavDestination {
   final String label;
 }
 
+/// Frosted-glass look for [AkshayaNavBar]: the bar colour at [opacity] over a
+/// blurred copy of the page, with an optional thin light rim.
+@immutable
+class NavBarGlass {
+  const NavBarGlass({
+    required this.opacity,
+    required this.blurSigma,
+    required this.edge,
+  });
+
+  /// 0..1, how much of the bar colour stays opaque.
+  final double opacity;
+  final double blurSigma;
+  final bool edge;
+}
+
 /// The bottom navigation bar: a floating, fully rounded pill with a soft
 /// shadow, a rounded indicator that slides (with a small overshoot) behind the
 /// selected icon, and a bold label under the selected tab. It arrives with a
@@ -29,11 +48,15 @@ class AkshayaNavBar extends StatelessWidget {
     required this.destinations,
     required this.selectedIndex,
     required this.onSelected,
+    this.glass,
   });
 
   final List<AkshayaNavDestination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+
+  /// Null for the solid bar.
+  final NavBarGlass? glass;
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +81,7 @@ class AkshayaNavBar extends StatelessWidget {
               selectedIndex: selectedIndex,
               onSelected: onSelected,
               animate: animate,
+              glass: glass,
             ),
           ),
         ),
@@ -90,12 +114,14 @@ class _Pill extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelected,
     required this.animate,
+    required this.glass,
   });
 
   final List<AkshayaNavDestination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   final bool animate;
+  final NavBarGlass? glass;
 
   @override
   Widget build(BuildContext context) {
@@ -105,23 +131,70 @@ class _Pill extends StatelessWidget {
           alpha: dark ? AppSizes.navShadowAlphaDark : AppSizes.navShadowAlpha,
         );
 
+    final NavBarGlass? g = glass;
+    final BorderRadius radius = BorderRadius.circular(AppRadius.navBar);
+    final Widget content = _content(context, colors);
+
     // At least navBarHeight tall; grows when the system font is enlarged.
-    return ConstrainedBox(
+    final Widget bar = ConstrainedBox(
       constraints: const BoxConstraints(minHeight: AppSizes.navBarHeight),
-      child: DecoratedBox(
-        // Tinted bar (not the page colour) so it stands out in light and dark.
-        decoration: BoxDecoration(
-          color: colors.surfaceAlt,
-          borderRadius: BorderRadius.circular(AppRadius.navBar),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: shadow,
-              blurRadius: AppSizes.navShadowBlur,
-              offset: const Offset(0, AppSizes.navShadowOffset),
+      child: g == null
+          ? DecoratedBox(
+              // Tinted bar (not the page colour) so it stands out.
+              decoration: BoxDecoration(
+                color: colors.surfaceAlt,
+                borderRadius: radius,
+                boxShadow: _shadow(shadow),
+              ),
+              child: content,
+            )
+          : DecoratedBox(
+              // The shadow sits outside the clip so the blur is not cut off.
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                boxShadow: _shadow(shadow),
+              ),
+              child: ClipRRect(
+                borderRadius: radius,
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: g.blurSigma,
+                    sigmaY: g.blurSigma,
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: colors.surfaceAlt.withValues(alpha: g.opacity),
+                      borderRadius: radius,
+                      border: g.edge
+                          ? Border.all(
+                              width: AppSizes.navGlassEdgeWidth,
+                              color: colors.surface.withValues(
+                                alpha: dark
+                                    ? AppSizes.navGlassEdgeAlphaDark
+                                    : AppSizes.navGlassEdgeAlpha,
+                              ),
+                            )
+                          : null,
+                    ),
+                    child: content,
+                  ),
+                ),
+              ),
             ),
-          ],
+    );
+    return bar;
+  }
+
+  static List<BoxShadow> _shadow(Color color) => <BoxShadow>[
+        BoxShadow(
+          color: color,
+          blurRadius: AppSizes.navShadowBlur,
+          offset: const Offset(0, AppSizes.navShadowOffset),
         ),
-        child: Center(
+      ];
+
+  Widget _content(BuildContext context, AkshayaColors colors) {
+    return Center(
           heightFactor: 1,
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -169,8 +242,6 @@ class _Pill extends StatelessWidget {
               },
             ),
           ),
-        ),
-      ),
     );
   }
 }

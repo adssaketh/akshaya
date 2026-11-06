@@ -790,7 +790,7 @@ Schema v10 adds one nullable column, `consumption_logs.waste_reason`, which sync
 No schema, sync or rules change.
 
 **What changed**
-- **Bottom navigation** is now `AkshayaNavBar`, the same look as Ping's: a floating, fully rounded pill (radius 32) on a soft shadow, an indicator pill that slides with a small overshoot behind the selected icon, bold label under the selected tab, slide-up entrance, max width 576 on tablets. Respects "Remove animations".
+- **Bottom navigation** is now `AkshayaNavBar`, the same look as Ping's: a floating, fully rounded 76 dp pill on a soft shadow, tonal `surfaceAlt` colour with a solid `primary` indicator; tab pages run behind it (`extendBody`, `navClearance`/`navBarInset`), an indicator pill that slides with a small overshoot behind the selected icon, bold label under the selected tab, slide-up entrance, max width 576 on tablets. Respects "Remove animations".
 - **One header action style:** `HeaderAction` (48 dp, 24 dp icon, one colour) used by Voice, Guide, Count mode, What should I buy?, Meal plan.
 - **One toolbar under the header:** `ToolbarRow` (same side margin and gap), `AkshayaSearchField` (pill), `AkshayaSegmented` (Category/Location, Ideas/Saved), `ChipRow` (filter chips, Shopping lists + "New list" + list menu).
 - **One FAB pattern:** `AkshayaFabCluster`: one extended primary action, secondary actions as small tonal buttons above it. Used on Pantry (Add item + scan + cooked food), Shopping, Categories, Travel.
@@ -810,9 +810,16 @@ No schema, sync or rules change.
 
 **Known issues**
 - Written without a local Flutter SDK; CI is the compiler. If red, paste the log.
-- The bar is solid (Ping also has an optional glass style); not ported.
+- Glass style added as a Settings option (see below).
 - The tonal mini-FAB colours come from the theme, so they follow your colour choice in Settings.
 - Not touched: AppBar screens (item detail, insights, planner) keep their app bars; they pick up the theme-level button, icon and menu changes.
+
+### Bar style (Settings > General)
+No schema change (local `app_settings` keys `app.bar_style`, `app.glass_alpha`, `app.glass_blur`, `app.glass_edge`).
+- **Solid** (default) or **Glass**. Glass shows: Glass transparency slider (Frosted to Clear, shown as %; stored as opacity 20-95, default 62, so slider default is 38%), Glass blur Soft/Medium/Strong (10/18/28 px, sigma = px/2; default Strong), Glass edge switch (thin light rim, default on).
+- Implemented in `AkshayaNavBar(glass: NavBarGlass(...))` with `BackdropFilter`; wired in `app_shell.dart`. Tokens `navGlassEdge*`.
+- Tests: `app_settings_test.dart` (bar style group), `nav_bar_test.dart` (glass has BackdropFilter and taps; solid has none).
+- Device check: Settings > Bar style > Glass; scroll a list behind the bar: it should blur through; slider, blur chips and edge switch change the bar live; switch back to Solid.
 
 ## Next: Phase 14 (v2 roadmap), only when you say so.
 

@@ -155,6 +155,10 @@ class GeneralSection extends ConsumerWidget {
           onChanged: (bool v) =>
               _write(ref, AppSettingKeys.wallpaperTheme, '$v'),
         ),
+        _BarStyleBlock(
+          settings: settings,
+          onWrite: (String k, String v) => _write(ref, k, v),
+        ),
         SwitchListTile(
           secondary: const Icon(Icons.fingerprint_rounded),
           title: const Text('App lock'),
@@ -173,6 +177,127 @@ class GeneralSection extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// "Bar style": solid or glass navigation bar, and the glass controls.
+class _BarStyleBlock extends StatelessWidget {
+  const _BarStyleBlock({required this.settings, required this.onWrite});
+
+  final AppSettings settings;
+  final Future<void> Function(String key, String value) onWrite;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = context.akText;
+    final AkshayaColors colors = context.akColors;
+    final bool glass = settings.barStyle == BarStyle.glass;
+    final int transparency = 100 - settings.glassAlpha;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('Bar style', style: text.titleSmall),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'How the bottom navigation bar looks',
+            style: text.bodySmall?.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            children: <Widget>[
+              for (final BarStyle s in BarStyle.values)
+                ChoiceChip(
+                  label: Text(s.label),
+                  selected: settings.barStyle == s,
+                  onSelected: (_) => onWrite(AppSettingKeys.barStyle, s.key),
+                ),
+            ],
+          ),
+          if (glass) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            Material(
+              color: colors.surface,
+              borderRadius: AppRadius.cardBorder,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            'Glass transparency',
+                            style: text.titleSmall,
+                          ),
+                        ),
+                        Text('$transparency%', style: text.labelLarge),
+                      ],
+                    ),
+                    Slider(
+                      value: transparency.toDouble(),
+                      min: (100 - kGlassAlphaMax).toDouble(),
+                      max: (100 - kGlassAlphaMin).toDouble(),
+                      semanticFormatterCallback: (double v) =>
+                          '${v.round()} percent transparent',
+                      onChanged: (double v) => onWrite(
+                        AppSettingKeys.glassAlpha,
+                        '${100 - v.round()}',
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        Text(
+                          'Frosted',
+                          style: text.bodySmall
+                              ?.copyWith(color: colors.textSecondary),
+                        ),
+                        Text(
+                          'Clear',
+                          style: text.bodySmall
+                              ?.copyWith(color: colors.textSecondary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text('Glass blur', style: text.titleSmall),
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      children: <Widget>[
+                        for (final GlassBlur b in GlassBlur.values)
+                          ChoiceChip(
+                            label: Text(b.label),
+                            selected: settings.glassBlur == b,
+                            onSelected: (_) =>
+                                onWrite(AppSettingKeys.glassBlur, b.key),
+                          ),
+                      ],
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Glass edge'),
+                      subtitle: const Text('A thin light rim around the bar'),
+                      value: settings.glassEdge,
+                      onChanged: (bool v) =>
+                          onWrite(AppSettingKeys.glassEdge, '$v'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

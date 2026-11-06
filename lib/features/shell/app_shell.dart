@@ -16,6 +16,8 @@ import '../pantry/presentation/pantry_screen.dart';
 import '../planner/presentation/meal_planner_screen.dart';
 import '../pantry/presentation/providers.dart';
 import '../recipes/presentation/recipes_screen.dart';
+import '../settings/domain/app_settings.dart';
+import '../settings/presentation/providers.dart';
 import '../settings/settings_screen.dart';
 import '../travel/presentation/travel_screen.dart';
 import '../widgets/domain/widget_gateway.dart';
@@ -36,6 +38,18 @@ class _AppShellState extends ConsumerState<AppShell> {
   static const int _shoppingTab = 2;
   static const int _recipesTab = 3;
   int _index = 0;
+
+  /// The glass look for the nav bar, or null when the bar is solid.
+  static NavBarGlass? _glass(AppSettings s) {
+    if (s.barStyle != BarStyle.glass) {
+      return null;
+    }
+    return NavBarGlass(
+      opacity: s.glassAlpha / 100,
+      blurSigma: s.glassBlur.sigma,
+      edge: s.glassEdge,
+    );
+  }
 
   @override
   void initState() {
@@ -177,6 +191,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         ],
       ),
       bottomNavigationBar: AkshayaNavBar(
+        glass: _glass(ref.watch(appSettingsProvider)),
         selectedIndex: _index,
         onSelected: (int i) => setState(() => _index = i),
         destinations: const <AkshayaNavDestination>[

@@ -34,6 +34,34 @@ Widget _host({required int index, required ValueChanged<int> onSelected}) {
 }
 
 void main() {
+  testWidgets('glass bar blurs the page behind it and stays tappable',
+      (tester) async {
+    int? tapped;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AkshayaTheme.light(),
+        home: Scaffold(
+          bottomNavigationBar: AkshayaNavBar(
+            destinations: _tabs,
+            selectedIndex: 0,
+            onSelected: (int i) => tapped = i,
+            glass: const NavBarGlass(opacity: 0.5, blurSigma: 9, edge: true),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(BackdropFilter), findsOneWidget);
+    await tester.tap(find.text('Pantry'));
+    expect(tapped, 1);
+  });
+
+  testWidgets('solid bar has no backdrop filter', (tester) async {
+    await tester.pumpWidget(_host(index: 0, onSelected: (_) {}));
+    await tester.pumpAndSettle();
+    expect(find.byType(BackdropFilter), findsNothing);
+  });
+
   testWidgets('with extendBody the page runs behind the bar and reports the '
       'clearance', (tester) async {
     double? clearance;

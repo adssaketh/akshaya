@@ -50,6 +50,49 @@ void main() {
     });
   });
 
+  group('bar style', () {
+    test('defaults to a solid bar with strong glass', () {
+      final AppSettings s = AppSettings.fromMap(const <String, String>{});
+      expect(s.barStyle, BarStyle.solid);
+      expect(s.glassAlpha, kGlassAlphaDefault);
+      expect(s.glassBlur, GlassBlur.strong);
+      expect(s.glassEdge, isTrue);
+    });
+
+    test('reads stored values and clamps the opacity', () {
+      final AppSettings s = AppSettings.fromMap(const <String, String>{
+        AppSettingKeys.barStyle: 'glass',
+        AppSettingKeys.glassAlpha: '1',
+        AppSettingKeys.glassBlur: 'soft',
+        AppSettingKeys.glassEdge: 'false',
+      });
+      expect(s.barStyle, BarStyle.glass);
+      expect(s.glassAlpha, kGlassAlphaMin);
+      expect(s.glassBlur, GlassBlur.soft);
+      expect(s.glassEdge, isFalse);
+      expect(
+        AppSettings.fromMap(const <String, String>{
+          AppSettingKeys.glassAlpha: '500',
+        }).glassAlpha,
+        kGlassAlphaMax,
+      );
+    });
+
+    test('bad values fall back and equality includes the new fields', () {
+      final AppSettings bad = AppSettings.fromMap(const <String, String>{
+        AppSettingKeys.barStyle: 'jelly',
+        AppSettingKeys.glassAlpha: 'x',
+        AppSettingKeys.glassBlur: 'huge',
+      });
+      expect(bad, const AppSettings());
+      expect(
+        const AppSettings(barStyle: BarStyle.glass),
+        isNot(const AppSettings()),
+      );
+      expect(GlassBlur.strong.sigma, 14);
+    });
+  });
+
   group('currency', () {
     test('formatMoney follows the chosen symbol', () {
       expect(formatMoney(120), startsWith('₹'));

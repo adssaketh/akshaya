@@ -70,6 +70,9 @@ abstract final class AppSizes {
   static const double navShadowOffset = 6;
   static const double navShadowAlpha = 0.22;
   static const double navShadowAlphaDark = 0.55;
+  static const double navGlassEdgeWidth = 1;
+  static const double navGlassEdgeAlpha = 0.5;
+  static const double navGlassEdgeAlphaDark = 0.2;
   static const double fab = 56;
 
   /// Status chips ellipsise beyond this so large font scales never overflow.
