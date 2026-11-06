@@ -70,6 +70,16 @@ abstract final class AppSizes {
   static const double navShadowOffset = 6;
   static const double navShadowAlpha = 0.22;
   static const double navShadowAlphaDark = 0.55;
+  static const double edgeFadeShort = 12;
+  static const double edgeFadeMedium = 24;
+  static const double edgeFadeTall = 44;
+  static const double edgeBlurLight = 3;
+  static const double edgeBlurMedium = 5;
+  static const double edgeBlurStrong = 8;
+  static const int edgeBlurBands = 3;
+  static const double edgeSolidHideFactor = 0.45;
+  static const double edgeGlassFullFactor = 0.8;
+  static const double edgeGlassExtraFactor = 0.6;
   static const double navGlassEdgeWidth = 1;
   static const double navGlassEdgeAlpha = 0.5;
   static const double navGlassEdgeAlphaDark = 0.2;

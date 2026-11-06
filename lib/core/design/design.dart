@@ -13,6 +13,7 @@ export 'motion/reveal.dart';
 export 'theme/akshaya_theme.dart';
 export 'theme/design_context.dart';
 export 'tokens/akshaya_colors.dart';
+export 'widgets/scroll_edge_effect.dart';
 export 'tokens/layout_tokens.dart';
 export 'tokens/status_kind.dart';
 export 'typography/akshaya_text.dart';

@@ -93,6 +93,33 @@ void main() {
     });
   });
 
+  group('scroll edge effect', () {
+    test('defaults to fade, medium blur and medium height', () {
+      final AppSettings s = AppSettings.fromMap(const <String, String>{});
+      expect(s.edgeEffect, EdgeEffect.fade);
+      expect(s.edgeBlur, EdgeBlur.medium);
+      expect(s.edgeFade, EdgeFade.medium);
+    });
+
+    test('reads stored values, ignores bad ones, equality includes them', () {
+      final AppSettings s = AppSettings.fromMap(const <String, String>{
+        AppSettingKeys.edgeEffect: 'blur',
+        AppSettingKeys.edgeBlur: 'strong',
+        AppSettingKeys.edgeFade: 'tall',
+      });
+      expect(s.edgeEffect, EdgeEffect.blur);
+      expect(s.edgeBlur, EdgeBlur.strong);
+      expect(s.edgeFade, EdgeFade.tall);
+      expect(
+        AppSettings.fromMap(const <String, String>{
+          AppSettingKeys.edgeEffect: 'sparkle',
+        }).edgeEffect,
+        EdgeEffect.fade,
+      );
+      expect(s, isNot(const AppSettings()));
+    });
+  });
+
   group('currency', () {
     test('formatMoney follows the chosen symbol', () {
       expect(formatMoney(120), startsWith('₹'));

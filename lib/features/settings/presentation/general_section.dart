@@ -159,6 +159,10 @@ class GeneralSection extends ConsumerWidget {
           settings: settings,
           onWrite: (String k, String v) => _write(ref, k, v),
         ),
+        _EdgeEffectBlock(
+          settings: settings,
+          onWrite: (String k, String v) => _write(ref, k, v),
+        ),
         SwitchListTile(
           secondary: const Icon(Icons.fingerprint_rounded),
           title: const Text('App lock'),
@@ -294,6 +298,87 @@ class _BarStyleBlock extends StatelessWidget {
                   ],
                 ),
               ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// "Scroll edge effect": what happens to the page under the bottom bar.
+class _EdgeEffectBlock extends StatelessWidget {
+  const _EdgeEffectBlock({required this.settings, required this.onWrite});
+
+  final AppSettings settings;
+  final Future<void> Function(String key, String value) onWrite;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = context.akText;
+    final AkshayaColors colors = context.akColors;
+    final TextStyle? hint =
+        text.bodySmall?.copyWith(color: colors.textSecondary);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('Scroll edge effect', style: text.titleSmall),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'What happens to the page as it slides under the bottom bar. '
+            'Fade is clean and light; Fade + blur adds a soft blur.',
+            style: hint,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            children: <Widget>[
+              for (final EdgeEffect e in EdgeEffect.values)
+                ChoiceChip(
+                  label: Text(e.label),
+                  selected: settings.edgeEffect == e,
+                  onSelected: (_) => onWrite(AppSettingKeys.edgeEffect, e.key),
+                ),
+            ],
+          ),
+          if (settings.edgeEffect == EdgeEffect.blur) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            Text('Blur strength', style: text.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              children: <Widget>[
+                for (final EdgeBlur b in EdgeBlur.values)
+                  ChoiceChip(
+                    label: Text(b.label),
+                    selected: settings.edgeBlur == b,
+                    onSelected: (_) => onWrite(AppSettingKeys.edgeBlur, b.key),
+                  ),
+              ],
+            ),
+          ],
+          if (settings.edgeEffect != EdgeEffect.off) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            Text('Fade height', style: text.titleSmall),
+            const SizedBox(height: AppSpacing.xs),
+            Text('How far above the bar the page starts to fade.', style: hint),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              children: <Widget>[
+                for (final EdgeFade f in EdgeFade.values)
+                  ChoiceChip(
+                    label: Text(f.label),
+                    selected: settings.edgeFade == f,
+                    onSelected: (_) => onWrite(AppSettingKeys.edgeFade, f.key),
+                  ),
+              ],
             ),
           ],
         ],

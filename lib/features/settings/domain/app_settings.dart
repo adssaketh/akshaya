@@ -1,3 +1,5 @@
+import 'package:akshaya/core/design/design.dart';
+
 import '../../pantry/domain/unit.dart';
 
 /// Keys of the general settings (stored per phone, never synced).
@@ -12,6 +14,9 @@ abstract final class AppSettingKeys {
   static const String glassAlpha = 'app.glass_alpha';
   static const String glassBlur = 'app.glass_blur';
   static const String glassEdge = 'app.glass_edge';
+  static const String edgeEffect = 'app.edge_effect';
+  static const String edgeBlur = 'app.edge_blur';
+  static const String edgeFade = 'app.edge_fade';
 }
 
 /// Light, dark, or follow the phone.
@@ -81,6 +86,72 @@ enum GlassBlur {
   }
 }
 
+/// What happens to the page as it slides under the bottom bar.
+enum EdgeEffect {
+  off('off', 'Off', ScrollEdgeKind.off),
+  fade('fade', 'Fade', ScrollEdgeKind.fade),
+  blur('blur', 'Fade + blur', ScrollEdgeKind.blur);
+
+  const EdgeEffect(this.key, this.label, this.kind);
+
+  final String key;
+  final String label;
+  final ScrollEdgeKind kind;
+
+  static EdgeEffect fromKey(String? text) {
+    for (final EdgeEffect e in EdgeEffect.values) {
+      if (e.key == text) {
+        return e;
+      }
+    }
+    return EdgeEffect.fade;
+  }
+}
+
+/// How strongly the page blurs in the fade zone (Fade + blur only).
+enum EdgeBlur {
+  light('light', 'Light', AppSizes.edgeBlurLight),
+  medium('medium', 'Medium', AppSizes.edgeBlurMedium),
+  strong('strong', 'Strong', AppSizes.edgeBlurStrong);
+
+  const EdgeBlur(this.key, this.label, this.sigma);
+
+  final String key;
+  final String label;
+  final double sigma;
+
+  static EdgeBlur fromKey(String? text) {
+    for (final EdgeBlur e in EdgeBlur.values) {
+      if (e.key == text) {
+        return e;
+      }
+    }
+    return EdgeBlur.medium;
+  }
+}
+
+/// How tall the fade zone above the bar is.
+enum EdgeFade {
+  short('short', 'Short', AppSizes.edgeFadeShort),
+  medium('medium', 'Medium', AppSizes.edgeFadeMedium),
+  tall('tall', 'Tall', AppSizes.edgeFadeTall);
+
+  const EdgeFade(this.key, this.label, this.extra);
+
+  final String key;
+  final String label;
+  final double extra;
+
+  static EdgeFade fromKey(String? text) {
+    for (final EdgeFade e in EdgeFade.values) {
+      if (e.key == text) {
+        return e;
+      }
+    }
+    return EdgeFade.medium;
+  }
+}
+
 /// Glass opacity (percent of the bar colour that stays opaque) is kept
 /// between these limits, so the bar is never invisible or fully solid.
 const int kGlassAlphaMin = 20;
@@ -103,6 +174,9 @@ final class AppSettings {
     this.glassAlpha = kGlassAlphaDefault,
     this.glassBlur = GlassBlur.strong,
     this.glassEdge = true,
+    this.edgeEffect = EdgeEffect.fade,
+    this.edgeBlur = EdgeBlur.medium,
+    this.edgeFade = EdgeFade.medium,
   });
 
   factory AppSettings.fromMap(Map<String, String> values) {
@@ -120,6 +194,9 @@ final class AppSettings {
           .clamp(kGlassAlphaMin, kGlassAlphaMax),
       glassBlur: GlassBlur.fromKey(values[AppSettingKeys.glassBlur]),
       glassEdge: values[AppSettingKeys.glassEdge] != 'false',
+      edgeEffect: EdgeEffect.fromKey(values[AppSettingKeys.edgeEffect]),
+      edgeBlur: EdgeBlur.fromKey(values[AppSettingKeys.edgeBlur]),
+      edgeFade: EdgeFade.fromKey(values[AppSettingKeys.edgeFade]),
     );
   }
 
@@ -148,6 +225,11 @@ final class AppSettings {
   /// Glass only: a thin light rim around the bar.
   final bool glassEdge;
 
+  /// Scroll edge effect under the bottom bar.
+  final EdgeEffect edgeEffect;
+  final EdgeBlur edgeBlur;
+  final EdgeFade edgeFade;
+
   // Value equality matters: every write to the settings table (including the
   // usage counters that sync and AI bump) rebuilds this object, and without
   // equality the whole app would rebuild each time.
@@ -163,7 +245,10 @@ final class AppSettings {
         other.barStyle == barStyle &&
         other.glassAlpha == glassAlpha &&
         other.glassBlur == glassBlur &&
-        other.glassEdge == glassEdge;
+        other.glassEdge == glassEdge &&
+        other.edgeEffect == edgeEffect &&
+        other.edgeBlur == edgeBlur &&
+        other.edgeFade == edgeFade;
   }
 
   @override
@@ -179,6 +264,9 @@ final class AppSettings {
         glassAlpha,
         glassBlur,
         glassEdge,
+        edgeEffect,
+        edgeBlur,
+        edgeFade,
       );
 
   static Unit _unitFromSymbol(String? symbol) {

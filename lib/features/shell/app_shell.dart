@@ -173,7 +173,9 @@ class _AppShellState extends ConsumerState<AppShell> {
       // The tabs run behind the floating bar, so nothing is cut off in a
       // straight line above it.
       extendBody: true,
-      body: IndexedStack(
+      body: _EdgeBody(
+        settings: ref.watch(appSettingsProvider),
+        child: IndexedStack(
         index: _index,
         children: <Widget>[
           TabPane(
@@ -189,6 +191,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           TabPane(active: _index == 3, child: const RecipesScreen()),
           TabPane(active: _index == 4, child: const SettingsScreen()),
         ],
+        ),
       ),
       bottomNavigationBar: AkshayaNavBar(
         glass: _glass(ref.watch(appSettingsProvider)),
@@ -222,6 +225,27 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Fades (or blurs) the page where it slides under the floating bar.
+class _EdgeBody extends StatelessWidget {
+  const _EdgeBody({required this.settings, required this.child});
+
+  final AppSettings settings;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ScrollEdgeEffect(
+      kind: settings.edgeEffect.kind,
+      // With extendBody the body's bottom padding is the bar's full height.
+      barHeight: MediaQuery.paddingOf(context).bottom,
+      glass: settings.barStyle == BarStyle.glass,
+      fadeExtra: settings.edgeFade.extra,
+      blurSigma: settings.edgeBlur.sigma,
+      child: child,
     );
   }
 }
