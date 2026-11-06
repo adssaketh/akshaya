@@ -34,6 +34,31 @@ Widget _host({required int index, required ValueChanged<int> onSelected}) {
 }
 
 void main() {
+  testWidgets('sits at the bottom and leaves the body its height',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AkshayaTheme.light(),
+        home: Scaffold(
+          body: const SizedBox.expand(key: Key('body')),
+          bottomNavigationBar: AkshayaNavBar(
+            destinations: _tabs,
+            selectedIndex: 0,
+            onSelected: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final double screen = tester.view.physicalSize.height /
+        tester.view.devicePixelRatio;
+    final Size bar = tester.getSize(find.byType(AkshayaNavBar));
+    expect(bar.height, lessThan(120));
+    expect(tester.getBottomLeft(find.byType(AkshayaNavBar)).dy, screen);
+    expect(tester.getSize(find.byKey(const Key('body'))).height,
+        greaterThan(screen - 140));
+  });
+
   testWidgets('shows every label and the selected icon', (tester) async {
     await tester.pumpWidget(_host(index: 1, onSelected: (_) {}));
     await tester.pumpAndSettle();

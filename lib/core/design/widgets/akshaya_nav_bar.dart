@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../motion/app_motion.dart';
+import '../motion/pressable.dart';
 import '../theme/design_context.dart';
 import '../tokens/layout_tokens.dart';
 
@@ -46,7 +47,10 @@ class AkshayaNavBar extends StatelessWidget {
           AppSpacing.md,
           AppSpacing.sm,
         ),
+        // heightFactor: 1 keeps the bar as tall as its content. A plain Center
+        // would fill all the height the Scaffold offers and squeeze the body.
         child: Center(
+          heightFactor: 1,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: AppSizes.navMaxWidth),
             child: _Pill(
@@ -178,41 +182,43 @@ class _Item extends StatelessWidget {
       selected: selected,
       label: destination.label,
       excludeSemantics: true,
-      child: InkResponse(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        radius: AppSizes.touchTarget,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppSizes.touchTarget),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs / 2),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                SizedBox(
-                  height: AppSizes.navIndicatorHeight,
-                  child: Center(
-                    child: Icon(
-                      selected ? destination.selectedIcon : destination.icon,
-                      size: AppSizes.navIcon,
-                      color: selected ? colors.primary : colors.textSecondary,
+        child: Pressable(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppSizes.touchTarget),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs / 2),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  SizedBox(
+                    height: AppSizes.navIndicatorHeight,
+                    child: Center(
+                      child: Icon(
+                        selected ? destination.selectedIcon : destination.icon,
+                        size: AppSizes.navIcon,
+                        color: selected ? colors.primary : colors.textSecondary,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xs / 2),
-                Text(
-                  destination.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: base.copyWith(
-                    color:
-                        selected ? colors.textPrimary : colors.textSecondary,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                    fontVariations: <FontVariation>[
-                      FontVariation('wght', selected ? 800 : 600),
-                    ],
+                  const SizedBox(height: AppSpacing.xs / 2),
+                  Text(
+                    destination.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: base.copyWith(
+                      color:
+                          selected ? colors.textPrimary : colors.textSecondary,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                      fontVariations: <FontVariation>[
+                        FontVariation('wght', selected ? 800 : 600),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
