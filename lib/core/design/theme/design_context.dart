@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../tokens/akshaya_colors.dart';
+import '../widgets/nav_bar_scope.dart';
 
 /// Shortcuts for reading design tokens from a [BuildContext].
 extension AkshayaThemeContext on BuildContext {
@@ -20,7 +21,14 @@ extension AkshayaThemeContext on BuildContext {
   /// (and the system gesture area). Tab screens run behind the bar, so their
   /// scrolling content adds this to its bottom padding. On screens pushed over
   /// the tabs it is only the system inset.
-  double get navClearance => MediaQuery.paddingOf(this).bottom;
+  ///
+  /// Uses the bar's measured height when the shell has measured it, because the
+  /// padding a Scaffold reports under `extendBody` is not reliable.
+  double get navClearance {
+    final double system = MediaQuery.paddingOf(this).bottom;
+    final double? covered = NavBarScope.maybeOf(this);
+    return covered == null || covered < system ? system : covered;
+  }
 
   /// Extra lift a floating button needs on a tab screen: the bar's height
   /// beyond the system inset the Scaffold already respects.
