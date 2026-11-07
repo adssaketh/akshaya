@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../motion/pop_in.dart';
 import '../theme/design_context.dart';
 import '../tokens/layout_tokens.dart';
+import 'nav_bar_scope.dart';
 
 /// A small secondary action stacked above the main FAB.
 @immutable
@@ -44,9 +45,16 @@ class AkshayaFabCluster extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.akColors;
+    // Above the floating bar: its measured height minus the system inset the
+    // Scaffold already keeps clear.
+    final double? covered = NavBarScope.maybeOf(context);
+    final double lift = covered == null
+        ? context.navBarInset
+        : (covered - MediaQuery.viewPaddingOf(context).bottom)
+            .clamp(0.0, double.infinity);
     return PopIn(
       child: Padding(
-        padding: EdgeInsets.only(bottom: context.navBarInset),
+        padding: EdgeInsets.only(bottom: lift),
         child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,

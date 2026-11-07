@@ -49,6 +49,33 @@ class _AppShellState extends ConsumerState<AppShell> {
   ];
   int _index = 0;
 
+  // The floating bar's measured size, shared with the tabs so their buttons
+  // sit above it.
+  final GlobalKey _barKey = GlobalKey();
+  final ValueNotifier<double> _barCovered = ValueNotifier<double>(0);
+
+  void _measureBar() {
+    if (!mounted) {
+      return;
+    }
+    final BuildContext? barContext = _barKey.currentContext;
+    final RenderObject? box = barContext?.findRenderObject();
+    if (barContext == null || box is! RenderBox || !box.hasSize) {
+      return;
+    }
+    final double screen = MediaQuery.sizeOf(barContext).height;
+    final double covered = screen - box.localToGlobal(Offset.zero).dy;
+    if ((covered - _barCovered.value).abs() > 0.5) {
+      _barCovered.value = covered;
+    }
+  }
+
+  @override
+  void dispose() {
+    _barCovered.dispose();
+    super.dispose();
+  }
+
   /// The glass look for the nav bar, or null when the bar is solid.
   static NavBarGlass? _glass(AppSettings s) {
     if (s.barStyle != BarStyle.glass) {
@@ -203,7 +230,10 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureBar());
+    return NavBarScope(
+      covered: _barCovered,
+      child: Scaffold(
       // The tabs run behind the floating bar, so nothing is cut off in a
       // straight line above it.
       extendBody: true,
@@ -228,6 +258,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         ),
       ),
       bottomNavigationBar: AkshayaNavBar(
+        key: _barKey,
         glass: _glass(ref.watch(appSettingsProvider)),
         selectedIndex: _index,
         onSelected: (int i) {
@@ -261,6 +292,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             label: 'Settings',
           ),
         ],
+      ),
       ),
     );
   }

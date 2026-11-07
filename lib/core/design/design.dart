@@ -24,6 +24,7 @@ export 'widgets/akshaya_search_field.dart';
 export 'widgets/checklist_card.dart';
 export 'widgets/empty_state.dart';
 export 'widgets/fab_cluster.dart';
+export 'widgets/nav_bar_scope.dart';
 export 'widgets/header_action.dart';
 export 'widgets/item_card.dart';
 export 'widgets/sarukulu_motif.dart';
