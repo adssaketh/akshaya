@@ -38,6 +38,7 @@ class _AkshayaSearchFieldState extends State<AkshayaSearchField>
     with WidgetsBindingObserver {
   late final FocusNode _node = FocusNode(debugLabel: 'AkshayaSearchField');
   bool _keyboardUp = false;
+  Timer? _retry;
 
   @override
   void initState() {
@@ -48,6 +49,7 @@ class _AkshayaSearchFieldState extends State<AkshayaSearchField>
 
   @override
   void dispose() {
+    _retry?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _node.removeListener(_onFocusChanged);
     _node.dispose();
@@ -84,18 +86,17 @@ class _AkshayaSearchFieldState extends State<AkshayaSearchField>
   /// later while the field has focus.
   void _ensureKeyboard() {
     _showKeyboard();
-    unawaited(
-      Future<void>.delayed(const Duration(milliseconds: 500), () {
-        if (!mounted || !_node.hasFocus || _keyboardVisible) {
-          return;
-        }
-        Diag.warn(
-          widget.logName,
-          'Field has focus but the keyboard is not showing; asking again',
-        );
-        _showKeyboard();
-      }),
-    );
+    _retry?.cancel();
+    _retry = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted || !_node.hasFocus || _keyboardVisible) {
+        return;
+      }
+      Diag.warn(
+        widget.logName,
+        'Field has focus but the keyboard is not showing; asking again',
+      );
+      _showKeyboard();
+    });
   }
 
   void _showKeyboard() {
