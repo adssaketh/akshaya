@@ -1194,3 +1194,6 @@ lib/core/design/widgets/akshaya_search_field.dart; lib/features/pantry/{domain/i
 - Written without a local Flutter SDK; if CI is red send the log.
 - Scan and order-import category guessing does not know the new categories (they land in Other).
 - Move is one item at a time (multi-select is a possible follow-up).
+
+#### Follow-up: search keyboard root cause (found from the screen recording)
+`_EdgeBody` gives `ScrollEdgeEffect` `barHeight = MediaQuery.paddingOf(context).bottom`, which is 0 while the keyboard is open. `ScrollEdgeEffect` then returned the bare child instead of its Stack, which re-parented the whole tab tree: every screen was rebuilt from scratch (rows replayed their entrance animation, the dimming in the video) and the focused field was destroyed, so the keyboard closed ~0.4 s after opening. Fix: `ScrollEdgeEffect` now always builds the same Stack (child at the same position); only the fade and blur overlays are conditional. Regression test in `scroll_edge_effect_test.dart` (child state survives bar height 0 and kind changes). The search-field focus code from the earlier fix stays as a harmless safeguard.

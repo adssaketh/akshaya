@@ -20,7 +20,55 @@ Widget _host(ScrollEdgeKind kind, {bool glass = false}) {
   );
 }
 
+class _Probe extends StatefulWidget {
+  const _Probe();
+
+  static int created = 0;
+
+  @override
+  State<_Probe> createState() => _ProbeState();
+}
+
+class _ProbeState extends State<_Probe> {
+  @override
+  void initState() {
+    super.initState();
+    _Probe.created++;
+  }
+
+  @override
+  Widget build(BuildContext context) => const Text('probe');
+}
+
+Widget _probeHost(ScrollEdgeKind kind, double barHeight) {
+  return MaterialApp(
+    theme: AkshayaTheme.light(),
+    home: Scaffold(
+      body: ScrollEdgeEffect(
+        kind: kind,
+        barHeight: barHeight,
+        glass: false,
+        child: const _Probe(),
+      ),
+    ),
+  );
+}
+
 void main() {
+  testWidgets(
+    'the child keeps its state when the bar height drops to 0 (keyboard open) '
+    'or the kind changes',
+    (tester) async {
+      _Probe.created = 0;
+      await tester.pumpWidget(_probeHost(ScrollEdgeKind.fade, 90));
+      await tester.pumpWidget(_probeHost(ScrollEdgeKind.fade, 0));
+      await tester.pumpWidget(_probeHost(ScrollEdgeKind.fade, 90));
+      await tester.pumpWidget(_probeHost(ScrollEdgeKind.off, 90));
+      await tester.pumpWidget(_probeHost(ScrollEdgeKind.blur, 90));
+      expect(_Probe.created, 1);
+    },
+  );
+
   testWidgets('off leaves the page untouched', (tester) async {
     await tester.pumpWidget(_host(ScrollEdgeKind.off));
     expect(find.byType(ShaderMask), findsNothing);
