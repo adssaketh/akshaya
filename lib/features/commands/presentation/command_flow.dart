@@ -2,6 +2,7 @@ import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/diagnostics/diag.dart';
 import '../../../core/ui/feedback.dart';
 import '../../shopping/domain/shopping_entities.dart';
 import '../../shopping/presentation/providers.dart';
@@ -13,53 +14,105 @@ import 'providers.dart';
 
 /// The whole voice/text command flow: ask, show the confirmation card, run the
 /// confirmed actions, then show the result with Undo.
+///
+/// Everything the flow needs after its first wait is taken here, before any
+/// wait, so it does not depend on the button it started from staying on
+/// screen: the screen under the sheet can rebuild while the sheet is open, and
+/// a flow tied to that button would then stop without a word. Every step is
+/// written to the Diagnostics log (counts only, never what was said).
 Future<void> runCommandFlow(
   BuildContext context,
   WidgetRef ref, {
   required CommandContext commandContext,
 }) async {
   final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+  final NavigatorState navigator = Navigator.of(context);
+  final ProviderContainer container = ProviderScope.containerOf(context);
+  Diag.info('cmd', 'start (${commandContext.name})');
+  try {
+    await _runFlow(navigator, messenger, container, commandContext);
+  } on Object catch (error, stack) {
+    Diag.error('cmd', 'flow failed', error: error, stack: stack);
+    if (messenger.mounted) {
+      showMessage(
+        messenger,
+        'Something went wrong with that command. Please try again.',
+      );
+    }
+  }
+}
+
+Future<void> _runFlow(
+  NavigatorState navigator,
+  ScaffoldMessengerState messenger,
+  ProviderContainer container,
+  CommandContext commandContext,
+) async {
   String initialText = '';
   while (true) {
-    if (!context.mounted) {
+    if (!navigator.mounted) {
+      Diag.warn('cmd', 'stopped: the app screen is gone');
       return;
     }
     final CommandInterpretation? interpretation = await showCommandInputSheet(
-      context,
+      navigator.context,
       commandContext: commandContext,
       initialText: initialText,
     );
-    if (interpretation == null || !context.mounted) {
+    if (interpretation == null) {
+      Diag.info('cmd', 'input closed without a command');
+      return;
+    }
+    Diag.info(
+      'cmd',
+      'understood: ${interpretation.actions.length} action(s), '
+          'source ${interpretation.source.name}',
+    );
+    if (!navigator.mounted) {
+      Diag.warn('cmd', 'stopped before the card: the app screen is gone');
       return;
     }
     final ConfirmationResult? decision =
-        await showCommandConfirmationSheet(context, interpretation);
-    if (decision == null || !context.mounted) {
+        await showCommandConfirmationSheet(navigator.context, interpretation);
+    if (decision == null) {
+      Diag.info('cmd', 'card closed without confirming');
       return;
     }
     final List<CommandAction>? actions = decision.actions;
     if (decision.editText || actions == null) {
+      Diag.info('cmd', 'card: change words');
       initialText = interpretation.recognizedText;
       continue;
     }
+    if (!navigator.mounted) {
+      Diag.warn('cmd', 'stopped before running: the app screen is gone');
+      return;
+    }
     final String listId =
-        ref.read(selectedListProvider)?.id ?? kDefaultListId;
+        container.read(selectedListProvider)?.id ?? kDefaultListId;
     final CommandRunResult run =
-        await ref.read(commandExecutorProvider).execute(
+        await container.read(commandExecutorProvider).execute(
               actions,
               listId: listId,
               learnAliases: interpretation.source == CommandSource.ai,
             );
-    if (!context.mounted) {
+    final int failed =
+        run.outcomes.where((ActionOutcome o) => !o.succeeded).length;
+    Diag.info(
+      'cmd',
+      'ran ${actions.length} action(s): ${run.outcomes.length} outcome(s), '
+          '$failed failed',
+    );
+    if (!navigator.mounted) {
       return;
     }
-    await _present(context, messenger, run);
+    await _present(navigator, messenger, run);
     return;
   }
 }
 
 Future<void> _present(
-  BuildContext context,
+  NavigatorState navigator,
   ScaffoldMessengerState messenger,
   CommandRunResult run,
 ) async {
@@ -75,7 +128,7 @@ Future<void> _present(
     return;
   }
   await showModalBottomSheet<void>(
-    context: context,
+    context: navigator.context,
     isScrollControlled: true,
     useSafeArea: true,
     builder: (BuildContext sheetContext) {
