@@ -57,9 +57,23 @@ class ScrollEdgeEffect extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (kind == ScrollEdgeKind.off || barHeight <= 0) {
-      return child;
-    }
+    // The child always sits in the same Stack at the same position, whatever
+    // the settings or bar height are. The bar height drops to 0 while the
+    // keyboard is open; returning the bare child then would re-parent the
+    // whole tab tree, which rebuilds every screen from scratch and closes the
+    // keyboard the moment it opens.
+    final bool active = kind != ScrollEdgeKind.off && barHeight > 0;
+    return Stack(
+      children: <Widget>[
+        Positioned.fill(child: child),
+        if (active) ..._overlays(context),
+      ],
+    );
+  }
+
+  /// The fade (and, for the blur kind, the blur bands) painted over the
+  /// bottom of the content.
+  List<Widget> _overlays(BuildContext context) {
     final Color page = context.akColors.background;
     final double hideAt = hide;
     final double fullAt = full;
@@ -69,59 +83,52 @@ class ScrollEdgeEffect extends StatelessWidget {
     // offscreen layer, so scrolling stays cheap on every frame.
     final double opaqueFrom =
         fullAt <= 0 ? 1.0 : ((fullAt - hideAt) / fullAt).clamp(0.0, 1.0);
-    final Widget faded = Stack(
-      children: <Widget>[
-        Positioned.fill(child: child),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: fullAt,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[page.withValues(alpha: 0), page, page],
-                  stops: <double>[0, opaqueFrom, 1],
-                ),
-              ),
+    final Widget fade = Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: fullAt,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[page.withValues(alpha: 0), page, page],
+              stops: <double>[0, opaqueFrom, 1],
             ),
           ),
         ),
-      ],
+      ),
     );
     if (kind == ScrollEdgeKind.fade) {
-      return faded;
+      return <Widget>[fade];
     }
 
     // Blur: thin bands, strongest next to the bar and easing to nothing where
     // content is fully visible. A real gradient blur is not available, so the
     // steps are made small enough (and eased) that no edge can be seen.
     final double band = fullAt / AppSizes.edgeBlurBands;
-    return Stack(
-      children: <Widget>[
-        Positioned.fill(child: faded),
-        for (int i = 0; i < AppSizes.edgeBlurBands; i++)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: band * i,
-            height: band,
-            child: IgnorePointer(
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: _sigma(i),
-                    sigmaY: _sigma(i),
-                  ),
-                  child: const SizedBox.expand(),
+    return <Widget>[
+      fade,
+      for (int i = 0; i < AppSizes.edgeBlurBands; i++)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: band * i,
+          height: band,
+          child: IgnorePointer(
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: _sigma(i),
+                  sigmaY: _sigma(i),
                 ),
+                child: const SizedBox.expand(),
               ),
             ),
           ),
-      ],
-    );
+        ),
+    ];
   }
 }
