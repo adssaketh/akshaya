@@ -257,6 +257,7 @@ class _PantryList extends ConsumerWidget {
 /// every action (including Move).
 class PantryRow extends ConsumerWidget {
   const PantryRow({
+    super.key,
     required this.stock,
     required this.icon,
     this.revealIndex,
