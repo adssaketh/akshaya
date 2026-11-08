@@ -1,21 +1,122 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../diagnostics/diag.dart';
 import '../theme/design_context.dart';
 import '../tokens/layout_tokens.dart';
 
 /// The search box used on every list screen: a full pill with a search icon
 /// and a clear button once something is typed.
-class AkshayaSearchField extends StatelessWidget {
+///
+/// It owns its focus node and, when tapped, asks the keyboard to open
+/// explicitly (and again if it has still not appeared shortly after). It also
+/// writes focus and keyboard changes to the diagnostics log, so a report from
+/// a phone shows what happened when the field was tapped.
+class AkshayaSearchField extends StatefulWidget {
   const AkshayaSearchField({
     super.key,
     required this.controller,
     required this.hint,
     required this.onChanged,
+    this.logName = 'search',
   });
 
   final TextEditingController controller;
   final String hint;
   final ValueChanged<String> onChanged;
+
+  /// Name used in the diagnostics log lines.
+  final String logName;
+
+  @override
+  State<AkshayaSearchField> createState() => _AkshayaSearchFieldState();
+}
+
+class _AkshayaSearchFieldState extends State<AkshayaSearchField>
+    with WidgetsBindingObserver {
+  late final FocusNode _node = FocusNode(debugLabel: 'AkshayaSearchField');
+  bool _keyboardUp = false;
+  Timer? _retry;
+
+  @override
+  void initState() {
+    super.initState();
+    _node.addListener(_onFocusChanged);
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    _retry?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _node.removeListener(_onFocusChanged);
+    _node.dispose();
+    super.dispose();
+  }
+
+  bool get _keyboardVisible {
+    if (!mounted) {
+      return false;
+    }
+    return View.of(context).viewInsets.bottom > 0;
+  }
+
+  void _onFocusChanged() {
+    Diag.info(
+      widget.logName,
+      _node.hasFocus ? 'Field focused' : 'Field lost focus',
+    );
+    if (_node.hasFocus) {
+      _ensureKeyboard();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    final bool up = _keyboardVisible;
+    if (up != _keyboardUp) {
+      _keyboardUp = up;
+      Diag.info(widget.logName, up ? 'Keyboard shown' : 'Keyboard hidden');
+    }
+  }
+
+  /// Opens the keyboard now, and once more if it is still not up a moment
+  /// later while the field has focus.
+  void _ensureKeyboard() {
+    _showKeyboard();
+    _retry?.cancel();
+    _retry = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted || !_node.hasFocus || _keyboardVisible) {
+        return;
+      }
+      Diag.warn(
+        widget.logName,
+        'Field has focus but the keyboard is not showing; asking again',
+      );
+      _showKeyboard();
+    });
+  }
+
+  void _showKeyboard() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _node.hasFocus) {
+        unawaited(
+          SystemChannels.textInput.invokeMethod<void>('TextInput.show'),
+        );
+      }
+    });
+  }
+
+  void _onTap() {
+    Diag.info(widget.logName, 'Field tapped');
+    if (!_node.hasFocus) {
+      _node.requestFocus();
+    } else {
+      _ensureKeyboard();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,14 +129,20 @@ class AkshayaSearchField extends StatelessWidget {
     }
 
     return ValueListenableBuilder<TextEditingValue>(
-      valueListenable: controller,
+      valueListenable: widget.controller,
       builder: (BuildContext context, TextEditingValue value, Widget? _) {
         return TextField(
-          controller: controller,
-          onChanged: onChanged,
+          controller: widget.controller,
+          focusNode: _node,
+          onChanged: widget.onChanged,
+          onTap: _onTap,
+          keyboardType: TextInputType.text,
           textInputAction: TextInputAction.search,
+          // Names are typed in romanised Telugu and Hindi as well as English,
+          // which autocorrect would "fix" into other words.
+          autocorrect: false,
           decoration: InputDecoration(
-            hintText: hint,
+            hintText: widget.hint,
             prefixIcon: const Icon(Icons.search_rounded),
             suffixIcon: value.text.isEmpty
                 ? null
@@ -43,8 +150,9 @@ class AkshayaSearchField extends StatelessWidget {
                     tooltip: 'Clear search',
                     icon: const Icon(Icons.close_rounded),
                     onPressed: () {
-                      controller.clear();
-                      onChanged('');
+                      widget.controller.clear();
+                      widget.onChanged('');
+                      _node.requestFocus();
                     },
                   ),
             border: border(colors.outline),

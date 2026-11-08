@@ -242,7 +242,7 @@ class _PantryList extends ConsumerWidget {
         return Padding(
           key: keys[index],
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: _PantryRow(
+          child: PantryRow(
             stock: stock,
             icon: categoryIcon(categories[stock.item.categoryId]?.iconKey),
             revealIndex: index,
@@ -253,8 +253,11 @@ class _PantryList extends ConsumerWidget {
   }
 }
 
-class _PantryRow extends ConsumerWidget {
-  const _PantryRow({
+/// One pantry item: tap for details, swipe to use or delete, long-press for
+/// every action (including Move).
+class PantryRow extends ConsumerWidget {
+  const PantryRow({
+    super.key,
     required this.stock,
     required this.icon,
     this.revealIndex,
