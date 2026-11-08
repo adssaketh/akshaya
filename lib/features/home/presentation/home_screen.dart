@@ -16,6 +16,8 @@ import '../../pantry/presentation/pantry_icons.dart';
 import '../../pantry/presentation/providers.dart';
 import '../../shopping/presentation/providers.dart';
 import '../../pantry/domain/entities.dart';
+import '../../produce/domain/produce.dart';
+import '../../produce/presentation/produce_screen.dart';
 import '../../rescue/presentation/food_rescue_section.dart';
 import '../../travel/presentation/travel_screen.dart';
 import '../../travel/presentation/trip_banner.dart';
@@ -191,6 +193,17 @@ class _Content extends ConsumerWidget {
                     label: 'Items in pantry',
                     icon: Icons.inventory_2_rounded,
                     onTap: () => onShowPantry(null),
+                  ),
+                ),
+                SizedBox(
+                  width: width,
+                  child: SummaryTile(
+                    kind: StatusKind.fresh,
+                    revealIndex: 5,
+                    count: produceInStockCount(stocks, categories),
+                    label: 'Vegetables & fruits',
+                    icon: Icons.eco_rounded,
+                    onTap: () => openProduce(context),
                   ),
                 ),
               ],

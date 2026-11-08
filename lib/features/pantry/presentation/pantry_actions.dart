@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/feedback.dart';
@@ -13,6 +17,7 @@ import 'add_item_screen.dart';
 import 'batch_form_screen.dart';
 import 'item_detail_screen.dart';
 import 'item_form_screen.dart';
+import 'move_actions.dart';
 import 'providers.dart';
 import 'use_stock_sheet.dart';
 
@@ -135,49 +140,150 @@ Future<void> showItemActionsSheet(
   WidgetRef ref,
   ItemStock stock,
 ) {
+  HapticFeedback.selectionClick();
+  final List<Category> categories =
+      ref.read(categoriesProvider).value ?? const <Category>[];
+  String categoryName = 'Other';
+  for (final Category c in categories) {
+    if (c.id == stock.item.categoryId) {
+      categoryName = c.name;
+    }
+  }
+
   return showModalBottomSheet<void>(
     context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
     builder: (BuildContext sheetContext) {
       void close() => Navigator.of(sheetContext).pop();
+      final double maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.85;
 
       return SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ListTile(
-              leading: const Icon(Icons.remove_circle_outline_rounded),
-              title: const Text('Use'),
-              enabled: stock.inStock.isNotEmpty,
-              onTap: () {
-                close();
-                showUseStockSheet(context, stock);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.add_rounded),
-              title: const Text('Add stock'),
-              onTap: () {
-                close();
-                openAddItem(context, existing: stock.item);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_rounded),
-              title: const Text('Edit item'),
-              onTap: () {
-                close();
-                openEditItem(context, stock.item);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline_rounded),
-              title: const Text('Delete'),
-              onTap: () {
-                close();
-                deleteItemWithUndo(context, ref, stock.item);
-              },
-            ),
-          ],
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      stock.item.name,
+                      style: sheetContext.akText.titleLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      stock.summaryLine,
+                      style: sheetContext.akText.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: <Widget>[
+                    ListTile(
+                      leading: const Icon(Icons.remove_circle_outline_rounded),
+                      title: const Text('Use'),
+                      enabled: stock.inStock.isNotEmpty,
+                      onTap: () {
+                        close();
+                        showUseStockSheet(context, stock);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.add_rounded),
+                      title: const Text('Add stock'),
+                      onTap: () {
+                        close();
+                        openAddItem(context, existing: stock.item);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.add_shopping_cart_rounded),
+                      title: const Text('Add to shopping list'),
+                      onTap: () {
+                        close();
+                        unawaited(addItemToShoppingList(context, ref, stock));
+                      },
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: const Icon(Icons.drive_file_move_rounded),
+                      title: const Text('Move to category'),
+                      subtitle: Text('Now in $categoryName'),
+                      onTap: () {
+                        close();
+                        unawaited(moveItemToCategory(context, ref, stock.item));
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.place_outlined),
+                      title: const Text('Move to place'),
+                      subtitle: Text('Now in ${stock.primaryLocation.label}'),
+                      onTap: () {
+                        close();
+                        unawaited(moveStockToPlace(context, ref, stock));
+                      },
+                    ),
+                    ListTile(
+                      leading: Icon(
+                        stock.item.isEssential
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                      ),
+                      title: Text(
+                        stock.item.isEssential
+                            ? 'Remove from essentials'
+                            : 'Mark as essential',
+                      ),
+                      onTap: () {
+                        close();
+                        unawaited(toggleEssential(context, ref, stock.item));
+                      },
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: const Icon(Icons.info_outline_rounded),
+                      title: const Text('View details'),
+                      onTap: () {
+                        close();
+                        openItemDetail(context, stock.item.id);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.edit_rounded),
+                      title: const Text('Edit item'),
+                      onTap: () {
+                        close();
+                        openEditItem(context, stock.item);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.delete_outline_rounded),
+                      title: const Text('Delete'),
+                      onTap: () {
+                        close();
+                        unawaited(deleteItemWithUndo(context, ref, stock.item));
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       );
     },

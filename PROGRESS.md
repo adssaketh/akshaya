@@ -1163,3 +1163,34 @@ test/features/orders/
 - Other shops' layouts or a new app version may not parse offline; they fall back to AI (or show an empty review with a hint).
 - Text that ML Kit misreads (for example a rupee sign read as 2) can give a wrong price; check prices on the review screen.
 - Share handling copies up to 6 pictures per share.
+
+---
+
+## Fix batch: search, categories, settings bar, long-press Move, Vegetables & fruits
+
+No schema change, no new packages, no sync change.
+
+#### What changed
+1. **Search keyboard** (`akshaya_search_field.dart`): own FocusNode, tap requests focus and asks the platform to show the keyboard, re-asks once after 500 ms; Diagnostics log "Field tapped / focused / Keyboard shown / keyboard not showing". Root cause unproven (add-item screens work on the same phone); if it still fails, send the Diagnostics log.
+2. **Category icons** (`pantry_icons.dart`): ~48 icons (eggs, dry fruits, fish, millets, beauty, hair care, baby, pets, pooja...), labelled in the picker. Old keys unchanged. **Suggested categories** (Settings > Categories > playlist-add icon): opt-in sheet of 32 ready-made categories, grouped Food / Personal care and health / Home (`suggested_categories.dart`). Not auto-added, because categories sync across the household.
+3. **Settings search** (`settings_index.dart`, `settings_screen.dart`): pinned bar with search over all blocks (title + keywords, any word order).
+4. **Sync button** next to the search: shows state (syncing, pending badge, error colour); tap = Sync now; if sync cannot run it explains why and jumps to Household & sync (`sync_now_button.dart`).
+5. **Long-press menu** (`pantry_actions.dart`, `move_actions.dart`, `item_moves.dart`): Use, Add stock, Add to shopping list, Move to category, Move to place (item default + in-stock batches), Mark/Remove essential, View details, Edit, Delete. Moves have Undo.
+6. **Vegetables & fruits** (`features/produce/`): 6th Home tile (count in stock) opening All / Vegetables / Fruits, soonest expiry first, same swipe and long-press as Pantry (`PantryRow` is now public). Recognises `cat_vegetables`/`cat_fruits` and any category using the vegetables/fruits icon.
+
+#### New / changed files
+lib/core/design/widgets/akshaya_search_field.dart; lib/features/pantry/{domain/item_moves.dart, domain/suggested_categories.dart, presentation/move_actions.dart, presentation/pantry_actions.dart, presentation/pantry_icons.dart, presentation/pantry_screen.dart}; lib/features/produce/{domain/produce.dart, presentation/produce_screen.dart}; lib/features/home/presentation/home_screen.dart; lib/features/settings/{settings_screen.dart, presentation/settings_index.dart, presentation/categories_screen.dart}; lib/features/sync/presentation/sync_now_button.dart; tests: core/design/akshaya_search_field_test, pantry/domain/suggested_categories_test, settings/settings_index_test, produce/produce_test.
+
+#### Test checklist (you)
+1. CI green; `git pull --rebase` first (CI commits pubspec.lock).
+2. Tap Pantry search, Settings search, Add-item search: keyboard appears. If not, Settings > Diagnostics > share report.
+3. Settings > Categories > icon picker shows many icons; playlist-add icon offers suggestions; adding Eggs gives an egg icon.
+4. Settings: type "alert", "csv", "currency": only matching blocks show; Clear returns all.
+5. Sync button: signed out explains and jumps to Household & sync; signed in syncs.
+6. Long-press an item: all actions; Move to category moves it and Undo restores; Move to place; Essential toggle; Add to shopping list appears in the list.
+7. Home: 6th tile "Vegetables & fruits" opens the screen; segments filter; swipe and long-press work; Move a "Spinach" into Vegetables and it shows up.
+
+#### Known issues
+- Written without a local Flutter SDK; if CI is red send the log.
+- Scan and order-import category guessing does not know the new categories (they land in Other).
+- Move is one item at a time (multi-select is a possible follow-up).
