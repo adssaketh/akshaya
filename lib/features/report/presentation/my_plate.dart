@@ -58,6 +58,13 @@ const Map<PlateKind, (double, double)> kPlateAngles =
 /// The food area as a share of the plate's radius (the rest is the rim).
 const double kWellFraction = 0.80;
 
+/// Where the ring starts, as a share of the food area. Inside it is the hole
+/// that holds the day's total.
+const double kRingInner = 0.52;
+
+/// The gap, in degrees, left between neighbouring parts of the ring.
+const double _kGapDegrees = 3;
+
 /// The radius, as a share of the food area, that gives a part a filled AREA
 /// equal to [reached]: half full looks half full.
 double fillRadius(double reached) => math.sqrt(reached.clamp(0, 1).toDouble());
@@ -68,8 +75,8 @@ PlateKind? plateKindAt(Offset point, Size size) {
   final Offset c = size.center(Offset.zero);
   final Offset d = point - c;
   final double wellRadius = size.shortestSide / 2 * kWellFraction;
-  // Not the rim, and not the hub in the middle.
-  if (d.distance > wellRadius || d.distance < size.shortestSide * 0.12) {
+  // Not the rim, and not the hole in the middle of the ring.
+  if (d.distance > wellRadius || d.distance < wellRadius * kRingInner) {
     return null;
   }
   double degrees = math.atan2(d.dy, d.dx) * 180 / math.pi;
@@ -147,37 +154,11 @@ const Map<PlateKind, Color> _baseColor = <PlateKind, Color>{
   PlateKind.fruit: PlateColors.baseFruit,
 };
 
-const Map<PlateKind, List<Color>> _tones = <PlateKind, List<Color>>{
-  PlateKind.grains: <Color>[
-    PlateColors.grain1,
-    PlateColors.grain2,
-    PlateColors.grain3,
-    PlateColors.grain4,
-  ],
-  PlateKind.protein: <Color>[
-    PlateColors.dal1,
-    PlateColors.dal2,
-    PlateColors.dal3,
-    PlateColors.baseProtein,
-  ],
-  PlateKind.vegetables: <Color>[
-    PlateColors.veg1,
-    PlateColors.veg2,
-    PlateColors.veg3,
-    PlateColors.carrot,
-  ],
-  PlateKind.fruit: <Color>[
-    PlateColors.fruit1,
-    PlateColors.fruit2,
-    PlateColors.fruit3,
-    PlateColors.fruit4,
-  ],
-};
-
-/// A picture of the day's plate: a porcelain plate with vegetables and fruit
-/// on one half, grains on a quarter and dal or eggs on a quarter, and a bowl
-/// of milk or curd beside it. Each part fills with food as more of that group
-/// is used, in step with the guide. It slides in, fills with a staggered
+/// A picture of the day's plate: a porcelain plate with a ring round it, half
+/// for vegetables and fruit, a quarter for grains and a quarter for dal or
+/// eggs, and a bowl of milk or curd beside it. Each part of the ring fills up
+/// as more of that group is used, in step with the guide, and the middle
+/// shows how full the whole plate is. It slides in, fills with a staggered
 /// motion, refills when the numbers change, and a tap on a part shows its
 /// amounts.
 class MyPlate extends StatefulWidget {
@@ -491,8 +472,8 @@ class _PlateView extends StatelessWidget {
               _PartLabel(slice: s, size: size),
           Align(
             child: SizedBox(
-              width: size * 0.24,
-              height: size * 0.24,
+              width: size * 0.38,
+              height: size * 0.38,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -553,8 +534,8 @@ class _PartLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final (double start, double sweep) = kPlateAngles[slice.kind]!;
     final double mid = (start + sweep / 2) * math.pi / 180;
-    // Out near the rim of the food area, clear of the hub.
-    final double k = kWellFraction * 0.66;
+    // On the middle of the ring.
+    final double k = kWellFraction * (1 + kRingInner) / 2;
     return Align(
       alignment: Alignment(math.cos(mid) * k, math.sin(mid) * k),
       child: ConstrainedBox(
@@ -647,23 +628,30 @@ class _PlatePainter extends CustomPainter {
         ..color = PlateColors.wellEdge,
     );
 
-    // Food, part by part.
+    // The ring: every part is a track with a bar that fills round it.
+    final double inner = well * kRingInner;
     for (final PlateKind kind in kPlateAngles.keys) {
+      final (double start, double sweep) = kPlateAngles[kind]!;
+      final double from = start + _kGapDegrees / 2;
+      final double span = sweep - _kGapDegrees;
+      final Color base = _baseColor[kind]!;
+      canvas.drawPath(
+        _ringSector(c, well, inner, from, span),
+        Paint()..color = base.withValues(alpha: 0.22),
+      );
       final double reached = kind.index < shown.length ? shown[kind.index] : 0;
-      if (reached <= 0.001) {
-        continue;
+      if (reached > 0.001) {
+        canvas.drawPath(
+          _ringSector(
+            c,
+            well,
+            inner,
+            from,
+            span * reached.clamp(0, 1).toDouble(),
+          ),
+          Paint()..color = base,
+        );
       }
-      _paintFood(canvas, c, well, kind, reached);
-    }
-
-    // Dividers between the parts.
-    final Paint divider = Paint()
-      ..color = PlateColors.divider
-      ..strokeWidth = 2.6
-      ..strokeCap = StrokeCap.round;
-    for (final (double start, double _) in kPlateAngles.values) {
-      final double a = start * math.pi / 180;
-      canvas.drawLine(c, c + Offset(math.cos(a), math.sin(a)) * well, divider);
     }
 
     // The chosen part, outlined.
@@ -671,7 +659,13 @@ class _PlatePainter extends CustomPainter {
     if (pick != null && kPlateAngles.containsKey(pick)) {
       final (double start, double sweep) = kPlateAngles[pick]!;
       canvas.drawPath(
-        _sector(c, well, start, sweep),
+        _ringSector(
+          c,
+          well,
+          inner,
+          start + _kGapDegrees / 2,
+          sweep - _kGapDegrees,
+        ),
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3.2
@@ -694,114 +688,21 @@ class _PlatePainter extends CustomPainter {
     );
   }
 
-  static Path _sector(Offset c, double radius, double start, double sweep) {
-    return Path()
-      ..moveTo(c.dx, c.dy)
-      ..arcTo(
-        Rect.fromCircle(center: c, radius: radius),
-        start * math.pi / 180,
-        sweep * math.pi / 180,
-        false,
-      )
-      ..close();
-  }
-
-  void _paintFood(
-    Canvas canvas,
+  /// A slice of the ring: from [inner] out to [outer], [sweep] degrees clockwise
+  /// from [start].
+  static Path _ringSector(
     Offset c,
-    double well,
-    PlateKind kind,
-    double reached,
+    double outer,
+    double inner,
+    double start,
+    double sweep,
   ) {
-    final (double start, double sweep) = kPlateAngles[kind]!;
-    final double fillR = fillRadius(reached);
-    final Path area = _sector(c, well * fillR, start, sweep);
-    canvas
-      ..save()
-      ..clipPath(area)
-      ..drawPath(
-        area,
-        Paint()..color = _baseColor[kind]!.withValues(alpha: 0.6),
-      );
-
-    final List<Color> tones = _tones[kind]!;
-    final Paint paint = Paint();
-    final double unit = well / 17;
-    for (final PlateItem it in plateItems(kind)) {
-      // Each bit pops in as the food reaches it.
-      final double pop = ((fillR - it.radius) / 0.10).clamp(0, 1).toDouble();
-      if (pop <= 0) {
-        continue;
-      }
-      final double a = (start + sweep * it.angle) * math.pi / 180;
-      final Offset at =
-          c + Offset(math.cos(a), math.sin(a)) * (well * it.radius);
-      final double s = unit * it.size * pop;
-      paint.color = tones[it.tone];
-      switch (kind) {
-        case PlateKind.grains:
-          canvas
-            ..save()
-            ..translate(at.dx, at.dy)
-            ..rotate(it.turn)
-            ..drawOval(
-              Rect.fromCenter(
-                center: Offset.zero,
-                width: s * 1.35,
-                height: s * 0.55,
-              ),
-              paint,
-            )
-            ..restore();
-        case PlateKind.protein:
-          canvas
-            ..drawCircle(at, s * 0.62, paint)
-            ..drawCircle(
-              at + Offset(-s * 0.16, -s * 0.16),
-              s * 0.2,
-              Paint()..color = PlateColors.shine,
-            );
-        case PlateKind.vegetables:
-          if (it.tone == 3) {
-            canvas.drawCircle(at, s * 0.52, paint);
-          } else {
-            canvas
-              ..save()
-              ..translate(at.dx, at.dy)
-              ..rotate(it.turn)
-              ..drawOval(
-                Rect.fromCenter(
-                  center: Offset.zero,
-                  width: s * 1.5,
-                  height: s * 0.8,
-                ),
-                paint,
-              )
-              ..drawLine(
-                Offset(-s * 0.6, 0),
-                Offset(s * 0.6, 0),
-                Paint()
-                  ..color = PlateColors.leafVein
-                  ..strokeWidth = s * 0.1,
-              )
-              ..restore();
-          }
-        case PlateKind.fruit:
-          canvas
-            ..drawCircle(at, s * 0.8, paint)
-            ..drawCircle(
-              at,
-              s * 0.8,
-              Paint()
-                ..style = PaintingStyle.stroke
-                ..strokeWidth = s * 0.14
-                ..color = PlateColors.fruitRing,
-            );
-        case PlateKind.milk:
-          break;
-      }
-    }
-    canvas.restore();
+    final double a = start * math.pi / 180;
+    final double s = sweep * math.pi / 180;
+    return Path()
+      ..arcTo(Rect.fromCircle(center: c, radius: outer), a, s, true)
+      ..arcTo(Rect.fromCircle(center: c, radius: inner), a + s, -s, false)
+      ..close();
   }
 
   @override

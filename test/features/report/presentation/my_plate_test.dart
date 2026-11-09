@@ -83,6 +83,8 @@ void main() {
     test('the rim, the hub and the table are not a part', () {
       expect(plateKindAt(pointAt(200, 90), plate), isNull, reason: 'rim');
       expect(plateKindAt(pointAt(200, 5), plate), isNull, reason: 'hub');
+      expect(plateKindAt(pointAt(200, 38), plate), isNull, reason: 'hole');
+      expect(plateKindAt(pointAt(200, 46), plate), PlateKind.vegetables);
       expect(plateKindAt(const Offset(100, 100), plate), isNull);
       expect(plateKindAt(const Offset(-20, 50), plate), isNull);
     });
