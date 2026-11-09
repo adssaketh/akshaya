@@ -103,6 +103,7 @@ jobs:
       - name: Firebase settings from the GOOGLE_SERVICES_JSON secret (if set)
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          APP_CHECK_DEBUG_TOKEN: ${{ secrets.APP_CHECK_DEBUG_TOKEN }}
         run: |
           # The app reads its Firebase settings from --dart-define values (no
           # google-services Gradle plugin, nothing committed). Without the
@@ -127,6 +128,13 @@ jobs:
                 DEFINES="$DEFINES --dart-define=FIREBASE_WEB_CLIENT_ID=$WEB_CLIENT_ID"
               else
                 echo "::warning::No web OAuth client in GOOGLE_SERVICES_JSON: Google sign-in needs the Google provider enabled and the SHA-1 registered, then a fresh google-services.json."
+              fi
+              # Optional fixed App Check debug token (register it in the Firebase
+              # console under App Check > Manage debug tokens). A sideloaded APK
+              # cannot pass Play Integrity, so AI calls fail without it.
+              if [ -n "$APP_CHECK_DEBUG_TOKEN" ]; then
+                echo "::add-mask::$APP_CHECK_DEBUG_TOKEN"
+                DEFINES="$DEFINES --dart-define=APP_CHECK_DEBUG_TOKEN=$APP_CHECK_DEBUG_TOKEN"
               fi
               echo "DART_DEFINES=$DEFINES" >> "$GITHUB_ENV"
             fi
