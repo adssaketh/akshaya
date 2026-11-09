@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../../core/platform/device_bridge.dart';
 import '../domain/alert_action.dart';
 import '../domain/alert_plan.dart';
 import '../domain/notification_gateway.dart';
@@ -172,6 +173,7 @@ class LocalNotificationGateway implements NotificationGateway {
     await initialize();
     // Pending alerts only: one already on screen is not removed.
     await _plugin.cancelAllPendingNotifications();
+    final List<OverlayAlert> overlays = <OverlayAlert>[];
     for (final ScheduledAlert scheduled in alerts) {
       final DateTime at = scheduled.fireAt;
       final tz.TZDateTime when = tz.TZDateTime(
@@ -193,13 +195,27 @@ class LocalNotificationGateway implements NotificationGateway {
           payload: alert.payload,
         );
       }
+      if (scheduled.notifications.isNotEmpty) {
+        overlays.add(
+          OverlayAlert(
+            id: scheduled.notifications.first.id,
+            title: 'Akshaya Patra',
+            body: scheduled.notifications
+                .map((AlertNotification a) => a.title)
+                .join('\n'),
+            at: when.millisecondsSinceEpoch,
+          ),
+        );
+      }
     }
+    await DeviceBridge.scheduleOverlays(overlays);
   }
 
   @override
   Future<void> cancelScheduled() async {
     await initialize();
     await _plugin.cancelAllPendingNotifications();
+    await DeviceBridge.cancelOverlays();
   }
 
   @override
@@ -212,6 +228,12 @@ class LocalNotificationGateway implements NotificationGateway {
         body: alert.body,
         notificationDetails: _details(alert),
         payload: alert.payload,
+      );
+    }
+    if (notifications.isNotEmpty) {
+      await DeviceBridge.showOverlayNow(
+        'Akshaya Patra',
+        notifications.map((AlertNotification a) => a.title).join('\n'),
       );
     }
   }
