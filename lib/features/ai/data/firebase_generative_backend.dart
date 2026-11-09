@@ -69,7 +69,7 @@ final class FirebaseGenerativeBackend implements GenerativeBackend {
 
   @override
   Future<String> generateJson(String prompt) async {
-    await _runtime.ensureReady();
+    await _runtime.prepare('commands');
     final GenerativeModel model = FirebaseAI.googleAI().generativeModel(
       model: _runtime.modelName(),
       generationConfig: GenerationConfig(
@@ -77,8 +77,10 @@ final class FirebaseGenerativeBackend implements GenerativeBackend {
         responseSchema: _schema(),
       ),
     );
-    final GenerateContentResponse response =
-        await model.generateContent(<Content>[Content.text(prompt)]);
+    final GenerateContentResponse response = await _runtime.traceRequest(
+      'commands',
+      () => model.generateContent(<Content>[Content.text(prompt)]),
+    );
     return response.text ?? '';
   }
 

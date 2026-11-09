@@ -13,7 +13,7 @@ final class FirebaseReportBackend implements ReportBackend {
 
   @override
   Future<String> generateReportText(String prompt) async {
-    await _runtime.ensureReady();
+    await _runtime.prepare('report');
     final GenerativeModel model = FirebaseAI.googleAI().generativeModel(
       model: _runtime.modelName(),
       generationConfig: GenerationConfig(
@@ -21,8 +21,9 @@ final class FirebaseReportBackend implements ReportBackend {
         temperature: 0.6,
       ),
     );
-    final GenerateContentResponse response = await model.generateContent(
-      <Content>[Content.text(prompt)],
+    final GenerateContentResponse response = await _runtime.traceRequest(
+      'report',
+      () => model.generateContent(<Content>[Content.text(prompt)]),
     );
     return response.text ?? '';
   }

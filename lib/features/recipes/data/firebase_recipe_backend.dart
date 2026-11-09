@@ -58,7 +58,7 @@ final class FirebaseRecipeBackend implements RecipeBackend {
 
   @override
   Future<String> generateRecipesJson(String prompt) async {
-    await _runtime.ensureReady();
+    await _runtime.prepare('recipes');
     final GenerativeModel model = FirebaseAI.googleAI().generativeModel(
       model: _runtime.modelName(),
       generationConfig: GenerationConfig(
@@ -66,8 +66,10 @@ final class FirebaseRecipeBackend implements RecipeBackend {
         responseSchema: _schema(),
       ),
     );
-    final GenerateContentResponse response =
-        await model.generateContent(<Content>[Content.text(prompt)]);
+    final GenerateContentResponse response = await _runtime.traceRequest(
+      'recipes',
+      () => model.generateContent(<Content>[Content.text(prompt)]),
+    );
     return response.text ?? '';
   }
 }

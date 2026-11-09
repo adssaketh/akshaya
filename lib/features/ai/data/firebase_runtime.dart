@@ -6,6 +6,7 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/diagnostics/diag.dart';
+import '../domain/ai_command_service.dart';
 
 /// Firebase settings for this build, passed with `--dart-define` (the CI
 /// workflow derives them from the `GOOGLE_SERVICES_JSON` secret). This avoids
@@ -135,6 +136,56 @@ class FirebaseRuntime {
       await config.fetchAndActivate();
     } on Object {
       // The default model name is used.
+    }
+  }
+
+  /// Gets Firebase ready and asks App Check for a token, writing to the
+  /// diagnostics log what happened and how long it took, so a call that hangs
+  /// or fails can be traced to its step. Never throws and never logs the token
+  /// itself. [what] names the feature ("commands", "recipes", "report").
+  Future<void> prepare(String what) async {
+    Diag.info('ai', '$what: starting');
+    await ensureReady();
+    final Stopwatch watch = Stopwatch()..start();
+    Diag.info('ai', '$what: asking App Check for a token');
+    try {
+      final String? token = await FirebaseAppCheck.instance.getToken().timeout(
+            const Duration(seconds: 15),
+          );
+      Diag.info(
+        'ai',
+        '$what: App Check token '
+            '${token == null || token.isEmpty ? 'missing' : 'ready'} after '
+            '${watch.elapsedMilliseconds} ms',
+      );
+    } on Object catch (error) {
+      final String hint = AiCommandService.failureHint(error);
+      Diag.warn(
+        'ai',
+        '$what: App Check token failed after ${watch.elapsedMilliseconds} ms: '
+            '${error.runtimeType}${hint.isEmpty ? '' : ' ($hint)'}',
+      );
+    }
+  }
+
+  /// Runs the request to Gemini and logs how long it took, or why it failed.
+  /// The log line is written even when the caller has already given up
+  /// waiting, which tells a slow answer from one that never comes.
+  Future<T> traceRequest<T>(String what, Future<T> Function() request) async {
+    Diag.info('ai', '$what: sending the request to ${modelName()}');
+    final Stopwatch watch = Stopwatch()..start();
+    try {
+      final T result = await request();
+      Diag.info('ai', '$what: answer after ${watch.elapsedMilliseconds} ms');
+      return result;
+    } on Object catch (error) {
+      final String hint = AiCommandService.failureHint(error);
+      Diag.warn(
+        'ai',
+        '$what: request failed after ${watch.elapsedMilliseconds} ms: '
+            '${error.runtimeType}${hint.isEmpty ? '' : ' ($hint)'}',
+      );
+      rethrow;
     }
   }
 
