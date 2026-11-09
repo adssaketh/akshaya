@@ -32,6 +32,7 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
         shareChannel = channel
+        DeviceBridge.attach(this, flutterEngine.dartExecutor.binaryMessenger)
         collectShared(intent)
     }
 
@@ -89,6 +90,11 @@ class MainActivity : FlutterFragmentActivity() {
                 shareChannel?.invokeMethod("shared", null)
             }
         }.start()
+    }
+
+    override fun onDestroy() {
+        MicBeeps.release(applicationContext)
+        super.onDestroy()
     }
 
     override fun onResume() {

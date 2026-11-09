@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
@@ -16,11 +17,14 @@ import '../domain/pantry_query.dart';
 import '../domain/stock_logic.dart';
 import 'pantry_actions.dart';
 import 'pantry_icons.dart';
+import 'pantry_view_settings.dart';
+import 'pantry_view_sheet.dart';
 import 'providers.dart';
 import 'use_stock_sheet.dart';
 
 /// The pantry: every item with its remaining quantity, nearest expiry and a
-/// status chip. Search, group, sort and filter by status.
+/// status chip. Search, group, sort and filter by status; the list can be
+/// drawn as a list, grid, gallery or compact rows (View options button).
 class PantryScreen extends ConsumerStatefulWidget {
   const PantryScreen({super.key});
 
@@ -50,6 +54,7 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
     final AsyncValue<List<ItemStock>> stocks = ref.watch(pantryStocksProvider);
     final AsyncValue<List<PantrySection>> sections =
         ref.watch(pantrySectionsProvider);
+    final PantryViewSettings view = ref.watch(pantryViewProvider);
 
     return Scaffold(
       floatingActionButton: AkshayaFabCluster(
@@ -122,6 +127,11 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
                         ),
                     ],
                   ),
+                  IconButton(
+                    tooltip: 'View options',
+                    icon: const Icon(Icons.tune_rounded),
+                    onPressed: () => unawaited(showPantryViewSheet(context)),
+                  ),
                 ],
               ),
             ),
@@ -184,7 +194,7 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
                       onAction: _clearFilters,
                     );
                   }
-                  return _PantryList(sections: list);
+                  return _PantryList(sections: list, view: view);
                 },
               ),
             ),
@@ -196,13 +206,31 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
 }
 
 class _PantryList extends ConsumerWidget {
-  const _PantryList({required this.sections});
+  const _PantryList({required this.sections, required this.view});
 
   final List<PantrySection> sections;
+  final PantryViewSettings view;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final EdgeInsets padding = EdgeInsets.fromLTRB(
+      AppSpacing.lg,
+      AppSpacing.sm,
+      AppSpacing.lg,
+      AppSizes.fab + AppSpacing.xxl + context.navClearance,
+    );
     final Map<String, Category> categories = ref.watch(categoriesByIdProvider);
+
+    if (view.mode == PantryViewMode.grid ||
+        view.mode == PantryViewMode.gallery) {
+      return _PantryTiles(
+        sections: sections,
+        view: view,
+        categories: categories,
+        padding: padding,
+      );
+    }
+
     final List<Object> rows = <Object>[
       for (final PantrySection s in sections) ...<Object>[s, ...s.items],
     ];
@@ -216,39 +244,243 @@ class _PantryList extends ConsumerWidget {
     final Map<Key, int> indexByKey = <Key, int>{
       for (final (int i, Key k) in keys.indexed) k: i,
     };
+    final bool compact = view.mode == PantryViewMode.compact;
 
-    return ListView.builder(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.sm,
-        AppSpacing.lg,
-        AppSizes.fab + AppSpacing.xxl + context.navClearance,
+    // Zoom in List and Compact: the text in every row grows or shrinks.
+    final MediaQueryData media = MediaQuery.of(context);
+    final double base = media.textScaler.scale(1);
+
+    return MediaQuery(
+      data: media.copyWith(
+        textScaler: TextScaler.linear(base * view.textFactor),
       ),
-      itemCount: rows.length,
-      // Rows keep their identity when the list is searched, filtered or
-      // re-sorted, so surviving rows are reused (no rebuild, no replayed
-      // entrance) and only genuinely new rows animate in.
-      findChildIndexCallback: (Key key) => indexByKey[key],
-      itemBuilder: (BuildContext context, int index) {
-        final Object row = rows[index];
-        if (row is PantrySection) {
+      child: ListView.builder(
+        padding: padding,
+        itemCount: rows.length,
+        // Rows keep their identity when the list is searched, filtered or
+        // re-sorted, so surviving rows are reused (no rebuild, no replayed
+        // entrance) and only genuinely new rows animate in.
+        findChildIndexCallback: (Key key) => indexByKey[key],
+        itemBuilder: (BuildContext context, int index) {
+          final Object row = rows[index];
+          if (row is PantrySection) {
+            return Padding(
+              key: keys[index],
+              padding: const EdgeInsets.only(top: AppSpacing.sm),
+              child:
+                  SectionHeader(title: '${row.title} (${row.items.length})'),
+            );
+          }
+          final ItemStock stock = row as ItemStock;
           return Padding(
             key: keys[index],
-            padding: const EdgeInsets.only(top: AppSpacing.sm),
-            child: SectionHeader(title: '${row.title} (${row.items.length})'),
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: PantryRow(
+              stock: stock,
+              icon: categoryIcon(categories[stock.item.categoryId]?.iconKey),
+              revealIndex: index,
+              compact: compact,
+            ),
           );
-        }
-        final ItemStock stock = row as ItemStock;
-        return Padding(
-          key: keys[index],
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: PantryRow(
-            stock: stock,
-            icon: categoryIcon(categories[stock.item.categoryId]?.iconKey),
-            revealIndex: index,
+        },
+      ),
+    );
+  }
+}
+
+/// Grid and Gallery: sections with a header, then tiles in rows.
+class _PantryTiles extends StatelessWidget {
+  const _PantryTiles({
+    required this.sections,
+    required this.view,
+    required this.categories,
+    required this.padding,
+  });
+
+  final List<PantrySection> sections;
+  final PantryViewSettings view;
+  final Map<String, Category> categories;
+  final EdgeInsets padding;
+
+  /// Tile height for each number of tiles per row (before text scaling).
+  double _extent(BuildContext context) {
+    final bool gallery = view.mode == PantryViewMode.gallery;
+    final int cols = view.columns;
+    final double base;
+    if (gallery) {
+      base = cols >= 3 ? 150 : (cols == 2 ? 200 : 260);
+    } else {
+      base = cols >= 4 ? 128 : (cols == 3 ? 138 : (cols == 2 ? 168 : 104));
+    }
+    final double text =
+        MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6);
+    return base * text;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool gallery = view.mode == PantryViewMode.gallery;
+    final int cols = view.columns;
+    return CustomScrollView(
+      slivers: <Widget>[
+        for (final PantrySection s in sections) ...<Widget>[
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(
+              padding.left,
+              AppSpacing.sm,
+              padding.right,
+              0,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: SectionHeader(title: '${s.title} (${s.items.length})'),
+            ),
           ),
-        );
-      },
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(
+              padding.left,
+              AppSpacing.sm,
+              padding.right,
+              0,
+            ),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: cols,
+                mainAxisSpacing: AppSpacing.sm,
+                crossAxisSpacing: AppSpacing.sm,
+                mainAxisExtent: _extent(context),
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (BuildContext context, int i) {
+                  final ItemStock stock = s.items[i];
+                  return _PantryTile(
+                    key: ValueKey<String>('tile-${stock.item.id}'),
+                    stock: stock,
+                    icon: categoryIcon(
+                      categories[stock.item.categoryId]?.iconKey,
+                    ),
+                    gallery: gallery,
+                    columns: cols,
+                  );
+                },
+                childCount: s.items.length,
+              ),
+            ),
+          ),
+        ],
+        SliverToBoxAdapter(child: SizedBox(height: padding.bottom)),
+      ],
+    );
+  }
+}
+
+/// One tile in Grid or Gallery view: tap for details, long-press for actions.
+class _PantryTile extends ConsumerWidget {
+  const _PantryTile({
+    super.key,
+    required this.stock,
+    required this.icon,
+    required this.gallery,
+    required this.columns,
+  });
+
+  final ItemStock stock;
+  final IconData icon;
+  final bool gallery;
+  final int columns;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AkshayaColors colors = context.akColors;
+    final bool roomy = columns <= 2;
+    final String? path = stock.item.imagePath;
+
+    final Widget picture = gallery
+        ? ColoredBox(
+            color: colors.surfaceAlt,
+            child: path == null
+                ? Center(
+                    child: Icon(icon, size: 40, color: colors.primary),
+                  )
+                : Image.file(
+                    File(path),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    cacheWidth: 480,
+                    errorBuilder:
+                        (BuildContext _, Object __, StackTrace? ___) => Center(
+                      child: Icon(icon, size: 40, color: colors.primary),
+                    ),
+                  ),
+          )
+        : Container(
+            width: AppSizes.avatar,
+            height: AppSizes.avatar,
+            decoration: BoxDecoration(
+              color: colors.surfaceAlt,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: AppSizes.iconMd, color: colors.primary),
+          );
+
+    final Widget text = Padding(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment:
+            gallery ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        children: <Widget>[
+          Text(
+            stock.item.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: gallery ? TextAlign.start : TextAlign.center,
+            style: columns >= 3
+                ? context.akText.labelLarge
+                : context.akText.titleSmall,
+          ),
+          if (roomy)
+            Text(
+              stock.summaryLine,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: gallery ? TextAlign.start : TextAlign.center,
+              style: context.akText.bodySmall!.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: StatusChip(kind: stock.status, label: stock.statusLabel),
+          ),
+        ],
+      ),
+    );
+
+    return Material(
+      color: colors.surface,
+      borderRadius: AppRadius.cardBorder,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => openItemDetail(context, stock.item.id),
+        onLongPress: () => showItemActionsSheet(context, ref, stock),
+        child: gallery
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Expanded(child: picture),
+                  text,
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  picture,
+                  text,
+                ],
+              ),
+      ),
     );
   }
 }
@@ -261,11 +493,15 @@ class PantryRow extends ConsumerWidget {
     required this.stock,
     required this.icon,
     this.revealIndex,
+    this.compact = false,
   });
 
   final ItemStock stock;
   final IconData icon;
   final int? revealIndex;
+
+  /// One dense line per item (Compact view).
+  final bool compact;
 
   /// The usual line, plus "runs out in ~6 days" when the item is predicted to
   /// run out soon.
@@ -309,14 +545,86 @@ class PantryRow extends ConsumerWidget {
       },
       child: GestureDetector(
         onLongPress: () => showItemActionsSheet(context, ref, stock),
-        child: ItemCard(
-          name: stock.item.name,
-          subtitle: _subtitle(forecast),
-          icon: icon,
-          status: stock.status,
-          statusLabel: stock.statusLabel,
-          onTap: () => openItemDetail(context, stock.item.id),
-          revealIndex: revealIndex,
+        child: compact
+            ? _CompactCard(
+                name: stock.item.name,
+                subtitle: _subtitle(forecast),
+                icon: icon,
+                status: stock.status,
+                statusLabel: stock.statusLabel,
+                onTap: () => openItemDetail(context, stock.item.id),
+              )
+            : ItemCard(
+                name: stock.item.name,
+                subtitle: _subtitle(forecast),
+                icon: icon,
+                status: stock.status,
+                statusLabel: stock.statusLabel,
+                onTap: () => openItemDetail(context, stock.item.id),
+                revealIndex: revealIndex,
+              ),
+      ),
+    );
+  }
+}
+
+/// A dense one-line row: small icon, name with the quantity beside it, chip.
+class _CompactCard extends StatelessWidget {
+  const _CompactCard({
+    required this.name,
+    required this.subtitle,
+    required this.icon,
+    required this.status,
+    required this.statusLabel,
+    required this.onTap,
+  });
+
+  final String name;
+  final String subtitle;
+  final IconData icon;
+  final StatusKind status;
+  final String? statusLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final AkshayaColors colors = context.akColors;
+    return Material(
+      color: colors.surface,
+      borderRadius: AppRadius.cardBorder,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            children: <Widget>[
+              Icon(icon, size: AppSizes.iconMd, color: colors.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: <InlineSpan>[
+                      TextSpan(text: name, style: context.akText.titleSmall),
+                      TextSpan(
+                        text: '  $subtitle',
+                        style: context.akText.bodySmall!.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              StatusChip(kind: status, label: statusLabel),
+            ],
+          ),
         ),
       ),
     );

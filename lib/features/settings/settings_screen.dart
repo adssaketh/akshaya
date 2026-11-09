@@ -10,6 +10,7 @@ import '../diagnostics/presentation/diagnostics_screen.dart';
 import '../guide/presentation/guide_screen.dart';
 import '../rescue/presentation/freeze_rules_screen.dart';
 import '../travel/presentation/travel_screen.dart';
+import 'presentation/device_options_section.dart';
 import 'presentation/general_section.dart';
 import 'presentation/settings_index.dart';
 import '../sync/presentation/sync_now_button.dart';
@@ -52,6 +53,14 @@ List<SettingsEntry> buildSettingsEntries() {
           'stock meal prep reminders household changes quiet hours preview '
           'sound permission',
       builder: (BuildContext _) => const AlertsSection(),
+    ),
+    SettingsEntry(
+      id: 'device',
+      title: 'Overlay and mic sounds',
+      keywords: 'display over other apps overlay floating card popup '
+          'alert permission microphone mic beep sound mute start end '
+          'listening silence',
+      builder: (BuildContext _) => const DeviceOptionsSection(),
     ),
     SettingsEntry(
       id: 'count',

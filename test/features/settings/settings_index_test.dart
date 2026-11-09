@@ -18,6 +18,7 @@ void main() {
         'guide',
         'general',
         'alerts',
+        'device',
         'count',
         'freezing',
         'travel',

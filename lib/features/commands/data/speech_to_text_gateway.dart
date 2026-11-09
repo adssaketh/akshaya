@@ -4,6 +4,7 @@ import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../../core/platform/device_bridge.dart';
 import '../domain/speech_gateway.dart';
 
 /// [SpeechGateway] backed by the `speech_to_text` plugin.
@@ -65,6 +66,7 @@ final class SpeechToTextGateway implements SpeechGateway {
               : SpeechStatus.permissionDenied,
         );
       }
+      await DeviceBridge.micBegin();
       await _speech.listen(
         listenOptions: SpeechListenOptions(
           localeId: localeId,
@@ -86,6 +88,7 @@ final class SpeechToTextGateway implements SpeechGateway {
       return const SpeechResult(SpeechStatus.error);
     } finally {
       _pending = null;
+      await DeviceBridge.micEnd();
     }
   }
 

@@ -21,7 +21,8 @@ enum PantrySort {
   name('Name'),
   expiry('Expiry'),
   quantity('Quantity'),
-  recentlyAdded('Recently added');
+  recentlyAdded('Recently added'),
+  type('Type');
 
   const PantrySort(this.label);
 
@@ -75,8 +76,10 @@ final class PantryQuery {
   }
 
   /// True when [stock] passes the status filter and the search text. Every
-  /// word typed must appear in the name, brand or any alias.
-  bool matches(ItemStock stock) {
+  /// word typed must appear in the name, brand, any alias or the name of the
+  /// item's category ([categoryName]), so searching "dairy" lists the Dairy
+  /// category.
+  bool matches(ItemStock stock, {String? categoryName}) {
     final StatusKind? wanted = statusFilter;
     if (wanted != null && stock.status != wanted) {
       return false;
@@ -100,6 +103,11 @@ final class PantryQuery {
       haystack
         ..write(' ')
         ..write(normalizeForSearch(alias));
+    }
+    if (categoryName != null) {
+      haystack
+        ..write(' ')
+        ..write(normalizeForSearch(categoryName));
     }
     final String all = haystack.toString();
     return needle.split(' ').every(all.contains);
@@ -126,8 +134,21 @@ abstract final class PantryListBuilder {
     PantryQuery query,
     List<Category> categories,
   ) {
-    final List<ItemStock> visible =
-        stocks.where(query.matches).toList()..sort(_comparator(query.sort));
+    final Map<String, String> names = <String, String>{
+      for (final Category c in categories) c.id: c.name,
+    };
+    final Map<String, int> order = <String, int>{
+      for (final Category c in categories) c.id: c.sortOrder,
+    };
+    final List<ItemStock> visible = stocks
+        .where(
+          (ItemStock s) => query.matches(
+            s,
+            categoryName: names[s.item.categoryId] ?? 'Other',
+          ),
+        )
+        .toList()
+      ..sort(_comparator(query.sort, order));
 
     switch (query.group) {
       case PantryGroup.category:
@@ -183,7 +204,10 @@ abstract final class PantryListBuilder {
     return sections;
   }
 
-  static int Function(ItemStock, ItemStock) _comparator(PantrySort sort) {
+  static int Function(ItemStock, ItemStock) _comparator(
+    PantrySort sort,
+    Map<String, int> categoryOrder,
+  ) {
     switch (sort) {
       case PantrySort.name:
         return _byName;
@@ -211,6 +235,15 @@ abstract final class PantryListBuilder {
       case PantrySort.recentlyAdded:
         return (ItemStock a, ItemStock b) {
           final int c = b.item.createdAt.compareTo(a.item.createdAt);
+          return c != 0 ? c : _byName(a, b);
+        };
+      case PantrySort.type:
+        // By category (in the Categories screen's order), then by name. Most
+        // useful when the list is grouped by Location.
+        return (ItemStock a, ItemStock b) {
+          final int oa = categoryOrder[a.item.categoryId] ?? (1 << 30);
+          final int ob = categoryOrder[b.item.categoryId] ?? (1 << 30);
+          final int c = oa.compareTo(ob);
           return c != 0 ? c : _byName(a, b);
         };
     }
