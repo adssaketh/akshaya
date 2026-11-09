@@ -8,12 +8,17 @@ import 'package:akshaya/features/pantry/domain/storage_location.dart';
 import 'package:akshaya/features/pantry/domain/unit.dart';
 import 'package:akshaya/features/recipes/domain/recipe_models.dart';
 import 'package:akshaya/features/recipes/presentation/providers.dart';
+import 'package:akshaya/features/report/domain/report_bundle.dart';
+import 'package:akshaya/features/report/presentation/providers.dart';
 import 'package:akshaya/features/report/presentation/report_card.dart';
+import 'package:akshaya/features/settings/presentation/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../pantry/domain/test_data.dart';
+import '../../settings/fake_settings_repository.dart';
+import 'report_test_data.dart' show fullWeekBundle;
 
 class _FixedToday extends TodayNotifier {
   @override
@@ -21,14 +26,14 @@ class _FixedToday extends TodayNotifier {
 }
 
 ItemStock stockOf(Item item) => ItemStock(
-      item: item,
-      batches: const <StockBatch>[],
-      totalRemaining: 1,
-      nearestExpiry: null,
-      daysToExpiry: null,
-      status: StatusKind.fresh,
-      primaryLocation: StorageLocation.pantry,
-    );
+  item: item,
+  batches: const <StockBatch>[],
+  totalRemaining: 1,
+  nearestExpiry: null,
+  daysToExpiry: null,
+  status: StatusKind.fresh,
+  primaryLocation: StorageLocation.pantry,
+);
 
 ConsumptionEntry used(String itemId, double qty, Unit unit, {int daysAgo = 0}) {
   return ConsumptionEntry(
@@ -45,12 +50,18 @@ ConsumptionEntry used(String itemId, double qty, Unit unit, {int daysAgo = 0}) {
 final List<ItemStock> stocks = <ItemStock>[
   stockOf(makeItem(id: 'rice', name: 'Basmati Rice')),
   stockOf(makeItem(id: 'dal', name: 'Toor Dal', categoryId: 'cat_dals')),
-  stockOf(makeItem(
-      id: 'tomato', name: 'Tomato', categoryId: 'cat_vegetables')),
-  stockOf(makeItem(
-      id: 'banana', name: 'Banana', unit: Unit.pcs, categoryId: 'cat_fruits')),
-  stockOf(makeItem(
-      id: 'curd', name: 'Curd', unit: Unit.g, categoryId: 'cat_dairy')),
+  stockOf(makeItem(id: 'tomato', name: 'Tomato', categoryId: 'cat_vegetables')),
+  stockOf(
+    makeItem(
+      id: 'banana',
+      name: 'Banana',
+      unit: Unit.pcs,
+      categoryId: 'cat_fruits',
+    ),
+  ),
+  stockOf(
+    makeItem(id: 'curd', name: 'Curd', unit: Unit.g, categoryId: 'cat_dairy'),
+  ),
 ];
 
 final List<ConsumptionEntry> fullDay = <ConsumptionEntry>[
@@ -74,10 +85,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          allHistoryProvider
-              .overrideWith((ref) => Stream<List<ConsumptionEntry>>.value(history)),
-          recipePreferencesProvider
-              .overrideWithValue(const RecipePreferences()),
+          allHistoryProvider.overrideWith(
+            (ref) => Stream<List<ConsumptionEntry>>.value(history),
+          ),
+          recipePreferencesProvider.overrideWithValue(
+            const RecipePreferences(),
+          ),
           todayProvider.overrideWith(_FixedToday.new),
         ],
         child: MaterialApp(
@@ -103,19 +116,22 @@ void main() {
     expect(find.textContaining('Nothing used today yet'), findsOneWidget);
   });
 
-  testWidgets('a full day shows calories, the verdict, the foods and a caveat',
-      (WidgetTester tester) async {
-    await pump(tester, fullDay);
-    expect(find.textContaining('kcal'), findsWidgets);
-    expect(find.text('Balanced'), findsOneWidget);
-    expect(find.text('What was used'), findsOneWidget);
-    expect(find.textContaining('Basmati Rice'), findsOneWidget);
-    expect(find.textContaining('not medical advice'), findsOneWidget);
-    expect(find.text('for 2 people'), findsOneWidget);
-  });
+  testWidgets(
+    'a full day shows calories, the verdict, the foods and a caveat',
+    (WidgetTester tester) async {
+      await pump(tester, fullDay);
+      expect(find.textContaining('kcal'), findsWidgets);
+      expect(find.text('Balanced'), findsOneWidget);
+      expect(find.text('What was used'), findsOneWidget);
+      expect(find.textContaining('Basmati Rice'), findsOneWidget);
+      expect(find.textContaining('not medical advice'), findsOneWidget);
+      expect(find.text('for 2 people'), findsOneWidget);
+    },
+  );
 
-  testWidgets('a day with no vegetables says what to try',
-      (WidgetTester tester) async {
+  testWidgets('a day with no vegetables says what to try', (
+    WidgetTester tester,
+  ) async {
     await pump(tester, <ConsumptionEntry>[
       used('rice', 300, Unit.g),
       used('dal', 100, Unit.g),
@@ -126,8 +142,9 @@ void main() {
     expect(find.text('Balanced'), findsNothing);
   });
 
-  testWidgets('switching to 7 days shows the weekly view',
-      (WidgetTester tester) async {
+  testWidgets('switching to 7 days shows the weekly view', (
+    WidgetTester tester,
+  ) async {
     await pump(tester, <ConsumptionEntry>[
       ...fullDay,
       used('rice', 300, Unit.g, daysAgo: 2),
@@ -138,9 +155,89 @@ void main() {
     expect(find.textContaining('2 of 7 days had food'), findsOneWidget);
   });
 
-  testWidgets('fits a narrow screen with large text', (WidgetTester tester) async {
+  testWidgets('fits a narrow screen with large text', (
+    WidgetTester tester,
+  ) async {
     await pump(tester, fullDay, width: 320, textScale: 1.6);
     expect(tester.takeException(), isNull);
     expect(find.text('Eating report'), findsOneWidget);
+  });
+
+  testWidgets('tapping the card opens the full Food report', (tester) async {
+    tester.view.physicalSize = const Size(420, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          allHistoryProvider.overrideWith(
+            (ref) => Stream<List<ConsumptionEntry>>.value(fullDay),
+          ),
+          recipePreferencesProvider.overrideWithValue(
+            const RecipePreferences(),
+          ),
+          todayProvider.overrideWith(_FixedToday.new),
+          settingsRepositoryProvider.overrideWithValue(
+            FakeSettingsRepository(<String, String>{}),
+          ),
+          reportBundleProvider.overrideWithValue(
+            AsyncData<ReportBundle>(fullWeekBundle()),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AkshayaTheme.light(),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: ReportCard(stocks: stocks),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Food report'), findsNothing);
+    await tester.tap(find.text('Eating report'));
+    await tester.pumpAndSettle();
+    expect(find.text('Food report'), findsOneWidget);
+    expect(find.text('Calories each day'), findsOneWidget);
+  });
+
+  testWidgets('the See the full report button opens it too', (tester) async {
+    tester.view.physicalSize = const Size(420, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          allHistoryProvider.overrideWith(
+            (ref) => Stream<List<ConsumptionEntry>>.value(fullDay),
+          ),
+          recipePreferencesProvider.overrideWithValue(
+            const RecipePreferences(),
+          ),
+          todayProvider.overrideWith(_FixedToday.new),
+          settingsRepositoryProvider.overrideWithValue(
+            FakeSettingsRepository(<String, String>{}),
+          ),
+          reportBundleProvider.overrideWithValue(
+            AsyncData<ReportBundle>(fullWeekBundle()),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AkshayaTheme.light(),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: ReportCard(stocks: stocks),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('See the full report'));
+    await tester.pumpAndSettle();
+    expect(find.text('Food report'), findsOneWidget);
   });
 }

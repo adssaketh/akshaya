@@ -153,16 +153,21 @@ final class AiCommandService {
   Future<String> guardedCall(
     Future<String> Function() call, {
     Duration? timeout,
+    int? attempts,
   }) {
-    return _callWithRetries(call, limit: timeout);
+    return _callWithRetries(call, limit: timeout, attempts: attempts);
   }
 
+  /// [attempts] replaces the usual number of tries: 1 means no automatic
+  /// retry, for requests a person starts by hand and can simply repeat.
   Future<String> _callWithRetries(
     Future<String> Function() call, {
     Duration? limit,
+    int? attempts,
   }) async {
+    final int tries = (attempts ?? maxAttempts).clamp(1, maxAttempts);
     AiFailure? last;
-    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+    for (int attempt = 0; attempt < tries; attempt++) {
       final AiUsage usage = await usageStore.read();
       final AiAvailability availability = _check(usage);
       if (!availability.isReady) {
@@ -183,7 +188,7 @@ final class AiCommandService {
         final String hint = failureHint(error);
         Diag.warn(
           'ai',
-          'Call failed (attempt ${attempt + 1} of $maxAttempts): '
+          'Call failed (attempt ${attempt + 1} of $tries): '
               '${failure.runtimeType} from ${error.runtimeType}'
               '${hint.isEmpty ? '' : ' ($hint)'}',
         );
@@ -194,7 +199,7 @@ final class AiCommandService {
         if (failure is AiOfflineFailure) {
           throw failure;
         }
-        if (attempt + 1 < maxAttempts) {
+        if (attempt + 1 < tries) {
           await delay(Duration(seconds: 1 << attempt));
         }
       }
