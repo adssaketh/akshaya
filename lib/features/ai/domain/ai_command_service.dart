@@ -178,11 +178,14 @@ final class AiCommandService {
       } on Object catch (error) {
         final AiFailure failure = classify(error);
         last = failure;
-        // Only the kinds of failure: never the request or the answer.
+        // Only the kinds of failure and known error codes: never the request
+        // or the answer.
+        final String hint = failureHint(error);
         Diag.warn(
           'ai',
           'Call failed (attempt ${attempt + 1} of $maxAttempts): '
-              '${failure.runtimeType} from ${error.runtimeType}',
+              '${failure.runtimeType} from ${error.runtimeType}'
+              '${hint.isEmpty ? '' : ' ($hint)'}',
         );
         if (failure is AiQuotaFailure) {
           _cooldownUntil = now().add(cooldown);
@@ -197,6 +200,50 @@ final class AiCommandService {
       }
     }
     throw last ?? const AiServiceFailure();
+  }
+
+  /// Error codes and keywords that say WHY a call failed, for the diagnostics
+  /// log. Only these are picked out of the error text (an allowlist), so what
+  /// was said or answered can never end up in the log.
+  static String failureHint(Object error) {
+    final String text = error.toString();
+    final List<String> parts = <String>[];
+    for (final Match m
+        in RegExp(r'\[[A-Za-z0-9_\-/.]{3,60}\]').allMatches(text)) {
+      parts.add(m.group(0)!);
+    }
+    final String lower = text.toLowerCase();
+    const List<String> keywords = <String>[
+      'permission_denied',
+      'permission denied',
+      'not_found',
+      'not found',
+      'unavailable',
+      'invalid_argument',
+      'unauthenticated',
+      'failed_precondition',
+      'app check',
+      'appcheck',
+      'attestation',
+      'play integrity',
+      'api key',
+      'not enabled',
+      'service_disabled',
+      'has not been used',
+      'unsupported location',
+      'user location',
+      'billing',
+    ];
+    for (final String keyword in keywords) {
+      if (lower.contains(keyword)) {
+        parts.add(keyword);
+      }
+    }
+    final Match? status = RegExp(r'\b[45]\d\d\b').firstMatch(text);
+    if (status != null) {
+      parts.add(status.group(0)!);
+    }
+    return parts.toSet().take(6).join(' ');
   }
 
   /// Sorts any error from the AI library into one of our failures.
