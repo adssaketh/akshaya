@@ -22,6 +22,7 @@ import '../pantry/presentation/providers.dart';
 import '../recipes/presentation/recipes_screen.dart';
 import '../settings/domain/app_settings.dart';
 import '../settings/presentation/providers.dart';
+import '../settings/presentation/swipe_settings.dart';
 import '../settings/settings_screen.dart';
 import '../travel/presentation/travel_screen.dart';
 import '../widgets/domain/widget_gateway.dart';
@@ -247,6 +248,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         child: SwipeTabs(
           index: _index,
           position: _position,
+          enabled: ref.watch(swipeTabsProvider),
           onIndexChanged: (int i) {
             Diag.info('nav', 'Tab ${_tabNames[i]} (swipe)');
             setState(() => _index = i);

@@ -6,6 +6,7 @@ import 'package:akshaya/features/ai/presentation/providers.dart';
 import 'package:akshaya/features/commands/presentation/providers.dart';
 import 'package:akshaya/features/pantry/data/database/app_database.dart';
 import 'package:akshaya/features/pantry/presentation/providers.dart';
+import 'package:akshaya/features/settings/presentation/swipe_settings.dart';
 import 'package:akshaya/features/settings/presentation/providers.dart';
 import 'package:akshaya/features/shell/app_shell.dart';
 import 'package:drift/drift.dart' show driftRuntimeOptions;
@@ -44,7 +45,7 @@ class _Recorder implements AudioRecorderGateway {
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
-  Future<void> pump(WidgetTester tester) async {
+  Future<void> pump(WidgetTester tester, {bool swipeTabs = true}) async {
     tester.view.physicalSize = const Size(1080, 2376);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(tester.view.reset);
@@ -57,6 +58,7 @@ void main() {
         audioRecorderProvider.overrideWithValue(_Recorder()),
         groceryDictionaryProvider.overrideWith((ref) => loadDictionary()),
         parsePromptProvider.overrideWith((ref) => 'p {{text}}'),
+        if (!swipeTabs) swipeTabsProvider.overrideWithValue(false),
       ],
     );
     addTearDown(container.dispose);
@@ -140,5 +142,19 @@ void main() {
     }
     expect(tester.takeException(), isNull);
     expect(selected(tester), 2);
+  });
+
+  testWidgets('with swiping switched off in Settings, the pages stay put',
+      (tester) async {
+    await pump(tester, swipeTabs: false);
+    await tester.fling(find.byType(PageView), const Offset(-300, 0), 2000);
+    await tester.pumpAndSettle();
+    expect(selected(tester), 0);
+    // The bar still works.
+    await tester.tap(find.text('Pantry'));
+    await tester.pumpAndSettle();
+    expect(selected(tester), 1);
+    final PageView pages = tester.widget<PageView>(find.byType(PageView));
+    expect(pages.controller!.page, 1);
   });
 }

@@ -44,7 +44,11 @@ final Provider<AiUsage> aiUsageProvider = Provider<AiUsage>((Ref ref) {
 
 /// Starts Firebase lazily. Tests override it.
 final Provider<FirebaseRuntime> firebaseRuntimeProvider =
-    Provider<FirebaseRuntime>((Ref ref) => FirebaseRuntime());
+    Provider<FirebaseRuntime>((Ref ref) {
+  return FirebaseRuntime(
+    modelOverride: () => ref.read(settingsMapProvider).value?[kAiModelKey],
+  );
+});
 
 final Provider<GenerativeBackend> generativeBackendProvider =
     Provider<GenerativeBackend>((Ref ref) {

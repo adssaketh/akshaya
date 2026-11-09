@@ -18,6 +18,7 @@ void main() {
         'guide',
         'general',
         'alerts',
+        'swipes',
         'device',
         'count',
         'freezing',

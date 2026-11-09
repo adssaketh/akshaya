@@ -60,6 +60,17 @@ abstract interface class PantryRepository {
 
   Future<void> undoDeleteItem(DeleteToken token);
 
+  /// The recycle bin: items deleted within [within], newest first. Deleting
+  /// only flags an item, so each one can be brought back.
+  Stream<List<DeletedItem>> watchDeletedItems({
+    Duration within = const Duration(days: 30),
+  });
+
+  /// Brings back an item from the bin, with the batches that were deleted
+  /// along with it. Throws `DuplicateItemFailure` when a live item now has
+  /// the same name, and `NotFoundFailure` when it is not in the bin.
+  Future<void> restoreDeletedItem(String itemId);
+
   Future<StockBatch> addBatch(BatchDraft draft);
 
   Future<StockBatch> updateBatch(StockBatch batch);

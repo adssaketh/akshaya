@@ -15,6 +15,7 @@ import 'package:akshaya/features/travel/presentation/trip_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:akshaya/features/settings/presentation/swipe_settings.dart';
 
 import '../../pantry/domain/test_data.dart';
 import '../../pantry/presentation/fake_repository.dart';
@@ -28,9 +29,11 @@ Widget host({
   required FakePantryRepository pantry,
   required Widget home,
   FakeShareService? share,
+  bool swipeActions = false,
 }) {
   return ProviderScope(
     overrides: [
+      if (swipeActions) swipeItemActionsProvider.overrideWithValue(true),
       shoppingRepositoryProvider.overrideWithValue(shopping),
       pantryRepositoryProvider.overrideWithValue(pantry),
       settingsRepositoryProvider.overrideWithValue(FakeSettingsRepository()),
@@ -169,7 +172,32 @@ void main() {
     expect(tester.widget<Checkbox>(find.byType(Checkbox)).onChanged, isNull);
   });
 
-  testWidgets('swiping an entry away removes it and offers Undo',
+  testWidgets('by default a swipe to the left does NOT remove an entry '
+      '(it is for changing tab)', (WidgetTester tester) async {
+    bigScreen(tester);
+    final FakeShoppingRepository shopping = FakeShoppingRepository(
+      entries: <ShoppingEntry>[
+        makeEntry(id: 'e1', name: 'Candles', unit: Unit.pcs),
+      ],
+    );
+    await tester.pumpWidget(
+      host(
+        shopping: shopping,
+        pantry: stockedPantry(),
+        home: const ShoppingScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.text('Candles'), const Offset(-600, 0));
+    await tester.pumpAndSettle();
+
+    expect(shopping.deletedIds, isEmpty);
+    expect(find.text('Candles'), findsOneWidget);
+  });
+
+  testWidgets('with item swipes on, swiping an entry away removes it and '
+      'offers Undo',
       (WidgetTester tester) async {
     bigScreen(tester);
     final FakeShoppingRepository shopping = FakeShoppingRepository(
@@ -179,6 +207,7 @@ void main() {
     );
     await tester.pumpWidget(
       host(
+        swipeActions: true,
         shopping: shopping,
         pantry: stockedPantry(),
         home: const ShoppingScreen(),

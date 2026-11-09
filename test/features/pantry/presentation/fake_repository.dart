@@ -22,6 +22,41 @@ class FakePantryRepository extends Fake implements PantryRepository {
   final List<ItemDraft> addedItems = <ItemDraft>[];
   final List<BatchDraft> addedBatches = <BatchDraft>[];
 
+  /// What the recycle bin holds, and what happened to it.
+  List<DeletedItem> binItems = <DeletedItem>[];
+  final List<String> restoredIds = <String>[];
+  Object? restoreError;
+  final List<String> deletedIds = <String>[];
+
+  @override
+  Future<DeleteToken> deleteItem(String itemId) async {
+    deletedIds.add(itemId);
+    return DeleteToken(itemId: itemId, batchIds: const <String>[]);
+  }
+
+  @override
+  Future<void> undoDeleteItem(DeleteToken token) async {
+    deletedIds.remove(token.itemId);
+  }
+
+  @override
+  Stream<List<DeletedItem>> watchDeletedItems({
+    Duration within = const Duration(days: 30),
+  }) => Stream<List<DeletedItem>>.value(binItems);
+
+  @override
+  Future<void> restoreDeletedItem(String itemId) async {
+    final Object? error = restoreError;
+    if (error != null) {
+      throw error;
+    }
+    restoredIds.add(itemId);
+    binItems = <DeletedItem>[
+      for (final DeletedItem d in binItems)
+        if (d.item.id != itemId) d,
+    ];
+  }
+
   /// Barcode to item id, answered by [findItemByBarcode].
   final Map<String, String> barcodes = <String, String>{};
 

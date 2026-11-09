@@ -367,25 +367,29 @@ class _MyPlateState extends State<MyPlate> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.xs,
-          children: <Widget>[
-            for (final PlateSlice s in widget.slices)
-              ChoiceChip(
-                visualDensity: VisualDensity.compact,
-                avatar: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: _legendColor(s.kind),
-                    shape: BoxShape.circle,
+        // Every part gets a tile of the same size: dot, name and percent, with
+        // no tick mark. The chosen one is outlined.
+        LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints box) {
+            final double tile = (box.maxWidth - AppSpacing.sm) / 2;
+            return Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: <Widget>[
+                for (final PlateSlice s in widget.slices)
+                  SizedBox(
+                    width: tile,
+                    child: _LegendTile(
+                      key: ValueKey<String>('legend-${s.kind.name}'),
+                      slice: s,
+                      color: _legendColor(s.kind),
+                      selected: _selected == s.kind,
+                      onTap: () => _select(s.kind),
+                    ),
                   ),
-                  child: const SizedBox(width: 12, height: 12),
-                ),
-                label: Text('${s.kind.label} ${s.percent}%'),
-                selected: _selected == s.kind,
-                onSelected: (bool _) => _select(s.kind),
-              ),
-          ],
+              ],
+            );
+          },
         ),
         AnimatedSize(
           duration: AppMotion.of(context)
@@ -398,6 +402,23 @@ class _MyPlateState extends State<MyPlate> with TickerProviderStateMixin {
                 ? const Duration(milliseconds: 220)
                 : Duration.zero,
             switchInCurve: Curves.easeOutCubic,
+            // The old line fades out before the new one fades in, so the two
+            // are never drawn on top of each other.
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              return FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: animation,
+                  curve: const Interval(0.5, 1),
+                ),
+                child: child,
+              );
+            },
+            layoutBuilder: (Widget? current, List<Widget> previous) {
+              return Stack(
+                alignment: Alignment.topLeft,
+                children: <Widget>[...previous, if (current != null) current],
+              );
+            },
             child: Padding(
               key: ValueKey<PlateKind?>(_selected),
               padding: const EdgeInsets.only(top: AppSpacing.sm),
@@ -923,4 +944,107 @@ class _BowlPainter extends CustomPainter {
   @override
   bool shouldRepaint(_BowlPainter old) =>
       old.shown != shown || old.selected != selected;
+}
+
+/// One line of the legend: a colour dot, the part's name and its percent.
+class _LegendTile extends StatelessWidget {
+  const _LegendTile({
+    super.key,
+    required this.slice,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final PlateSlice slice;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final AkshayaColors colors = context.akColors;
+    final TextTheme text = context.akText;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '${slice.kind.label} ${slice.percent} percent',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Material(
+        color: selected
+            ? colors.primary.withValues(alpha: 0.12)
+            : colors.surfaceAlt,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: selected ? colors.primary : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints box) {
+                  final Widget dot = DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: PlateColors.hairline),
+                    ),
+                    child: const SizedBox(width: 14, height: 14),
+                  );
+                  final Widget name = Text(
+                    slice.kind.label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodyMedium,
+                  );
+                  final Widget percent = Text(
+                    '${slice.percent}%',
+                    style: text.titleSmall!.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  );
+                  // On a very narrow screen the percent goes under the name.
+                  if (box.maxWidth < 96) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            dot,
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(child: name),
+                          ],
+                        ),
+                        percent,
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: <Widget>[
+                      dot,
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(child: name),
+                      const SizedBox(width: AppSpacing.xs),
+                      percent,
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

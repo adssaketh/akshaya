@@ -24,6 +24,7 @@ class SwipeTabs extends StatefulWidget {
     required this.onIndexChanged,
     required this.children,
     this.position,
+    this.enabled = true,
     this.duration = const Duration(milliseconds: 380),
     this.curve = Curves.easeOutCubic,
   });
@@ -37,6 +38,9 @@ class SwipeTabs extends StatefulWidget {
 
   /// Receives the page position (0 to children.length - 1) as it moves.
   final ValueNotifier<double>? position;
+
+  /// False: a finger does not move the pages, but [index] still does.
+  final bool enabled;
   final Duration duration;
   final Curve curve;
 
@@ -143,7 +147,9 @@ class _SwipeTabsState extends State<SwipeTabs> {
       child: PageView(
         controller: _controller,
         onPageChanged: _onPageChanged,
-        physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
+        physics: widget.enabled
+            ? const PageScrollPhysics(parent: ClampingScrollPhysics())
+            : const NeverScrollableScrollPhysics(),
         dragStartBehavior: DragStartBehavior.down,
         // Neighbouring pages are built ahead, so a swipe never waits for one.
         allowImplicitScrolling: true,

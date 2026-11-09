@@ -282,6 +282,23 @@ final class DeleteToken {
   final List<String> batchIds;
 }
 
+/// An item in the recycle bin: deleted, but still there to bring back.
+final class DeletedItem {
+  const DeletedItem({
+    required this.item,
+    required this.deletedAt,
+    required this.batchCount,
+  });
+
+  final Item item;
+
+  /// When it was deleted.
+  final DateTime deletedAt;
+
+  /// How many batches were deleted with it (and come back with it).
+  final int batchCount;
+}
+
 /// One batch deduction made by a use/waste action.
 final class AppliedDeduction {
   const AppliedDeduction({

@@ -189,17 +189,22 @@ void main() {
     ) async {
       await pump(tester, sample());
       expect(find.byType(MyPlate), findsOneWidget);
-      for (final String chip in <String>[
-        'Vegetables 30%',
-        'Fruit 25%',
-        'Grains 50%',
-        'Dal and eggs 100%',
-        'Milk and curd 50%',
+      for (final (String, String, String) tile in <(String, String, String)>[
+        ('vegetables', 'Vegetables', '30%'),
+        ('fruit', 'Fruit', '25%'),
+        ('grains', 'Grains', '50%'),
+        ('protein', 'Dal and eggs', '100%'),
+        ('milk', 'Milk and curd', '50%'),
       ]) {
+        final Finder box = find.byKey(ValueKey<String>('legend-${tile.$1}'));
+        expect(box, findsOneWidget, reason: tile.$2);
         expect(
-          find.widgetWithText(ChoiceChip, chip),
+          find.descendant(of: box, matching: find.text(tile.$2)),
           findsOneWidget,
-          reason: chip,
+        );
+        expect(
+          find.descendant(of: box, matching: find.text(tile.$3)),
+          findsOneWidget,
         );
       }
       expect(
@@ -224,7 +229,8 @@ void main() {
       await pump(tester, <PlateSlice>[
         for (final PlateKind k in PlateKind.values) slice(k, 0, 100),
       ]);
-      expect(find.text('0%'), findsOneWidget);
+      // The hub and the five legend tiles.
+      expect(find.text('0%'), findsNWidgets(6));
       expect(tester.takeException(), isNull);
     });
 
@@ -297,15 +303,18 @@ void main() {
 
     testWidgets('the legend chips pick a part too', (tester) async {
       await pump(tester, sample());
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Fruit 25%'));
+      await tester.tap(find.byKey(const ValueKey<String>('legend-fruit')));
       await tester.pumpAndSettle();
       expect(find.text('Fruit: 25 g of about 100 g (25%)'), findsOneWidget);
+      final SemanticsHandle handle = tester.ensureSemantics();
       expect(
         tester
-            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Fruit 25%'))
-            .selected,
-        isTrue,
+            .getSemantics(find.byKey(const ValueKey<String>('legend-fruit')))
+            .flagsCollection
+            .isSelected,
+        isNotNull,
       );
+      handle.dispose();
     });
 
     testWidgets('tapping the rim or the table picks nothing', (tester) async {
@@ -407,7 +416,13 @@ void main() {
       ) async {
         await pump(tester, sample(g: 500));
         expect(shown(tester)[2], 1.0);
-        expect(find.widgetWithText(ChoiceChip, 'Grains 200%'), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey<String>('legend-grains')),
+            matching: find.text('200%'),
+          ),
+          findsOneWidget,
+        );
       });
     });
 

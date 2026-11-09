@@ -52,6 +52,7 @@ class AiVoiceSection extends ConsumerWidget {
           value: settings.enabled,
           onChanged: (bool value) => _setEnabled(context, ref, value),
         ),
+        const _AiModelTile(),
         ListTile(
           enabled: settings.enabled,
           leading: const Icon(Icons.speed_rounded),
@@ -183,6 +184,58 @@ class _CapStepper extends StatelessWidget {
               : null,
         ),
       ],
+    );
+  }
+}
+
+/// The Gemini models that can be picked on this phone. "" follows the server.
+const List<(String, String)> kAiModelChoices = <(String, String)>[
+  ('', 'Automatic (the server decides)'),
+  ('gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (fast, light)'),
+  ('gemini-3.1-flash-lite', 'Gemini 3.1 Flash-Lite'),
+  ('gemini-3.6-flash', 'Gemini 3.6 Flash'),
+  ('gemini-3.8-flash', 'Gemini 3.8 Flash'),
+];
+
+/// Lets one model be tried straight away. Everything that asks Gemini (voice
+/// commands, recipe ideas, the report review) follows it.
+class _AiModelTile extends ConsumerWidget {
+  const _AiModelTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final Map<String, String> stored =
+        ref.watch(settingsMapProvider).value ?? const <String, String>{};
+    final String chosen = stored[kAiModelKey] ?? '';
+    final bool known =
+        kAiModelChoices.any(((String, String) c) => c.$1 == chosen);
+    return ListTile(
+      leading: const Icon(Icons.memory_rounded),
+      title: const Text('AI model'),
+      subtitle: Text(
+        'If AI keeps timing out, try another model. The change applies to '
+        'the next request.',
+      ),
+      trailing: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 170),
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: known ? chosen : '',
+          underline: const SizedBox.shrink(),
+          items: <DropdownMenuItem<String>>[
+            for (final (String, String) c in kAiModelChoices)
+              DropdownMenuItem<String>(
+                value: c.$1,
+                child: Text(c.$2, maxLines: 2, overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: (String? value) {
+            ref.read(settingsRepositoryProvider).writeAll(<String, String>{
+              kAiModelKey: value ?? '',
+            });
+          },
+        ),
+      ),
     );
   }
 }

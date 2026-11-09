@@ -13,6 +13,7 @@ import '../travel/presentation/travel_screen.dart';
 import 'presentation/device_options_section.dart';
 import 'presentation/general_section.dart';
 import 'presentation/settings_index.dart';
+import 'presentation/swipe_settings.dart';
 import '../sync/presentation/sync_now_button.dart';
 import '../sync/presentation/sync_section.dart';
 
@@ -53,6 +54,14 @@ List<SettingsEntry> buildSettingsEntries() {
           'stock meal prep reminders household changes quiet hours preview '
           'sound permission',
       builder: (BuildContext _) => const AlertsSection(),
+    ),
+    SettingsEntry(
+      id: 'swipes',
+      title: 'Swiping and deleted items',
+      keywords: 'swipe swiping gesture slide tab tabs accidental delete '
+          'deleting recycle bin trash recover restore undo deleted '
+          'recently deleted',
+      builder: (BuildContext _) => const SwipeSection(),
     ),
     SettingsEntry(
       id: 'device',

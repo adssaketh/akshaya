@@ -41,6 +41,29 @@ abstract final class FirebaseBuildConfig {
 /// new build.
 const String kGeminiModelKey = 'gemini_model_name';
 
+/// The settings key for a model chosen on this phone (Settings, AI and voice).
+/// It beats the server's choice, so a model can be tried at once instead of
+/// waiting for Remote Config to refresh (up to 12 hours).
+const String kAiModelKey = 'ai.model';
+
+/// The model to call: the phone's own choice first, then the server's, then
+/// the built-in default.
+String chooseModelName({
+  String? override,
+  String? remote,
+  required String fallback,
+}) {
+  final String? own = override?.trim();
+  if (own != null && own.isNotEmpty) {
+    return own;
+  }
+  final String? served = remote?.trim();
+  if (served != null && served.isNotEmpty) {
+    return served;
+  }
+  return fallback;
+}
+
 /// Used until Remote Config has been fetched, and when it cannot be.
 const String kDefaultGeminiModel = 'gemini-3.8-flash';
 
@@ -71,7 +94,10 @@ AppCheckMode chooseAppCheckMode({
 /// Starts Firebase on first use (never at app start), so the app opens at the
 /// same speed with or without AI.
 class FirebaseRuntime {
-  FirebaseRuntime();
+  FirebaseRuntime({this.modelOverride});
+
+  /// The model chosen on this phone, if any (see [kAiModelKey]).
+  final String? Function()? modelOverride;
 
   Future<void>? _starting;
 
@@ -191,12 +217,16 @@ class FirebaseRuntime {
 
   /// The Gemini model to call, from Remote Config.
   String modelName() {
+    String? remote;
     try {
-      final String name =
-          FirebaseRemoteConfig.instance.getString(kGeminiModelKey).trim();
-      return name.isEmpty ? kDefaultGeminiModel : name;
+      remote = FirebaseRemoteConfig.instance.getString(kGeminiModelKey);
     } on Object {
-      return kDefaultGeminiModel;
+      remote = null;
     }
+    return chooseModelName(
+      override: modelOverride?.call(),
+      remote: remote,
+      fallback: kDefaultGeminiModel,
+    );
   }
 }

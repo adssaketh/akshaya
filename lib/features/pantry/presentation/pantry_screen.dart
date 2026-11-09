@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import '../../settings/presentation/swipe_settings.dart';
 
 import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
@@ -516,9 +517,14 @@ class PantryRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AkshayaColors colors = context.akColors;
     final ItemForecast? forecast = ref.watch(forecastProvider(stock.item.id));
+    // A row that reacts to sideways drags would take them from the tab swipe
+    // (and a left swipe once deleted food), so item swipes are opt-in.
+    final bool swipeActions = ref.watch(swipeItemActionsProvider);
 
     return Dismissible(
       key: ValueKey<String>('pantry-${stock.item.id}'),
+      direction:
+          swipeActions ? DismissDirection.horizontal : DismissDirection.none,
       background: _SwipeBackground(
         alignment: Alignment.centerLeft,
         icon: Icons.remove_circle_outline_rounded,
@@ -526,13 +532,15 @@ class PantryRow extends ConsumerWidget {
         background: colors.surfaceAlt,
         foreground: colors.primary,
       ),
-      secondaryBackground: _SwipeBackground(
-        alignment: Alignment.centerRight,
-        icon: Icons.delete_outline_rounded,
-        label: 'Delete',
-        background: colors.expired.background,
-        foreground: colors.expired.foreground,
-      ),
+      secondaryBackground: swipeActions
+          ? _SwipeBackground(
+              alignment: Alignment.centerRight,
+              icon: Icons.delete_outline_rounded,
+              label: 'Delete',
+              background: colors.expired.background,
+              foreground: colors.expired.foreground,
+            )
+          : null,
       confirmDismiss: (DismissDirection direction) async {
         if (direction == DismissDirection.startToEnd) {
           await showUseStockSheet(context, stock);

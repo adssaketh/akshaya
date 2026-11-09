@@ -793,6 +793,92 @@ class DriftPantryRepository implements PantryRepository {
     });
   }
 
+  @override
+  Stream<List<DeletedItem>> watchDeletedItems({
+    Duration within = const Duration(days: 30),
+  }) {
+    return _db
+        .customSelect(
+          'SELECT 1',
+          readsFrom: {_db.items, _db.stockBatches, _db.itemAliases},
+        )
+        .watch()
+        .asyncMap((_) => _loadDeleted(within));
+  }
+
+  Future<List<DeletedItem>> _loadDeleted(Duration within) async {
+    final DateTime cutoff = _now().subtract(within);
+    final List<ItemRow> rows = await (_db.select(_db.items)
+          ..where((t) => t.isDeleted.equals(true)))
+        .get();
+    final List<ItemRow> recent = rows
+        .where((ItemRow r) => !r.updatedAt.isBefore(cutoff))
+        .toList()
+      ..sort((ItemRow a, ItemRow b) => b.updatedAt.compareTo(a.updatedAt));
+    if (recent.isEmpty) {
+      return const <DeletedItem>[];
+    }
+    final List<BatchRow> batches = await (_db.select(_db.stockBatches)
+          ..where((t) => t.isDeleted.equals(true)))
+        .get();
+    final List<AliasRow> aliasRows = await (_db.select(_db.itemAliases)
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .get();
+    final Map<String, List<String>> aliases = <String, List<String>>{};
+    for (final AliasRow a in aliasRows) {
+      aliases.putIfAbsent(a.itemId, () => <String>[]).add(a.alias);
+    }
+    return <DeletedItem>[
+      for (final ItemRow r in recent)
+        DeletedItem(
+          item: _item(r, aliases[r.id] ?? const <String>[]),
+          deletedAt: r.updatedAt,
+          batchCount: _deletedWith(r, batches).length,
+        ),
+    ];
+  }
+
+  /// The batches that were deleted together with [item]: deleting an item
+  /// stamps it and its batches with the same moment.
+  List<BatchRow> _deletedWith(ItemRow item, List<BatchRow> batches) {
+    return <BatchRow>[
+      for (final BatchRow b in batches)
+        if (b.itemId == item.id &&
+            b.updatedAt.difference(item.updatedAt).abs() <=
+                const Duration(seconds: 2))
+          b,
+    ];
+  }
+
+  @override
+  Future<void> restoreDeletedItem(String itemId) {
+    return _db.transaction<void>(() async {
+      final ItemRow? row = await (_db.select(_db.items)
+            ..where((t) => t.id.equals(itemId) & t.isDeleted.equals(true)))
+          .getSingleOrNull();
+      if (row == null) {
+        throw const NotFoundFailure('This item is not in the bin any more.');
+      }
+      final ItemRow? clash = await _itemRowByName(row.name);
+      if (clash != null) {
+        throw DuplicateItemFailure(
+          existingItemId: clash.id,
+          name: clash.name,
+        );
+      }
+      final List<BatchRow> deleted = await (_db.select(_db.stockBatches)
+            ..where((t) => t.itemId.equals(itemId) & t.isDeleted.equals(true)))
+          .get();
+      final DateTime now = _now();
+      // Read the item's deletion moment before it is changed.
+      final List<BatchRow> together = _deletedWith(row, deleted);
+      await _setItemDeleted(itemId, deleted: false, now: now);
+      for (final BatchRow b in together) {
+        await _setBatchDeleted(b.id, deleted: false, now: now);
+      }
+    });
+  }
+
   Future<void> _setItemDeleted(
     String id, {
     required bool deleted,

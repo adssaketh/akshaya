@@ -40,6 +40,12 @@ final StreamProvider<List<ItemWithBatches>> itemsStreamProvider =
   return ref.watch(pantryRepositoryProvider).watchItems();
 });
 
+/// The recycle bin: items deleted in the last 30 days.
+final StreamProvider<List<DeletedItem>> deletedItemsProvider =
+    StreamProvider<List<DeletedItem>>((Ref ref) {
+  return ref.watch(pantryRepositoryProvider).watchDeletedItems();
+});
+
 final StreamProvider<List<Category>> categoriesProvider =
     StreamProvider<List<Category>>((Ref ref) {
   return ref.watch(pantryRepositoryProvider).watchCategories();

@@ -1,6 +1,7 @@
 import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../settings/presentation/swipe_settings.dart';
 
 import '../../../core/time/clock.dart';
 import '../../../core/ui/feedback.dart';
@@ -316,7 +317,9 @@ class _EntryRow extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Dismissible(
         key: ValueKey<String>('entry-${entry.id}'),
-        direction: DismissDirection.endToStart,
+        direction: ref.watch(swipeItemActionsProvider)
+            ? DismissDirection.endToStart
+            : DismissDirection.none,
         background: DecoratedBox(
           decoration: BoxDecoration(
             color: colors.expired.background,
