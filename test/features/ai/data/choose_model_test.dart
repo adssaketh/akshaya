@@ -1,4 +1,5 @@
 import 'package:akshaya/features/ai/data/firebase_runtime.dart';
+import 'package:akshaya/features/ai/presentation/ai_voice_section.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -57,5 +58,14 @@ void main() {
     chosen = '';
     expect(runtime.modelName(), isNotEmpty);
     expect(runtime.modelName(), isNot('gemini-3.5-flash-lite'));
+  });
+
+  test('the models that can be picked are listed once, with the default', () {
+    final List<String> names = <String>[
+      for (final (String, String) c in kAiModelChoices) c.$1,
+    ];
+    expect(names.first, '', reason: 'Automatic comes first');
+    expect(names.toSet().length, names.length);
+    expect(names, contains(kDefaultGeminiModel));
   });
 }

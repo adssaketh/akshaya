@@ -189,11 +189,10 @@ class _CapStepper extends StatelessWidget {
 }
 
 /// The Gemini models that can be picked on this phone. "" follows the server.
+/// Only models that need no billing (the free Spark plan) are listed.
 const List<(String, String)> kAiModelChoices = <(String, String)>[
   ('', 'Automatic (the server decides)'),
   ('gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (fast, light)'),
-  ('gemini-3.1-flash-lite', 'Gemini 3.1 Flash-Lite'),
-  ('gemini-3.6-flash', 'Gemini 3.6 Flash'),
   ('gemini-3.8-flash', 'Gemini 3.8 Flash'),
 ];
 
@@ -206,7 +205,7 @@ class _AiModelTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final Map<String, String> stored =
         ref.watch(settingsMapProvider).value ?? const <String, String>{};
-    final String chosen = stored[kAiModelKey] ?? '';
+    final String chosen = (stored[kAiModelKey] ?? '').trim();
     final bool known =
         kAiModelChoices.any(((String, String) c) => c.$1 == chosen);
     return ListTile(
@@ -220,13 +219,24 @@ class _AiModelTile extends ConsumerWidget {
         constraints: const BoxConstraints(maxWidth: 170),
         child: DropdownButton<String>(
           isExpanded: true,
-          value: known ? chosen : '',
+          value: chosen,
           underline: const SizedBox.shrink(),
           items: <DropdownMenuItem<String>>[
             for (final (String, String) c in kAiModelChoices)
               DropdownMenuItem<String>(
                 value: c.$1,
                 child: Text(c.$2, maxLines: 2, overflow: TextOverflow.ellipsis),
+              ),
+            // A name saved earlier that is no longer in the list is still the
+            // one in use, so it is shown instead of "Automatic".
+            if (!known)
+              DropdownMenuItem<String>(
+                value: chosen,
+                child: Text(
+                  '$chosen (saved)',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
           ],
           onChanged: (String? value) {
