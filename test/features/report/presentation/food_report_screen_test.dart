@@ -68,7 +68,7 @@ void main() {
     bool aiReady = true,
     RecipeDiet diet = RecipeDiet.veg,
   }) async {
-    tester.view.physicalSize = Size(width, 6000);
+    tester.view.physicalSize = Size(width, 10000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final ProviderContainer container = ProviderContainer(

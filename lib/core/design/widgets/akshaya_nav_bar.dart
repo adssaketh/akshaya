@@ -1,5 +1,6 @@
 import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 
 import '../motion/app_motion.dart';
@@ -49,11 +50,17 @@ class AkshayaNavBar extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelected,
     this.glass,
+    this.position,
   });
 
   final List<AkshayaNavDestination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+
+  /// The page position (0 to destinations.length - 1) while pages are being
+  /// swiped. The indicator then follows it exactly, with no animation of its
+  /// own. Null: the indicator slides to [selectedIndex] as before.
+  final ValueListenable<double>? position;
 
   /// Null for the solid bar.
   final NavBarGlass? glass;
@@ -82,6 +89,7 @@ class AkshayaNavBar extends StatelessWidget {
               onSelected: onSelected,
               animate: animate,
               glass: glass,
+              position: position,
             ),
           ),
         ),
@@ -115,6 +123,7 @@ class _Pill extends StatelessWidget {
     required this.onSelected,
     required this.animate,
     required this.glass,
+    required this.position,
   });
 
   final List<AkshayaNavDestination> destinations;
@@ -122,6 +131,7 @@ class _Pill extends StatelessWidget {
   final ValueChanged<int> onSelected;
   final bool animate;
   final NavBarGlass? glass;
+  final ValueListenable<double>? position;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +195,15 @@ class _Pill extends StatelessWidget {
     return bar;
   }
 
+  Widget _indicator(AkshayaColors colors) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.primary,
+        borderRadius: BorderRadius.circular(AppSizes.navIndicatorHeight),
+      ),
+    );
+  }
+
   static List<BoxShadow> _shadow(Color color) => <BoxShadow>[
         BoxShadow(
           color: color,
@@ -207,23 +226,36 @@ class _Pill extends StatelessWidget {
                     (slot - AppSizes.navIndicatorWidth) / 2;
                 return Stack(
                   children: <Widget>[
-                    // The indicator slides between tabs instead of fading.
-                    AnimatedPositioned(
-                      duration: animate ? AppMotion.base : Duration.zero,
-                      curve: AppMotion.pop,
-                      left: left,
-                      top: AppSpacing.xs / 2,
-                      width: AppSizes.navIndicatorWidth,
-                      height: AppSizes.navIndicatorHeight,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: colors.primary,
-                          borderRadius: BorderRadius.circular(
-                            AppSizes.navIndicatorHeight,
-                          ),
-                        ),
+                    // The indicator slides between tabs instead of fading, or
+                    // follows the pages exactly while they are swiped.
+                    if (position == null)
+                      AnimatedPositioned(
+                        duration: animate ? AppMotion.base : Duration.zero,
+                        curve: AppMotion.pop,
+                        left: left,
+                        top: AppSpacing.xs / 2,
+                        width: AppSizes.navIndicatorWidth,
+                        height: AppSizes.navIndicatorHeight,
+                        child: _indicator(colors),
+                      )
+                    else
+                      ValueListenableBuilder<double>(
+                        valueListenable: position!,
+                        child: _indicator(colors),
+                        builder: (BuildContext context, double page, Widget? child) {
+                          final double at = page
+                              .clamp(0, destinations.length - 1)
+                              .toDouble();
+                          return Positioned(
+                            left: slot * at +
+                                (slot - AppSizes.navIndicatorWidth) / 2,
+                            top: AppSpacing.xs / 2,
+                            width: AppSizes.navIndicatorWidth,
+                            height: AppSizes.navIndicatorHeight,
+                            child: child!,
+                          );
+                        },
                       ),
-                    ),
                     Row(
                       children: <Widget>[
                         for (final (int i, AkshayaNavDestination d)

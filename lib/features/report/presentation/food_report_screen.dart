@@ -17,6 +17,7 @@ import '../domain/report_ai.dart';
 import '../domain/report_bundle.dart';
 import '../domain/report_models.dart';
 import '../domain/report_share.dart';
+import 'my_plate.dart';
 import 'providers.dart';
 import 'report_charts.dart';
 import 'report_format.dart';
@@ -642,6 +643,59 @@ class _NutrientsBody extends StatelessWidget {
   }
 }
 
+/// The parts of the picture plate: what was used of each group against the
+/// guide. Dal and eggs share a quarter of the plate.
+List<PlateSlice> plateSlices({
+  required ConsumptionReport report,
+  required List<PlateTarget> plate,
+}) {
+  double used(FoodGroup g) => report.amountPerPersonPerDay[g] ?? 0;
+  PlateTarget? find(FoodGroup g) {
+    for (final PlateTarget t in plate) {
+      if (t.group == g) {
+        return t;
+      }
+    }
+    return null;
+  }
+
+  double target(FoodGroup g) => find(g)?.amount ?? 0;
+  return <PlateSlice>[
+    PlateSlice(
+      kind: PlateKind.vegetables,
+      used: used(FoodGroup.vegetables),
+      target: target(FoodGroup.vegetables),
+      unit: 'g',
+    ),
+    PlateSlice(
+      kind: PlateKind.fruit,
+      used: used(FoodGroup.fruits),
+      target: target(FoodGroup.fruits),
+      unit: 'g',
+    ),
+    PlateSlice(
+      kind: PlateKind.grains,
+      used: used(FoodGroup.cereals),
+      target: target(FoodGroup.cereals),
+      unit: 'g',
+    ),
+    PlateSlice(
+      kind: PlateKind.protein,
+      used:
+          used(FoodGroup.pulses) +
+          (find(FoodGroup.meatEggs) == null ? 0 : used(FoodGroup.meatEggs)),
+      target: target(FoodGroup.pulses) + target(FoodGroup.meatEggs),
+      unit: 'g',
+    ),
+    PlateSlice(
+      kind: PlateKind.milk,
+      used: used(FoodGroup.dairy),
+      target: target(FoodGroup.dairy),
+      unit: 'ml',
+    ),
+  ];
+}
+
 /// What was actually used of each food group, per person per day, next to the
 /// ICMR-NIN "My Plate for the Day" amounts for the chosen adult. The amounts
 /// come from the quantities marked as used, never from a per-100-g figure.
@@ -660,6 +714,10 @@ class _PlateBody extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        MyPlate(
+          slices: plateSlices(report: report, plate: plate),
+        ),
+        const SizedBox(height: AppSpacing.lg),
         for (final PlateTarget t in plate)
           Builder(
             builder: (BuildContext context) {

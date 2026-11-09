@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/diagnostics/diag.dart';
+import '../../core/ui/swipe_tabs.dart';
 import '../alerts/domain/alert_plan.dart';
 import '../alerts/presentation/first_run_prompt.dart';
 import '../alerts/presentation/providers.dart';
@@ -52,6 +53,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   // The floating bar's measured size, shared with the tabs so their buttons
   // sit above it.
   final GlobalKey _barKey = GlobalKey();
+
+  /// Where the pages are while swiped, so the bar's indicator follows.
+  final ValueNotifier<double> _position = ValueNotifier<double>(0);
   final ValueNotifier<double> _barCovered = ValueNotifier<double>(0);
 
   void _measureBar() {
@@ -73,6 +77,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void dispose() {
     _barCovered.dispose();
+    _position.dispose();
     super.dispose();
   }
 
@@ -239,28 +244,31 @@ class _AppShellState extends ConsumerState<AppShell> {
       extendBody: true,
       body: _EdgeBody(
         settings: ref.watch(appSettingsProvider),
-        child: IndexedStack(
-        index: _index,
-        children: <Widget>[
-          TabPane(
-            active: _index == 0,
-            child: HomeScreen(
+        child: SwipeTabs(
+          index: _index,
+          position: _position,
+          onIndexChanged: (int i) {
+            Diag.info('nav', 'Tab ${_tabNames[i]} (swipe)');
+            setState(() => _index = i);
+          },
+          children: <Widget>[
+            HomeScreen(
               onShowPantry: _showPantry,
               onShowShopping: () => setState(() => _index = _shoppingTab),
               onShowRecipes: () => setState(() => _index = _recipesTab),
             ),
-          ),
-          TabPane(active: _index == 1, child: const PantryScreen()),
-          TabPane(active: _index == 2, child: const ShoppingScreen()),
-          TabPane(active: _index == 3, child: const RecipesScreen()),
-          TabPane(active: _index == 4, child: const SettingsScreen()),
-        ],
+            const PantryScreen(),
+            const ShoppingScreen(),
+            const RecipesScreen(),
+            const SettingsScreen(),
+          ],
         ),
       ),
       bottomNavigationBar: AkshayaNavBar(
         key: _barKey,
         glass: _glass(ref.watch(appSettingsProvider)),
         selectedIndex: _index,
+        position: _position,
         onSelected: (int i) {
           Diag.info('nav', 'Tab ${_tabNames[i]}');
           setState(() => _index = i);
