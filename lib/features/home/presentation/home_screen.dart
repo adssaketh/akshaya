@@ -2,8 +2,6 @@ import 'package:akshaya/core/design/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../commands/domain/command_models.dart';
-import '../../commands/presentation/command_flow.dart';
 import '../../commands/presentation/voice_mic_button.dart';
 import '../../forecast/domain/what_to_buy.dart';
 import '../../forecast/presentation/providers.dart';
@@ -18,6 +16,7 @@ import '../../shopping/presentation/providers.dart';
 import '../../pantry/domain/entities.dart';
 import '../../produce/domain/produce.dart';
 import '../../produce/presentation/produce_screen.dart';
+import '../../report/presentation/report_card.dart';
 import '../../rescue/presentation/food_rescue_section.dart';
 import '../../travel/presentation/travel_screen.dart';
 import '../../travel/presentation/trip_banner.dart';
@@ -211,6 +210,8 @@ class _Content extends ConsumerWidget {
           },
         ),
         const SizedBox(height: AppSpacing.lg),
+        ReportCard(stocks: stocks),
+        const SizedBox(height: AppSpacing.lg),
         _QuickActions(onShowShopping: onShowShopping),
         const SizedBox(height: AppSpacing.lg),
         TripBanner(onShowRecipes: onShowRecipes),
@@ -285,18 +286,6 @@ class _QuickActions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       children: <Widget>[
-        Expanded(
-          child: _ActionButton(
-            icon: Icons.mic_rounded,
-            label: 'Voice',
-            onTap: () => runCommandFlow(
-              context,
-              ref,
-              commandContext: CommandContext.general,
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: _ActionButton(
             icon: Icons.qr_code_scanner_rounded,
