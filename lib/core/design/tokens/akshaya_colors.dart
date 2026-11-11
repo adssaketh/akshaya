@@ -246,7 +246,6 @@ abstract final class PlateColors {
   static const Color wellLight = Color(0xFFF8F7FC);
   static const Color wellDark = Color(0xFFE4E2EE);
   static const Color wellEdge = Color(0x1F000000);
-  static const Color divider = Color(0xFFF2F1F8);
   static const Color gleam = Color(0x66FFFFFF);
   // Bowl.
   static const Color bowlEdge = Color(0xFFE2E1EE);
@@ -262,26 +261,10 @@ abstract final class PlateColors {
   static const Color pick = Color(0xFF4B3FD1);
   // Highlights on food.
   static const Color shine = Color(0x55FFFFFF);
-  static const Color fruitRing = Color(0x44FFFFFF);
-  static const Color leafVein = Color(0x33FFFFFF);
   // Food.
   static const Color baseGrains = Color(0xFFEFE2BE);
-  static const Color grain1 = Color(0xFFFFFBEF);
-  static const Color grain2 = Color(0xFFF6EBCB);
-  static const Color grain3 = Color(0xFFFFF6DD);
-  static const Color grain4 = Color(0xFFEADDB5);
   static const Color baseProtein = Color(0xFFC98A1E);
-  static const Color dal1 = Color(0xFFE9B23B);
-  static const Color dal2 = Color(0xFFD99A26);
-  static const Color dal3 = Color(0xFFF2C65A);
   static const Color baseVegetables = Color(0xFF3F8B45);
-  static const Color veg1 = Color(0xFF4E9F50);
-  static const Color veg2 = Color(0xFF79B957);
-  static const Color veg3 = Color(0xFF2F7D3A);
   static const Color carrot = Color(0xFFE88A3C);
   static const Color baseFruit = Color(0xFFD9473F);
-  static const Color fruit1 = Color(0xFFE5544B);
-  static const Color fruit2 = Color(0xFFF4A23A);
-  static const Color fruit3 = Color(0xFFF7D154);
-  static const Color fruit4 = Color(0xFFB8DC8E);
 }

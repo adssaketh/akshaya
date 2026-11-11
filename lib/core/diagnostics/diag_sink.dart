@@ -108,7 +108,12 @@ final class FileDiagSink implements DiagSink {
       if (_size > 0 && _size + text.length > maxBytes) {
         _rotate(file);
       }
-      file.writeAsStringSync(text, mode: FileMode.append, flush: true);
+      // No `flush: true`: that forces the phone's storage to confirm every
+      // line (an fsync) on the UI thread, which can stall a frame for tens of
+      // milliseconds while the app is animating. The write still reaches the
+      // operating system at once, so it survives the app crashing or being
+      // killed; only a sudden power loss can drop the last few lines.
+      file.writeAsStringSync(text, mode: FileMode.append);
       _size += text.length;
     } on Object {
       // Never let logging break the app.

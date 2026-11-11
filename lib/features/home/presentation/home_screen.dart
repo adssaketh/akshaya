@@ -23,10 +23,6 @@ import '../../rescue/presentation/food_rescue_section.dart';
 import '../../travel/presentation/travel_screen.dart';
 import '../../travel/presentation/trip_banner.dart';
 
-/// How many "use these first" items the dashboard listed before Food rescue
-/// replaced that list.
-const int kUseFirstShown = 5;
-
 /// The items to use first: expired and expiring stock, plus any cooked
 /// leftovers still in the fridge, soonest first. The Home list is now the
 /// Food rescue section (it works per batch and adds actions); these rules are
