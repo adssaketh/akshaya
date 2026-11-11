@@ -32,6 +32,7 @@ const List<_Counted> _countedTables = <_Counted>[
   _Counted('Saved recipes', 'saved_recipes'),
   _Counted('Planned meals', 'meal_plan_entries'),
   _Counted('Trips', 'trips'),
+  _Counted('Takeaway meals', 'takeaway_meals'),
 ];
 
 /// What the app is holding and how its helpers are doing, as label and value

@@ -55,6 +55,7 @@ class BackupService {
     'saved_recipes',
     'meal_plan_entries',
     'trips',
+    'takeaway_meals',
   ];
 
   static const Set<String> _localOnly = <String>{'sync_status', 'household_id'};

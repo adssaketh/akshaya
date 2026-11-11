@@ -28,6 +28,7 @@ import '../travel/presentation/travel_screen.dart';
 import '../widgets/domain/widget_gateway.dart';
 import '../widgets/presentation/widget_providers.dart';
 import '../shopping/presentation/shopping_screen.dart';
+import '../takeaway/presentation/providers.dart';
 
 /// Bottom navigation: Home, Pantry, Shopping, Recipes, Settings.
 /// Home is the dashboard; the other four tabs are the feature screens.
@@ -236,6 +237,9 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Looks up pantry foods the nutrition table does not know, in the
+    // background, for the eating report.
+    ref.watch(pantryEstimateWatcherProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureBar());
     return NavBarScope(
       covered: _barCovered,

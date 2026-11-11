@@ -4,7 +4,7 @@ rules_version = '2';
 //
 //   households/{h}                       name, ownerId, inviteCode, createdAt
 //   households/{h}/members/{uid}         displayName, role, joinedAt
-//   households/{h}/{categories|items|shoppingLists|batches|entries|logs|recipes|mealPlan|trips}/{id}
+//   households/{h}/{categories|items|shoppingLists|batches|entries|logs|recipes|mealPlan|trips|takeaways}/{id}
 //   inviteCodes/{code}                   householdId, ownerId
 //   users/{uid}                          householdId (pointer, own account only)
 //
@@ -256,6 +256,29 @@ service cloud.firestore {
               || request.resource.data.essentialsJson == null
               || (request.resource.data.essentialsJson is string
                   && request.resource.data.essentialsJson.size() <= 4000));
+        allow delete: if isMember(h) && resource.data.isDeleted == true;
+      }
+
+      // Takeaway food (Phase 15). Gemini's estimate for one serving is JSON
+      // text and is optional; the price is optional too.
+      match /takeaways/{id} {
+        allow read: if isMember(h);
+        allow create, update: if isMember(h) && syncedBase(h, id)
+          && isText(request.resource.data.name, 80)
+          && request.resource.data.name.size() >= 1
+          && isText(request.resource.data.meal, 16)
+          && request.resource.data.portions is number
+          && request.resource.data.portions > 0
+          && request.resource.data.portions <= 20
+          && isText(request.resource.data.eatenOn, 10)
+          && (!('price' in request.resource.data)
+              || request.resource.data.price == null
+              || (request.resource.data.price is number
+                  && request.resource.data.price >= 0))
+          && (!('estimateJson' in request.resource.data)
+              || request.resource.data.estimateJson == null
+              || (request.resource.data.estimateJson is string
+                  && request.resource.data.estimateJson.size() <= 4000));
         allow delete: if isMember(h) && resource.data.isDeleted == true;
       }
     }

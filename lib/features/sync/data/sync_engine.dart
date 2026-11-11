@@ -570,6 +570,7 @@ String? refusedCollectionsMessage(Set<String> refused) {
     'recipes': 'saved recipes',
     'mealPlan': 'meal plan',
     'trips': 'trips',
+    'takeaways': 'takeaway meals',
   };
   final List<String> labels = <String>[
     for (final String c in refused) names[c] ?? c,

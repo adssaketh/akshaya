@@ -18,6 +18,7 @@ import '../domain/report_bundle.dart';
 import '../domain/report_models.dart';
 import '../domain/report_share.dart';
 import 'my_plate.dart';
+import '../../takeaway/presentation/takeaway_screen.dart';
 import 'providers.dart';
 import 'report_charts.dart';
 import 'report_format.dart';
@@ -45,6 +46,11 @@ class FoodReportScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Food report'),
         actions: <Widget>[
+          IconButton(
+            tooltip: 'Takeaway food',
+            icon: const Icon(Icons.takeout_dining_rounded),
+            onPressed: () => openTakeaway(context),
+          ),
           IconButton(
             tooltip: 'Share this report',
             icon: const Icon(Icons.ios_share_rounded),

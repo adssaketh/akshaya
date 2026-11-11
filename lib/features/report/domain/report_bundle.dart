@@ -1,5 +1,7 @@
 import '../../pantry/domain/entities.dart';
 import '../../pantry/domain/stock_logic.dart';
+import '../../takeaway/domain/food_estimate.dart';
+import '../../takeaway/domain/takeaway_models.dart';
 import 'meal_ideas.dart';
 import 'report_builder.dart';
 import 'report_models.dart';
@@ -38,6 +40,8 @@ ReportBundle buildReportBundle({
   required int people,
   required bool vegetarian,
   required List<ItemStock> stocks,
+  List<TakeawayMeal> takeaways = const <TakeawayMeal>[],
+  Map<String, FoodEstimate> estimates = const <String, FoodEstimate>{},
 }) {
   final ConsumptionReport report = buildConsumptionReport(
     period: period,
@@ -47,6 +51,8 @@ ReportBundle buildReportBundle({
     people: people,
     vegetarian: vegetarian,
     stocks: stocks,
+    takeaways: takeaways,
+    estimates: estimates,
   );
   final ConsumptionReport previous = buildConsumptionReport(
     period: period,
@@ -55,6 +61,8 @@ ReportBundle buildReportBundle({
     itemsById: itemsById,
     people: people,
     vegetarian: vegetarian,
+    takeaways: takeaways,
+    estimates: estimates,
   );
   return ReportBundle(
     report: report,

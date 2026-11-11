@@ -7,12 +7,14 @@ import '../../forecast/domain/what_to_buy.dart';
 import '../../forecast/presentation/providers.dart';
 import '../../forecast/presentation/what_to_buy_screen.dart';
 import '../../guide/presentation/guide_button.dart';
+import '../../history/presentation/history_button.dart';
 import '../../insights/presentation/insights_screen.dart';
 import '../../pantry/domain/stock_logic.dart';
 import '../../pantry/presentation/pantry_actions.dart';
 import '../../pantry/presentation/pantry_icons.dart';
 import '../../pantry/presentation/providers.dart';
 import '../../shopping/presentation/providers.dart';
+import '../../takeaway/presentation/takeaway_screen.dart';
 import '../../pantry/domain/entities.dart';
 import '../../produce/domain/produce.dart';
 import '../../produce/presentation/produce_screen.dart';
@@ -71,7 +73,7 @@ class HomeScreen extends ConsumerWidget {
         padding: EdgeInsets.only(bottom: AppSpacing.xxl + context.navClearance),
         children: <Widget>[
           const AkshayaHeader(
-            actions: <Widget>[GuideButton(), VoiceMicButton()],
+            actions: <Widget>[HistoryButton(), GuideButton(), VoiceMicButton()],
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
@@ -307,6 +309,14 @@ class _QuickActions extends ConsumerWidget {
             icon: Icons.shopping_basket_rounded,
             label: 'Shopping',
             onTap: onShowShopping,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.takeout_dining_rounded,
+            label: 'Takeaway',
+            onTap: () => openTakeaway(context),
           ),
         ),
       ],

@@ -8,6 +8,8 @@ import '../../pantry/domain/stock_logic.dart';
 import '../../insights/presentation/providers.dart';
 import '../../recipes/domain/recipe_models.dart';
 import '../../recipes/presentation/providers.dart';
+import '../../takeaway/domain/takeaway_models.dart';
+import '../../takeaway/presentation/providers.dart';
 import '../domain/report_builder.dart';
 import '../domain/report_models.dart';
 import 'food_report_screen.dart';
@@ -112,6 +114,10 @@ class ReportCard extends ConsumerWidget {
                     people: prefs.people,
                     vegetarian: !ref.watch(reportIncludeEggsProvider),
                     stocks: stocks,
+                    takeaways:
+                        ref.watch(takeawaysProvider).value ??
+                        const <TakeawayMeal>[],
+                    estimates: ref.watch(foodEstimatesProvider),
                   );
                   return ReportBody(report: report);
                 },

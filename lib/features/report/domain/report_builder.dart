@@ -3,6 +3,8 @@ import '../../pantry/domain/consumption_type.dart';
 import '../../pantry/domain/entities.dart';
 import '../../pantry/domain/stock_logic.dart';
 import '../../pantry/domain/unit.dart';
+import '../../takeaway/domain/food_estimate.dart';
+import '../../takeaway/domain/takeaway_models.dart';
 import 'dgi_guide.dart';
 import 'nutrition_table.dart';
 import 'report_models.dart';
@@ -53,8 +55,15 @@ String _label(Unit unit, double base) {
 /// changes. Waste, expiry, giveaways and count corrections are not food that
 /// was eaten, so they are left out.
 ///
-/// This is a rough guide built from what was marked as used. It cannot see
-/// what each person ate, meals eaten out, or food that was never logged.
+/// [takeaways] are meals eaten from outside the home; they count like food
+/// used from the pantry. [estimates] are Gemini's estimates for foods the
+/// built-in table does not know (by [estimateKey] of the name): they are used
+/// for a pantry item the table cannot match and for a takeaway that has no
+/// estimate of its own yet.
+///
+/// This is a rough guide built from what was marked as used or logged as
+/// takeaway. It cannot see what each person ate, or food that was never
+/// logged.
 ConsumptionReport buildConsumptionReport({
   required ReportPeriod period,
   required DateTime today,
@@ -63,6 +72,8 @@ ConsumptionReport buildConsumptionReport({
   required int people,
   bool vegetarian = false,
   List<ItemStock> stocks = const <ItemStock>[],
+  List<TakeawayMeal> takeaways = const <TakeawayMeal>[],
+  Map<String, FoodEstimate> estimates = const <String, FoodEstimate>{},
 }) {
   final DateTime start = DateTime(
     today.year,
@@ -86,6 +97,41 @@ ConsumptionReport buildConsumptionReport({
   final Map<String, double> kcalByDay = <String, double>{};
   final Map<FoodGroup, double> energyByGroup = <FoodGroup, double>{};
 
+  // Adds one counted amount to every total of the report.
+  void count(
+    _Line line,
+    EnergyEstimate estimate,
+    FoodGroup group,
+    String day, {
+    bool fromGroup = false,
+  }) {
+    line.kcal += estimate.kcal;
+    line.protein += estimate.protein;
+    line.carbs += estimate.carbs;
+    line.fat += estimate.fat;
+    line.fibre += estimate.fibre;
+    line.hasKcal = true;
+    line.fromGroup = line.fromGroup || fromGroup;
+    totalKcal += estimate.kcal;
+    protein += estimate.protein;
+    carbs += estimate.carbs;
+    fat += estimate.fat;
+    fibre += estimate.fibre;
+    amountTotals[group] = (amountTotals[group] ?? 0) + estimate.amount;
+    if (group == FoodGroup.sugars) {
+      sugarGrams += estimate.carbs;
+    }
+    kcalByDay[day] = (kcalByDay[day] ?? 0) + estimate.kcal;
+    energyByGroup[group] = (energyByGroup[group] ?? 0) + estimate.kcal;
+    if (group == FoodGroup.fats) {
+      fatKcal += estimate.kcal;
+    }
+    if ((group == FoodGroup.vegetables || group == FoodGroup.fruits) &&
+        estimate.grams != null) {
+      vegFruitGrams += estimate.grams!;
+    }
+  }
+
   for (final ConsumptionEntry entry in history) {
     if (entry.type != ConsumptionType.used &&
         entry.type != ConsumptionType.cookedInRecipe) {
@@ -100,14 +146,22 @@ ConsumptionReport buildConsumptionReport({
     if (item == null) {
       continue;
     }
+    final FoodEnergy? food = findFoodEnergy(item.name, item.aliases);
+    final FoodEstimate? learned = food == null
+        ? estimates[estimateKey(item.name)]
+        : null;
+    if (learned != null && !learned.isFood) {
+      // Gemini said this is not food (soap, a battery).
+      continue;
+    }
     final String day = _dayKey(entry.date);
     final Set<PlateGroup> plate = plateByDay.putIfAbsent(
       day,
       () => <PlateGroup>{},
     );
 
-    final FoodEnergy? food = findFoodEnergy(item.name, item.aliases);
-    final FoodGroup group = food?.group ?? groupForCategory(item.categoryId);
+    final FoodGroup group =
+        food?.group ?? learned?.group ?? groupForCategory(item.categoryId);
     final PlateGroup? plateGroup = plateGroupOf(group);
     if (plateGroup != null) {
       plate.add(plateGroup);
@@ -118,10 +172,13 @@ ConsumptionReport buildConsumptionReport({
     if (food != null) {
       estimate = estimateEnergy(food, entry.quantityUsed, entry.unit);
     } else {
-      final FoodEnergy? fallback = kCategoryEnergyFallback[item.categoryId];
-      if (fallback != null) {
-        estimate = estimateEnergy(fallback, entry.quantityUsed, entry.unit);
-        fromGroup = estimate != null;
+      estimate = learned?.forAmount(entry.quantityUsed, entry.unit);
+      if (estimate == null) {
+        final FoodEnergy? fallback = kCategoryEnergyFallback[item.categoryId];
+        if (fallback != null) {
+          estimate = estimateEnergy(fallback, entry.quantityUsed, entry.unit);
+          fromGroup = estimate != null;
+        }
       }
     }
 
@@ -150,31 +207,38 @@ ConsumptionReport buildConsumptionReport({
     );
     line.base += base;
     if (estimate != null) {
-      line.kcal += estimate.kcal;
-      line.protein += estimate.protein;
-      line.carbs += estimate.carbs;
-      line.fat += estimate.fat;
-      line.fibre += estimate.fibre;
-      line.hasKcal = true;
-      line.fromGroup = line.fromGroup || fromGroup;
-      totalKcal += estimate.kcal;
-      protein += estimate.protein;
-      carbs += estimate.carbs;
-      fat += estimate.fat;
-      fibre += estimate.fibre;
-      amountTotals[group] = (amountTotals[group] ?? 0) + estimate.amount;
-      if (group == FoodGroup.sugars) {
-        sugarGrams += estimate.carbs;
-      }
-      kcalByDay[day] = (kcalByDay[day] ?? 0) + estimate.kcal;
-      energyByGroup[group] = (energyByGroup[group] ?? 0) + estimate.kcal;
-      if (group == FoodGroup.fats) {
-        fatKcal += estimate.kcal;
-      }
-      if ((group == FoodGroup.vegetables || group == FoodGroup.fruits) &&
-          estimate.grams != null) {
-        vegFruitGrams += estimate.grams!;
-      }
+      count(line, estimate, group, day, fromGroup: fromGroup);
+    }
+  }
+
+  for (final TakeawayMeal meal in takeaways) {
+    if (meal.portions <= 0 ||
+        meal.eatenOn.isBefore(start) ||
+        !meal.eatenOn.isBefore(end)) {
+      continue;
+    }
+    final FoodEstimate? est =
+        meal.estimate ?? estimates[estimateKey(meal.name)];
+    if (est != null && !est.isFood) {
+      continue;
+    }
+    final String day = _dayKey(meal.eatenOn);
+    final Set<PlateGroup> plate = plateByDay.putIfAbsent(
+      day,
+      () => <PlateGroup>{},
+    );
+    final FoodGroup group = est?.group ?? FoodGroup.other;
+    final PlateGroup? plateGroup = plateGroupOf(group);
+    if (plateGroup != null) {
+      plate.add(plateGroup);
+    }
+    final _Line line = byLine.putIfAbsent(
+      'takeaway|${estimateKey(meal.name)}',
+      () => _Line('${meal.name} (takeaway)', Unit.portion, group),
+    );
+    line.base += meal.portions;
+    if (est != null) {
+      count(line, est.forPortions(meal.portions), group, day);
     }
   }
 

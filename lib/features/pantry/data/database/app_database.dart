@@ -16,6 +16,7 @@ import '../../../shopping/domain/shopping_entities.dart'
 import '../../../shopping/domain/shopping_enums.dart';
 import '../../../sync/data/database/sync_tables.dart';
 import '../../../sync/data/database/sync_triggers.dart';
+import '../../../takeaway/data/database/takeaway_tables.dart';
 import '../../../travel/data/database/trip_tables.dart';
 import '../../domain/consumption_type.dart';
 import '../../domain/default_categories.dart';
@@ -52,6 +53,8 @@ part 'app_database.g.dart';
 ///    the weekly meal plan.
 ///  - v10 (Phase 13): consumption_logs.waste_reason (nullable).
 ///  - v11 (Phase 14): trips (synced, with its own sync trigger): travel mode.
+///  - v12 (Phase 15): takeaway_meals (synced, with its own sync trigger):
+///    food eaten from outside, counted in the eating report.
 ///
 /// Later phases add tables through migrations in [migration]; never edit a
 /// released version in place.
@@ -75,13 +78,14 @@ part 'app_database.g.dart';
     RecipeCache,
     MealPlanEntries,
     Trips,
+    TakeawayMeals,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration {
@@ -208,6 +212,16 @@ class AppDatabase extends _$AppDatabase {
           // One new table. Safe to run twice (createTable is IF NOT EXISTS),
           // because the alert worker may open the database before the app.
           await m.createTable(trips);
+          await _installSync();
+        }
+        if (from < 12) {
+          // One new table. Safe to run twice (createTable is IF NOT EXISTS),
+          // because the alert worker may open the database before the app.
+          await m.createTable(takeawayMeals);
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS takeaway_day_idx '
+            'ON takeaway_meals (eaten_on)',
+          );
           await _installSync();
         }
       },

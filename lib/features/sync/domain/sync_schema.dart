@@ -74,7 +74,8 @@ final class SyncTableSpec {
 }
 
 /// The synced tables (schema from Phase 1 to 4, recipes from Phase 7, the
-/// meal plan from Phase 12 and trips from Phase 14) and their documents.
+/// meal plan from Phase 12, trips from Phase 14 and takeaways from
+/// Phase 15) and their documents.
 abstract final class SyncSchema {
   static const List<SyncColumn> _shared = <SyncColumn>[
     SyncColumn('id', SyncColumnKind.text, required: true),
@@ -241,6 +242,23 @@ abstract final class SyncSchema {
     ],
   );
 
+  /// Food eaten from outside the home (Phase 15). Gemini's estimate for one
+  /// serving travels as JSON text inside the document, so every device shows
+  /// the same numbers.
+  static const SyncTableSpec takeaways = SyncTableSpec(
+    table: 'takeaway_meals',
+    collection: 'takeaways',
+    columns: <SyncColumn>[
+      ..._shared,
+      SyncColumn('name', SyncColumnKind.text, required: true),
+      SyncColumn('meal', SyncColumnKind.text, required: true),
+      SyncColumn('portions', SyncColumnKind.real, required: true),
+      SyncColumn('eaten_on', SyncColumnKind.text, required: true),
+      SyncColumn('price', SyncColumnKind.real),
+      SyncColumn('estimate_json', SyncColumnKind.text),
+    ],
+  );
+
   /// Push and pull order: things other rows point at come first.
   static const List<SyncTableSpec> tables = <SyncTableSpec>[
     categories,
@@ -252,6 +270,7 @@ abstract final class SyncSchema {
     recipes,
     mealPlan,
     trips,
+    takeaways,
   ];
 
   /// The spec for a Firestore collection name, or null.

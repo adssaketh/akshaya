@@ -10,6 +10,9 @@ import '../../pantry/presentation/providers.dart';
 import '../../recipes/domain/recipe_models.dart';
 import '../../recipes/presentation/providers.dart';
 import '../../settings/presentation/providers.dart';
+import '../../takeaway/domain/food_estimate.dart';
+import '../../takeaway/domain/takeaway_models.dart';
+import '../../takeaway/presentation/providers.dart';
 import '../data/firebase_report_backend.dart';
 import '../domain/report_ai.dart';
 import '../domain/report_bundle.dart';
@@ -79,6 +82,11 @@ final Provider<AsyncValue<ReportBundle>> reportBundleProvider =
       final bool includeEggs = ref.watch(reportIncludeEggsProvider);
       final List<ItemStock> stocks =
           ref.watch(pantryStocksProvider).value ?? const <ItemStock>[];
+      final List<TakeawayMeal> takeaways =
+          ref.watch(takeawaysProvider).value ?? const <TakeawayMeal>[];
+      final Map<String, FoodEstimate> estimates = ref.watch(
+        foodEstimatesProvider,
+      );
       return ref
           .watch(allHistoryProvider)
           .whenData(
@@ -92,6 +100,8 @@ final Provider<AsyncValue<ReportBundle>> reportBundleProvider =
               people: prefs.people,
               vegetarian: !includeEggs,
               stocks: stocks,
+              takeaways: takeaways,
+              estimates: estimates,
             ),
           );
     });
