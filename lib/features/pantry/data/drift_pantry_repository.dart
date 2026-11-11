@@ -985,6 +985,65 @@ class DriftPantryRepository implements PantryRepository {
     return value == null ? null : dateOnly(value);
   }
 
+  /// Fixing a batch to show more left than before usually means a use was
+  /// logged too large (200 g typed instead of 150 g). What was bought minus
+  /// what is left is what was really taken, so when the logged uses add up to
+  /// more than that, the newest "used" and "cooked" entries are cut down (or
+  /// removed) to match. That keeps the Usage history and the eating report in
+  /// step with the stock. Wasted, expired and given-away entries are never
+  /// changed.
+  Future<void> _trimOverLoggedUse({
+    required String batchId,
+    required double bought,
+    required double left,
+    required DateTime now,
+  }) async {
+    final List<ConsumptionLogRow> logs = await (_db.select(_db.consumptionLogs)
+          ..where((t) => t.batchId.equals(batchId) & t.isDeleted.equals(false)))
+        .get();
+    double logged = 0;
+    final List<ConsumptionLogRow> trimmable = <ConsumptionLogRow>[];
+    for (final ConsumptionLogRow log in logs) {
+      if (log.type == ConsumptionType.adjustment || log.quantityUsed <= 0) {
+        continue;
+      }
+      logged += log.quantityUsed;
+      if (log.type == ConsumptionType.used ||
+          log.type == ConsumptionType.cookedInRecipe) {
+        trimmable.add(log);
+      }
+    }
+    double excess = roundQty(logged - roundQty(bought - left));
+    if (excess <= 0 || isZeroQty(excess)) {
+      return;
+    }
+    trimmable.sort((ConsumptionLogRow a, ConsumptionLogRow b) {
+      final int byDate = b.date.compareTo(a.date);
+      return byDate != 0 ? byDate : b.createdAt.compareTo(a.createdAt);
+    });
+    for (final ConsumptionLogRow log in trimmable) {
+      if (excess <= 0 || isZeroQty(excess)) {
+        break;
+      }
+      final bool removeAll =
+          log.quantityUsed <= excess || isZeroQty(log.quantityUsed - excess);
+      final double newQty =
+          removeAll ? log.quantityUsed : roundQty(log.quantityUsed - excess);
+      await (_db.update(_db.consumptionLogs)
+            ..where((t) => t.id.equals(log.id)))
+          .write(
+        ConsumptionLogsCompanion(
+          quantityUsed: Value<double>(newQty),
+          isDeleted: Value<bool>(removeAll),
+          updatedAt: Value<DateTime>(now),
+          updatedBy: Value<String?>(_userId),
+          syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        ),
+      );
+      excess = roundQty(excess - log.quantityUsed);
+    }
+  }
+
   @override
   Future<StockBatch> updateBatch(StockBatch batch) {
     return _db.transaction<StockBatch>(() async {
@@ -1011,6 +1070,15 @@ class DriftPantryRepository implements PantryRepository {
       final String? store = _cleanOptional(batch.store);
       final String? container = _cleanOptional(batch.containerLabel);
       final DateTime? checkBy = _dateOrNull(batch.checkBy);
+
+      if (left > roundQty(existing.quantityRemaining)) {
+        await _trimOverLoggedUse(
+          batchId: batch.id,
+          bought: bought,
+          left: left,
+          now: now,
+        );
+      }
 
       await (_db.update(_db.stockBatches)
             ..where((t) => t.id.equals(batch.id)))

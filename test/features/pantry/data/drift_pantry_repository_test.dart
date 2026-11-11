@@ -9,6 +9,8 @@ import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../domain/test_data.dart';
+
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
@@ -180,5 +182,73 @@ void main() {
     await repo.deleteItem(item.id);
     final Item again = await repo.addItem(rice());
     expect(again.id, isNot(item.id));
+  });
+
+  group('fixing a batch after a use was logged too large', () {
+    Future<(Item, StockBatch)> paneerUsed(double used) async {
+      final Item item = await repo.addItem(
+        const ItemDraft(
+          name: 'Paneer',
+          categoryId: 'cat_dairy',
+          defaultUnit: Unit.g,
+        ),
+      );
+      final StockBatch b = await repo.addBatch(batch(item.id, 200, unit: Unit.g));
+      await repo.useStock(itemId: item.id, quantity: used, unit: Unit.g);
+      return (item, b);
+    }
+
+    StockBatch edited(Item item, StockBatch b, double remaining) => makeBatch(
+      id: b.id,
+      itemId: item.id,
+      bought: 200,
+      remaining: remaining,
+      unit: Unit.g,
+      purchase: DateTime(2026, 11, 1),
+    );
+
+    Future<double> loggedUse() async {
+      final List<ConsumptionEntry> all = await repo.watchAllHistory().first;
+      return all.fold<double>(0, (double sum, ConsumptionEntry e) => sum + e.quantityUsed);
+    }
+
+    test('150 g left as 50 g trims a 200 g use to 150 g', () async {
+      final (Item item, StockBatch b) = await paneerUsed(200);
+      await repo.updateBatch(edited(item, b, 50));
+      expect(await loggedUse(), 150);
+      expect((await load(item.id)).batches.single.quantityRemaining, 50);
+    });
+
+    test('putting everything back removes the use entry', () async {
+      final (Item item, StockBatch b) = await paneerUsed(200);
+      await repo.updateBatch(edited(item, b, 200));
+      expect(await repo.watchAllHistory().first, isEmpty);
+    });
+
+    test('an edit that does not raise the amount left leaves logs alone', () async {
+      final (Item item, StockBatch b) = await paneerUsed(150);
+      await repo.updateBatch(edited(item, b, 50));
+      expect(await loggedUse(), 150);
+      await repo.updateBatch(edited(item, b, 20));
+      expect(await loggedUse(), 150);
+    });
+
+    test('wasted entries are never trimmed', () async {
+      final (Item item, StockBatch b) = await paneerUsed(100);
+      await repo.useStock(
+        itemId: item.id,
+        quantity: 50,
+        unit: Unit.g,
+        type: ConsumptionType.wasted,
+      );
+      await repo.updateBatch(edited(item, b, 150));
+      final List<ConsumptionEntry> all = await repo.watchAllHistory().first;
+      expect(all.where((ConsumptionEntry e) => e.type == ConsumptionType.used), isEmpty);
+      expect(
+        all.single.type,
+        ConsumptionType.wasted,
+      );
+      expect(all.single.quantityUsed, 50);
+    });
   });
 }
