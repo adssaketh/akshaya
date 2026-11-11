@@ -70,7 +70,12 @@ ReportBundle buildReportBundle({
     comparison: previous.isEmpty
         ? const ReportComparison()
         : compareReports(report, previous),
-    streak: loggingStreak(history, today),
+    // Only food that is still in the app counts, the same as in the report
+    // itself, so removing a wrongly added item also removes its day.
+    streak: loggingStreak(<ConsumptionEntry>[
+      for (final ConsumptionEntry e in history)
+        if (itemsById.containsKey(e.itemId)) e,
+    ], today),
     ideas: suggestMealIdeas(
       stocks: stocks,
       missing: report.missing,
