@@ -45,8 +45,11 @@ class ScrollEdgeEffect extends StatelessWidget {
   /// Distance from the screen bottom where content is fully visible again.
   double get full => glass
       ? barHeight * AppSizes.edgeGlassFullFactor +
-          fadeExtra * AppSizes.edgeGlassExtraFactor
+            fadeExtra * AppSizes.edgeGlassExtraFactor
       : barHeight + fadeExtra;
+
+  /// Bands blurring less than this (Gaussian sigma) are not drawn.
+  static const double _minVisibleSigma = 0.6;
 
   /// Blur of band [i] (0 is next to the bar): strongest there, near zero at
   /// the top band so the zone has no visible upper edge.
@@ -81,8 +84,9 @@ class ScrollEdgeEffect extends StatelessWidget {
     // A gradient from the page colour (opaque at the bar, clear at the top of
     // the zone) painted over the list. Unlike a ShaderMask this needs no
     // offscreen layer, so scrolling stays cheap on every frame.
-    final double opaqueFrom =
-        fullAt <= 0 ? 1.0 : ((fullAt - hideAt) / fullAt).clamp(0.0, 1.0);
+    final double opaqueFrom = fullAt <= 0
+        ? 1.0
+        : ((fullAt - hideAt) / fullAt).clamp(0.0, 1.0);
     final Widget fade = Positioned(
       left: 0,
       right: 0,
@@ -112,23 +116,27 @@ class ScrollEdgeEffect extends StatelessWidget {
     return <Widget>[
       fade,
       for (int i = 0; i < AppSizes.edgeBlurBands; i++)
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: band * i,
-          height: band,
-          child: IgnorePointer(
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: _sigma(i),
-                  sigmaY: _sigma(i),
+        // The faintest bands blur by a fraction of a pixel, which cannot be
+        // seen but still costs a full backdrop pass every frame, so they are
+        // left out. The other bands keep their places.
+        if (_sigma(i) >= _minVisibleSigma)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: band * i,
+            height: band,
+            child: IgnorePointer(
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: _sigma(i),
+                    sigmaY: _sigma(i),
+                  ),
+                  child: const SizedBox.expand(),
                 ),
-                child: const SizedBox.expand(),
               ),
             ),
           ),
-        ),
     ];
   }
 }

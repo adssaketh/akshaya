@@ -86,7 +86,9 @@ void main() {
   testWidgets('blur adds one backdrop band per step', (tester) async {
     await tester.pumpWidget(_host(ScrollEdgeKind.blur, glass: true));
     expect(find.byType(ShaderMask), findsNothing);
-    expect(find.byType(BackdropFilter), findsNWidgets(AppSizes.edgeBlurBands));
+    // The faintest bands (under 0.6 sigma, invisible) are skipped: at the
+    // default strength that leaves 4 of the 6 steps.
+    expect(find.byType(BackdropFilter), findsNWidgets(4));
   });
 
   test('zone: solid hides inside the bar, glass starts at the edge', () {
