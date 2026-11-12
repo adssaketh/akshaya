@@ -77,7 +77,9 @@ jobs:
             done
           fi
       - run: dart run build_runner build --delete-conflicting-outputs
-      - run: flutter analyze
+      # Infos (such as Flutter 3.50 deprecating the material.dart import) are
+      # still listed but no longer fail the build; errors and warnings do.
+      - run: flutter analyze --no-fatal-infos
       - run: flutter test
 
   build-apk:
