@@ -191,9 +191,14 @@ class _KeepAliveState extends State<_KeepAlive>
   }
 }
 
-/// A page eases back a little (smaller and fainter) as it slides away, so the
-/// swipe feels like depth rather than a flat slide. At rest the opacity is 1
-/// and the scale 1, which Flutter paints without any extra layer.
+/// A page eases back a little (slightly smaller) as it slides away, so the
+/// swipe feels like depth rather than a flat slide.
+///
+/// It used to fade as well. A fade on a whole page makes the phone draw the
+/// page into a separate buffer and blend it on every frame of the slide,
+/// which was most of the cost of changing tabs. A scale over a
+/// [RepaintBoundary] only moves an already drawn picture, so the page itself
+/// is not drawn again while it slides.
 class _PageEffect extends StatelessWidget {
   const _PageEffect({
     required this.controller,
@@ -207,26 +212,24 @@ class _PageEffect extends StatelessWidget {
   final int initialPage;
   final Widget child;
 
-  static const double _shrink = 0.05;
-  static const double _fade = 0.30;
+  static const double _shrink = 0.04;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: controller,
-      child: child,
+      // The page's own drawing is kept apart from the scale, so a new scale
+      // does not repaint the page.
+      child: RepaintBoundary(child: child),
       builder: (BuildContext context, Widget? child) {
         final double page =
             controller.hasClients && controller.position.haveDimensions
             ? (controller.page ?? initialPage.toDouble())
             : initialPage.toDouble();
         final double away = (page - index).abs().clamp(0, 1).toDouble();
-        // The same wrappers at rest and in motion (a page's state is lost if
-        // its parents change); at rest they draw nothing extra.
-        return Opacity(
-          opacity: 1 - _fade * away,
-          child: Transform.scale(scale: 1 - _shrink * away, child: child),
-        );
+        // The same wrapper at rest and in motion (a page's state is lost if
+        // its parents change); at rest the scale is 1 and costs nothing.
+        return Transform.scale(scale: 1 - _shrink * away, child: child);
       },
     );
   }

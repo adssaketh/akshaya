@@ -7,6 +7,7 @@ import '../../recipes/domain/recipe_models.dart';
 import '../domain/meal_plan_models.dart';
 import '../domain/meal_plan_repository.dart';
 import '../domain/meal_slot.dart';
+import '../../../core/util/distinct_rows.dart';
 
 /// [MealPlanRepository] backed by the local Drift database.
 ///
@@ -53,7 +54,7 @@ class DriftMealPlanRepository implements MealPlanRepository {
   Stream<List<MealPlanEntry>> _watchLive() {
     final SimpleSelectStatement<$MealPlanEntriesTable, MealPlanRow> query =
         _db.select(_db.mealPlanEntries)..where((t) => t.isDeleted.equals(false));
-    return query.watch().map((List<MealPlanRow> rows) {
+    return query.watch().distinctRows().map((List<MealPlanRow> rows) {
       final List<MealPlanEntry> out = <MealPlanEntry>[];
       for (final MealPlanRow row in rows) {
         final MealPlanEntry? entry = _entry(row);

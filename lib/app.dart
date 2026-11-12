@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/diagnostics/diag.dart';
 import 'core/diagnostics/error_handlers.dart';
+import 'core/diagnostics/frame_stats.dart';
 import 'core/time/clock.dart';
 import 'core/util/money.dart';
 import 'features/alerts/presentation/providers.dart';
@@ -30,6 +31,15 @@ class AkshayaApp extends ConsumerStatefulWidget {
 
 class _AkshayaAppState extends ConsumerState<AkshayaApp> {
   late final AppLifecycleListener _lifecycle;
+
+  /// How long after the first frame household sync starts.
+  static const Duration _syncStartDelay = Duration(milliseconds: 1500);
+
+  /// How long after a resume sync catches up.
+  static const Duration _syncResumeDelay = Duration(milliseconds: 700);
+
+  Timer? _syncStart;
+  Timer? _syncResume;
 
   // Built once: rebuilding two full ThemeData objects on every app rebuild is
   // wasted work.
@@ -61,8 +71,21 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
     // Starts keeping the scheduled alerts and the background check in step
     // with the app.
     ref.read(alertCoordinatorProvider);
-    // Starts household sync once someone is signed in to a household.
-    ref.read(syncCoordinatorProvider);
+    // Starts household sync once someone is signed in to a household. Not
+    // straight away: sync loads Firebase, App Check, Remote Config and
+    // Firestore and goes to the network, which made the first screen and its
+    // entrance animations stutter. It starts once the first screen has been
+    // drawn and has had a moment to settle.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncStart = Timer(_syncStartDelay, () {
+        if (mounted) {
+          ref.read(syncCoordinatorProvider);
+        }
+      });
+    });
+    // Learns the database's change counter now, so the first resume can tell
+    // whether a background task changed anything.
+    unawaited(ref.read(appDatabaseProvider).changedElsewhere());
     // Adds each trip's back-home essentials to the shopping list when due.
     ref.read(backHomeCoordinatorProvider);
     // Keeps the home screen widgets and app shortcuts up to date.
@@ -72,26 +95,43 @@ class _AkshayaAppState extends ConsumerState<AkshayaApp> {
     _lifecycle = AppLifecycleListener(
       onPause: () {
         Diag.info('app', 'Paused');
+        FrameStats.flush('While open');
+        _syncResume?.cancel();
         // Live listeners cost reads; they stop while the app is hidden.
         unawaited(ref.read(syncEngineProvider).pauseListening());
       },
       onResume: () {
         Diag.info('app', 'Resumed');
-        unawaited(ref.read(syncEngineProvider).resumeListening());
+        // Catching up with the cloud waits until the app is back on screen,
+        // so it does not compete with the return animation.
+        _syncResume?.cancel();
+        _syncResume = Timer(_syncResumeDelay, () {
+          unawaited(ref.read(syncEngineProvider).resumeListening());
+        });
         // A new day may have started while the app was in the background.
         ref.read(todayProvider.notifier).refresh();
         // Notifications may have been switched on or off in system settings.
         ref.invalidate(notificationsAllowedProvider);
-        // A notification button may have changed the pantry from a background
-        // task with its own database connection; re-run the watched queries.
-        final AppDatabase db = ref.read(appDatabaseProvider);
-        db.markTablesUpdated(db.allTables);
+        unawaited(_reloadIfChangedElsewhere());
       },
     );
   }
 
+  /// A notification button may have changed the pantry from a background task
+  /// with its own database connection. Only then are the watched queries run
+  /// again; doing it on every resume rebuilt every screen each time the app
+  /// came back.
+  Future<void> _reloadIfChangedElsewhere() async {
+    final AppDatabase db = ref.read(appDatabaseProvider);
+    if (await db.changedElsewhere() && mounted) {
+      db.markTablesUpdated(db.allTables);
+    }
+  }
+
   @override
   void dispose() {
+    _syncStart?.cancel();
+    _syncResume?.cancel();
     _lifecycle.dispose();
     super.dispose();
   }

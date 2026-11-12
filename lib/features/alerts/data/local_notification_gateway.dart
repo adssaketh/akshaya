@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest.dart' as tz_data;
+// Ten years of zone history instead of all of it: about a quarter of the
+// size, so the one-time parse on the UI thread is that much shorter. The
+// alerts only ever look at the next few days.
+import 'package:timezone/data/latest_10y.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../../core/platform/device_bridge.dart';
@@ -43,6 +46,10 @@ class LocalNotificationGateway implements NotificationGateway {
   final StreamController<AlertActionRequest> _actions =
       StreamController<AlertActionRequest>.broadcast();
   bool _initialized = false;
+
+  /// What the last [replaceScheduled] on this isolate put in place, or null
+  /// when that is not known (nothing yet, a failure, or a cancel since).
+  String? _lastScheduled;
 
   static void _ensureZones() {
     if (!_zonesReady) {
@@ -171,6 +178,17 @@ class LocalNotificationGateway implements NotificationGateway {
   @override
   Future<void> replaceScheduled(List<ScheduledAlert> alerts) async {
     await initialize();
+    // The plan is worked out again after almost every change in the app, and
+    // usually comes out the same. Re-scheduling means a cancel plus one call
+    // per notification, all handled on the phone's main thread (which, in
+    // current Flutter, is the thread that draws the app), so an unchanged
+    // plan is left alone. The pending list is checked as well, in case the
+    // background task scheduled something else since.
+    final String signature = _signatureOf(alerts);
+    if (signature == _lastScheduled && await _pendingMatches(alerts)) {
+      return;
+    }
+    _lastScheduled = null;
     // Pending alerts only: one already on screen is not removed.
     await _plugin.cancelAllPendingNotifications();
     final List<OverlayAlert> overlays = <OverlayAlert>[];
@@ -209,11 +227,66 @@ class LocalNotificationGateway implements NotificationGateway {
       }
     }
     await DeviceBridge.scheduleOverlays(overlays);
+    _lastScheduled = signature;
+  }
+
+  /// Everything about [alerts] that ends up in the scheduled notifications.
+  static String _signatureOf(List<ScheduledAlert> alerts) {
+    final StringBuffer out = StringBuffer();
+    for (final ScheduledAlert scheduled in alerts) {
+      out
+        ..write(scheduled.fireAt.toIso8601String())
+        ..write('\u0001');
+      for (final AlertNotification a in scheduled.notifications) {
+        out
+          ..write(a.id)
+          ..write('\u0000')
+          ..write(a.channel.name)
+          ..write('\u0000')
+          ..write(a.title)
+          ..write('\u0000')
+          ..write(a.body)
+          ..write('\u0000')
+          ..write(a.payload)
+          ..write('\u0000')
+          ..write(a.actions.map((AlertAction x) => x.id).join(','))
+          ..write('\u0002');
+      }
+    }
+    return out.toString();
+  }
+
+  /// True when the phone's pending notifications are exactly [alerts].
+  Future<bool> _pendingMatches(List<ScheduledAlert> alerts) async {
+    try {
+      final List<PendingNotificationRequest> pending =
+          await _plugin.pendingNotificationRequests();
+      final Map<int, AlertNotification> wanted = <int, AlertNotification>{
+        for (final ScheduledAlert s in alerts)
+          for (final AlertNotification a in s.notifications) a.id: a,
+      };
+      if (pending.length != wanted.length) {
+        return false;
+      }
+      for (final PendingNotificationRequest p in pending) {
+        final AlertNotification? a = wanted[p.id];
+        if (a == null ||
+            p.title != a.title ||
+            p.body != a.body ||
+            p.payload != a.payload) {
+          return false;
+        }
+      }
+      return true;
+    } on Object {
+      return false;
+    }
   }
 
   @override
   Future<void> cancelScheduled() async {
     await initialize();
+    _lastScheduled = null;
     await _plugin.cancelAllPendingNotifications();
     await DeviceBridge.cancelOverlays();
   }

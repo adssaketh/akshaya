@@ -103,13 +103,13 @@ class AkshayaNavBar extends StatelessWidget {
       duration: AppMotion.slow,
       curve: AppMotion.enter,
       child: bar,
+      // Slides in from below the screen edge. No fade: a fading bar is drawn
+      // into a separate buffer on every frame, right when the first screen
+      // is busiest.
       builder: (BuildContext context, double t, Widget? child) {
-        return Opacity(
-          opacity: 1 - t,
-          child: FractionalTranslation(
-            translation: Offset(0, t),
-            child: child,
-          ),
+        return FractionalTranslation(
+          translation: Offset(0, t),
+          child: child,
         );
       },
     );
@@ -166,7 +166,9 @@ class _Pill extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: radius,
-                child: BackdropFilter(
+                // Grouped with the scroll edge blur (see BackdropGroup in the
+                // app shell), so the page is copied once per frame, not twice.
+                child: BackdropFilter.grouped(
                   filter: ImageFilter.blur(
                     sigmaX: g.blurSigma,
                     sigmaY: g.blurSigma,

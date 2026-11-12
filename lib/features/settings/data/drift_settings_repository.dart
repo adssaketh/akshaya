@@ -1,5 +1,6 @@
 import '../../pantry/data/database/app_database.dart';
 import '../domain/settings_repository.dart';
+import '../../../core/util/distinct_rows.dart';
 
 /// [SettingsRepository] backed by the local Drift database.
 class DriftSettingsRepository implements SettingsRepository {
@@ -11,7 +12,7 @@ class DriftSettingsRepository implements SettingsRepository {
 
   @override
   Stream<Map<String, String>> watchAll() {
-    return _db.select(_db.appSettings).watch().map(_toMap);
+    return _db.select(_db.appSettings).watch().distinctRows().map(_toMap);
   }
 
   @override

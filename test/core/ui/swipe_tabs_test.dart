@@ -296,19 +296,44 @@ void main() {
     tester,
   ) async {
     await pump(tester);
-    double lowest() => tester
-        .widgetList<Opacity>(find.byType(Opacity))
-        .map((Opacity o) => o.opacity)
+    double smallest() => tester
+        .widgetList<Transform>(
+          find.descendant(
+            of: find.byType(PageView),
+            matching: find.byType(Transform),
+          ),
+        )
+        .map((Transform t) => t.transform.storage[0])
         .fold<double>(1, (double a, double b) => b < a ? b : a);
-    expect(lowest(), 1, reason: 'nothing faded at rest');
+    expect(smallest(), 1, reason: 'nothing scaled at rest');
     final TestGesture g = await tester.startGesture(const Offset(400, 300));
     await g.moveBy(const Offset(-200, 0));
     await tester.pump();
-    expect(lowest(), lessThan(1));
-    expect(lowest(), greaterThan(0.6), reason: 'only a little');
+    expect(smallest(), lessThan(1));
+    expect(smallest(), greaterThan(0.9), reason: 'only a little');
     await g.up();
     await tester.pumpAndSettle();
-    expect(lowest(), 1);
+    expect(smallest(), 1);
+  });
+
+  testWidgets('pages never fade, which would redraw them every frame', (
+    tester,
+  ) async {
+    await pump(tester);
+    final TestGesture g = await tester.startGesture(const Offset(400, 300));
+    await g.moveBy(const Offset(-200, 0));
+    await tester.pump();
+    final Iterable<Opacity> faded = tester
+        .widgetList<Opacity>(
+          find.descendant(
+            of: find.byType(PageView),
+            matching: find.byType(Opacity),
+          ),
+        )
+        .where((Opacity o) => o.opacity < 1);
+    expect(faded, isEmpty);
+    await g.up();
+    await tester.pumpAndSettle();
   });
 
   group('the nav bar indicator', () {

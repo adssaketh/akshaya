@@ -7,16 +7,19 @@ import 'app.dart';
 import 'core/diagnostics/app_info.dart';
 import 'core/diagnostics/diag.dart';
 import 'core/diagnostics/error_handlers.dart';
+import 'core/diagnostics/frame_stats.dart';
 import 'features/alerts/presentation/providers.dart';
 import 'features/pantry/presentation/providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Errors are caught from here on, and the diagnostics log is ready before
-  // the first screen so nothing at start-up is missed.
+  // Errors are caught from here on, so nothing at start-up is missed.
   installDiagnosticsErrorHandlers();
-  await Diag.init();
-  unawaited(_logSessionStart());
+  // Not awaited: lines logged before the file is ready are held in memory
+  // and written once it is, so the first screen does not wait for the log.
+  unawaited(Diag.init());
+  final Future<void> sessionLogged = _logSessionStart();
+  FrameStats.start(after: sessionLogged);
   runApp(
     ProviderScope(
       overrides: [

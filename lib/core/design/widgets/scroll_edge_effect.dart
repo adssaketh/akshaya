@@ -127,7 +127,10 @@ class ScrollEdgeEffect extends StatelessWidget {
             height: band,
             child: IgnorePointer(
               child: ClipRect(
-                child: BackdropFilter(
+                // Grouped: shares one copy of the page behind it with the
+                // other bands and the glass bar (see BackdropGroup in the
+                // app shell) instead of taking its own every frame.
+                child: BackdropFilter.grouped(
                   filter: ImageFilter.blur(
                     sigmaX: _sigma(i),
                     sigmaY: _sigma(i),

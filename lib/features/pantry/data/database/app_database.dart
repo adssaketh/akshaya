@@ -84,6 +84,28 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
+  /// SQLite's `data_version` the last time [changedElsewhere] looked.
+  int? _dataVersion;
+
+  /// True when another connection to the file (a background task or a
+  /// notification button run while the app was hidden) has saved changes since
+  /// the last call. The first call always says yes, as nothing is known yet.
+  ///
+  /// `PRAGMA data_version` only moves for commits made by other connections,
+  /// so the app's own writes never count.
+  Future<bool> changedElsewhere() async {
+    try {
+      final QueryRow row =
+          await customSelect('PRAGMA data_version').getSingle();
+      final int version = row.data.values.first as int;
+      final bool changed = _dataVersion == null || version != _dataVersion;
+      _dataVersion = version;
+      return changed;
+    } on Object {
+      return true;
+    }
+  }
+
   @override
   int get schemaVersion => 12;
 

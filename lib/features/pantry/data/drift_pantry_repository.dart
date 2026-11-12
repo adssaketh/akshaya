@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/util/barcode.dart';
 import '../../../core/util/date_only.dart';
+import '../../../core/util/distinct_rows.dart';
 import '../../../core/util/quantity.dart';
 import '../domain/consumption_type.dart';
 import '../domain/default_categories.dart';
@@ -116,17 +117,26 @@ class DriftPantryRepository implements PantryRepository {
   @override
   Stream<List<ItemWithBatches>> watchItems() {
     // One trigger query over every table the result depends on; each emission
-    // reloads the (small) household dataset.
+    // reloads the (small) household dataset. A reload that finds exactly the
+    // rows of the one before is dropped, so a sync pass or a resume that
+    // changed nothing does not rebuild every screen.
     return _db
         .customSelect(
           'SELECT 1',
           readsFrom: {_db.items, _db.stockBatches, _db.itemAliases},
         )
         .watch()
-        .asyncMap((_) => _loadAll());
+        .asyncMap((_) => _loadRows())
+        .distinct(
+          (_ItemRows a, _ItemRows b) =>
+              sameRows(a.items, b.items) &&
+              sameRows(a.batches, b.batches) &&
+              sameRows(a.aliases, b.aliases),
+        )
+        .map(_build);
   }
 
-  Future<List<ItemWithBatches>> _loadAll() async {
+  Future<_ItemRows> _loadRows() async {
     final List<ItemRow> itemRows = await (_db.select(_db.items)
           ..where((t) => t.isDeleted.equals(false)))
         .get();
@@ -136,6 +146,13 @@ class DriftPantryRepository implements PantryRepository {
     final List<AliasRow> aliasRows = await (_db.select(_db.itemAliases)
           ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
         .get();
+    return (items: itemRows, batches: batchRows, aliases: aliasRows);
+  }
+
+  List<ItemWithBatches> _build(_ItemRows rows) {
+    final List<ItemRow> itemRows = rows.items;
+    final List<BatchRow> batchRows = rows.batches;
+    final List<AliasRow> aliasRows = rows.aliases;
 
     final Map<String, List<String>> aliasesByItem = <String, List<String>>{};
     for (final AliasRow a in aliasRows) {
@@ -162,7 +179,7 @@ class DriftPantryRepository implements PantryRepository {
         _db.select(_db.categories)
           ..where((t) => t.isDeleted.equals(false))
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]);
-    return query.watch().map(
+    return query.watch().distinctRows().map(
           (List<CategoryRow> rows) => rows.map(_category).toList(),
         );
   }
@@ -173,7 +190,7 @@ class DriftPantryRepository implements PantryRepository {
         query = _db.select(_db.consumptionLogs)
           ..where((t) => t.itemId.equals(itemId) & t.isDeleted.equals(false))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]);
-    return query.watch().map(
+    return query.watch().distinctRows().map(
           (List<ConsumptionLogRow> rows) => rows.map(_log).toList(),
         );
   }
@@ -184,7 +201,7 @@ class DriftPantryRepository implements PantryRepository {
         query = _db.select(_db.consumptionLogs)
           ..where((t) => t.isDeleted.equals(false))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]);
-    return query.watch().map(
+    return query.watch().distinctRows().map(
           (List<ConsumptionLogRow> rows) => rows.map(_log).toList(),
         );
   }
@@ -1510,3 +1527,10 @@ class DriftPantryRepository implements PantryRepository {
     });
   }
 }
+
+/// The raw rows behind [DriftPantryRepository.watchItems].
+typedef _ItemRows = ({
+  List<ItemRow> items,
+  List<BatchRow> batches,
+  List<AliasRow> aliases,
+});

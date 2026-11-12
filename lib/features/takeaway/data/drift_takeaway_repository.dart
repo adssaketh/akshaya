@@ -6,6 +6,7 @@ import '../../pantry/data/database/app_database.dart';
 import '../domain/food_estimate.dart';
 import '../domain/takeaway_models.dart';
 import '../domain/takeaway_repository.dart';
+import '../../../core/util/distinct_rows.dart';
 
 /// [TakeawayRepository] backed by the local Drift database.
 ///
@@ -51,7 +52,7 @@ class DriftTakeawayRepository implements TakeawayRepository {
   Stream<List<TakeawayMeal>> watchAll() {
     final SimpleSelectStatement<$TakeawayMealsTable, TakeawayRow> query =
         _db.select(_db.takeawayMeals)..where((t) => t.isDeleted.equals(false));
-    return query.watch().map((List<TakeawayRow> rows) {
+    return query.watch().distinctRows().map((List<TakeawayRow> rows) {
       final List<TakeawayMeal> out = <TakeawayMeal>[];
       for (final TakeawayRow row in rows) {
         final TakeawayMeal? meal = _meal(row);

@@ -248,13 +248,8 @@ class _PantryList extends ConsumerWidget {
     final bool compact = view.mode == PantryViewMode.compact;
 
     // Zoom in List and Compact: the text in every row grows or shrinks.
-    final MediaQueryData media = MediaQuery.of(context);
-    final double base = media.textScaler.scale(1);
-
-    return MediaQuery(
-      data: media.copyWith(
-        textScaler: TextScaler.linear(base * view.textFactor),
-      ),
+    return _TextZoom(
+      factor: view.textFactor,
       child: ListView.builder(
         padding: padding,
         itemCount: rows.length,
@@ -678,6 +673,29 @@ class _SwipeBackground extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Multiplies the phone's text size by [factor] for [child].
+///
+/// A widget of its own so that only this small wrapper depends on the whole
+/// MediaQuery. When the keyboard slides in, MediaQuery changes on every frame
+/// of the slide; the list itself is passed in as [child] and is not rebuilt
+/// each time.
+class _TextZoom extends StatelessWidget {
+  const _TextZoom({required this.factor, required this.child});
+
+  final double factor;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final MediaQueryData media = MediaQuery.of(context);
+    final double base = media.textScaler.scale(1);
+    return MediaQuery(
+      data: media.copyWith(textScaler: TextScaler.linear(base * factor)),
+      child: child,
     );
   }
 }

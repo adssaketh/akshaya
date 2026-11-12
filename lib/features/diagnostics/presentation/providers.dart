@@ -9,6 +9,8 @@ import '../../alerts/domain/alert_settings.dart';
 import '../../alerts/presentation/providers.dart';
 import '../../pantry/data/database/app_database.dart';
 import '../../pantry/presentation/providers.dart' show appDatabaseProvider;
+import '../../settings/domain/app_settings.dart';
+import '../../settings/presentation/providers.dart' show appSettingsProvider;
 import '../../sync/domain/sync_models.dart';
 import '../../sync/presentation/providers.dart';
 
@@ -46,6 +48,7 @@ final FutureProvider<List<MapEntry<String, String>>> diagStateProvider =
   final AiSettings ai = ref.watch(aiSettingsProvider);
   final AiUsage usage = ref.watch(aiUsageProvider);
   final SyncStatusInfo? sync = ref.watch(syncStatusProvider).value;
+  final AppSettings look = ref.watch(appSettingsProvider);
 
   final List<MapEntry<String, String>> rows = <MapEntry<String, String>>[
     MapEntry<String, String>('Database version', '${db.schemaVersion}'),
@@ -92,6 +95,17 @@ final FutureProvider<List<MapEntry<String, String>>> diagStateProvider =
         sync == null
             ? 'unknown'
             : '${sync.phase.name}, ${sync.pending} waiting to send',
+      ),
+    )
+    ..add(
+      // These decide how much drawing each frame costs, so a report about
+      // slowness needs them.
+      MapEntry<String, String>(
+        'Look',
+        'animations ${look.animations ? 'on' : 'off'}, '
+            'bar ${look.barStyle.key}'
+            '${look.barStyle == BarStyle.glass ? ' (blur ${look.glassBlur.key})' : ''}, '
+            'edge ${look.edgeEffect.key}',
       ),
     );
   return rows;

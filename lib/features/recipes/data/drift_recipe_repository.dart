@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../pantry/data/database/app_database.dart';
 import '../domain/recipe_models.dart';
 import '../domain/recipe_repository.dart';
+import '../../../core/util/distinct_rows.dart';
 
 /// [RecipeRepository] backed by the local Drift database.
 ///
@@ -58,7 +59,7 @@ class DriftRecipeRepository implements RecipeRepository {
         _db.select(_db.savedRecipes)
           ..where((t) => t.isDeleted.equals(false))
           ..orderBy([(t) => OrderingTerm.desc(t.savedAt)]);
-    return query.watch().map((List<SavedRecipeRow> rows) {
+    return query.watch().distinctRows().map((List<SavedRecipeRow> rows) {
       final List<SavedRecipe> out = <SavedRecipe>[];
       for (final SavedRecipeRow row in rows) {
         final SavedRecipe? saved = _saved(row);

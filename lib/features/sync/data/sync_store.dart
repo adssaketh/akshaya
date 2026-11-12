@@ -134,6 +134,15 @@ class SyncStore {
     return _db.customStatement(sql, args);
   }
 
+  /// Runs an UPDATE and returns how many rows it changed. Announces nothing;
+  /// the caller decides which tables to announce.
+  Future<int> _update(String sql, [List<Object?> args = const <Object?>[]]) {
+    return _db.customUpdate(
+      sql,
+      variables: <Variable<Object>>[for (final Object? a in args) _bind(a)],
+    );
+  }
+
   void _notify(Iterable<String> tables) {
     _db.notifyUpdates(<TableUpdate>{
       for (final String table in tables) TableUpdate(table),
@@ -213,15 +222,25 @@ class SyncStore {
 
   /// Marks every row that belongs to no household (or to another one) as
   /// pending under [householdId], so it is uploaded.
+  ///
+  /// This runs at the start of every sync. Only tables where rows actually
+  /// changed are announced: announcing all of them re-ran every watched query
+  /// and rebuilt every screen on each sync, even when nothing had changed.
   Future<void> assignHousehold(String householdId) async {
+    final List<String> changed = <String>[];
     for (final SyncTableSpec spec in SyncSchema.tables) {
-      await _exec(
+      final int rows = await _update(
         'UPDATE ${spec.table} SET household_id = ?, sync_status = \'pending\' '
         'WHERE household_id IS NULL OR household_id <> ?',
         <Object?>[householdId, householdId],
       );
+      if (rows > 0) {
+        changed.add(spec.table);
+      }
     }
-    _notify(<String>[for (final SyncTableSpec s in SyncSchema.tables) s.table]);
+    if (changed.isNotEmpty) {
+      _notify(changed);
+    }
   }
 
   /// Up to [limit] rows of [spec] waiting to be sent, oldest first.
@@ -586,6 +605,25 @@ class SyncStore {
   // ---------------------------------------------------------------------
 
   Future<void> replaceMembers(List<Member> members) async {
+    // The member list arrives on every start and every listener restart, and
+    // almost never changes; rewriting it each time woke every screen that
+    // shows member names.
+    final List<Map<String, Object?>> stored = await _query(
+      'SELECT user_id, display_name, role FROM household_members',
+    );
+    String key(Object? id, Object? name, Object? role) => '$id\u0000$name\u0000$role';
+    final Set<String> before = <String>{
+      for (final Map<String, Object?> r in stored)
+        key(r['user_id'], r['display_name'], r['role']),
+    };
+    final Set<String> after = <String>{
+      for (final Member m in members) key(m.userId, m.displayName, m.role.name),
+    };
+    if (stored.length == members.length &&
+        before.length == after.length &&
+        before.containsAll(after)) {
+      return;
+    }
     await _db.transaction<void>(() async {
       await _exec('DELETE FROM household_members');
       for (final Member member in members) {

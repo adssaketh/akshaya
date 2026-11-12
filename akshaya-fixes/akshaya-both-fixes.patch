@@ -1,0 +1,238 @@
+diff --git a/lib/features/pantry/data/drift_pantry_repository.dart b/lib/features/pantry/data/drift_pantry_repository.dart
+index 9590ee9..0ef50fa 100644
+--- a/lib/features/pantry/data/drift_pantry_repository.dart
++++ b/lib/features/pantry/data/drift_pantry_repository.dart
+@@ -985,6 +985,65 @@ class DriftPantryRepository implements PantryRepository {
+     return value == null ? null : dateOnly(value);
+   }
+ 
++  /// Fixing a batch to show more left than before usually means a use was
++  /// logged too large (200 g typed instead of 150 g). What was bought minus
++  /// what is left is what was really taken, so when the logged uses add up to
++  /// more than that, the newest "used" and "cooked" entries are cut down (or
++  /// removed) to match. That keeps the Usage history and the eating report in
++  /// step with the stock. Wasted, expired and given-away entries are never
++  /// changed.
++  Future<void> _trimOverLoggedUse({
++    required String batchId,
++    required double bought,
++    required double left,
++    required DateTime now,
++  }) async {
++    final List<ConsumptionLogRow> logs = await (_db.select(_db.consumptionLogs)
++          ..where((t) => t.batchId.equals(batchId) & t.isDeleted.equals(false)))
++        .get();
++    double logged = 0;
++    final List<ConsumptionLogRow> trimmable = <ConsumptionLogRow>[];
++    for (final ConsumptionLogRow log in logs) {
++      if (log.type == ConsumptionType.adjustment || log.quantityUsed <= 0) {
++        continue;
++      }
++      logged += log.quantityUsed;
++      if (log.type == ConsumptionType.used ||
++          log.type == ConsumptionType.cookedInRecipe) {
++        trimmable.add(log);
++      }
++    }
++    double excess = roundQty(logged - roundQty(bought - left));
++    if (excess <= 0 || isZeroQty(excess)) {
++      return;
++    }
++    trimmable.sort((ConsumptionLogRow a, ConsumptionLogRow b) {
++      final int byDate = b.date.compareTo(a.date);
++      return byDate != 0 ? byDate : b.createdAt.compareTo(a.createdAt);
++    });
++    for (final ConsumptionLogRow log in trimmable) {
++      if (excess <= 0 || isZeroQty(excess)) {
++        break;
++      }
++      final bool removeAll =
++          log.quantityUsed <= excess || isZeroQty(log.quantityUsed - excess);
++      final double newQty =
++          removeAll ? log.quantityUsed : roundQty(log.quantityUsed - excess);
++      await (_db.update(_db.consumptionLogs)
++            ..where((t) => t.id.equals(log.id)))
++          .write(
++        ConsumptionLogsCompanion(
++          quantityUsed: Value<double>(newQty),
++          isDeleted: Value<bool>(removeAll),
++          updatedAt: Value<DateTime>(now),
++          updatedBy: Value<String?>(_userId),
++          syncStatus: const Value<SyncStatus>(SyncStatus.pending),
++        ),
++      );
++      excess = roundQty(excess - log.quantityUsed);
++    }
++  }
++
+   @override
+   Future<StockBatch> updateBatch(StockBatch batch) {
+     return _db.transaction<StockBatch>(() async {
+@@ -1012,6 +1071,15 @@ class DriftPantryRepository implements PantryRepository {
+       final String? container = _cleanOptional(batch.containerLabel);
+       final DateTime? checkBy = _dateOrNull(batch.checkBy);
+ 
++      if (left > roundQty(existing.quantityRemaining)) {
++        await _trimOverLoggedUse(
++          batchId: batch.id,
++          bought: bought,
++          left: left,
++          now: now,
++        );
++      }
++
+       await (_db.update(_db.stockBatches)
+             ..where((t) => t.id.equals(batch.id)))
+           .write(
+diff --git a/lib/features/report/domain/report_bundle.dart b/lib/features/report/domain/report_bundle.dart
+index 143b626..a3cf529 100644
+--- a/lib/features/report/domain/report_bundle.dart
++++ b/lib/features/report/domain/report_bundle.dart
+@@ -70,7 +70,12 @@ ReportBundle buildReportBundle({
+     comparison: previous.isEmpty
+         ? const ReportComparison()
+         : compareReports(report, previous),
+-    streak: loggingStreak(history, today),
++    // Only food that is still in the app counts, the same as in the report
++    // itself, so removing a wrongly added item also removes its day.
++    streak: loggingStreak(<ConsumptionEntry>[
++      for (final ConsumptionEntry e in history)
++        if (itemsById.containsKey(e.itemId)) e,
++    ], today),
+     ideas: suggestMealIdeas(
+       stocks: stocks,
+       missing: report.missing,
+diff --git a/test/features/pantry/data/drift_pantry_repository_test.dart b/test/features/pantry/data/drift_pantry_repository_test.dart
+index 7c52bdc..23be181 100644
+--- a/test/features/pantry/data/drift_pantry_repository_test.dart
++++ b/test/features/pantry/data/drift_pantry_repository_test.dart
+@@ -9,6 +9,8 @@ import 'package:drift/drift.dart' show driftRuntimeOptions;
+ import 'package:drift/native.dart';
+ import 'package:flutter_test/flutter_test.dart';
+ 
++import '../domain/test_data.dart';
++
+ void main() {
+   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+ 
+@@ -181,4 +183,72 @@ void main() {
+     final Item again = await repo.addItem(rice());
+     expect(again.id, isNot(item.id));
+   });
++
++  group('fixing a batch after a use was logged too large', () {
++    Future<(Item, StockBatch)> paneerUsed(double used) async {
++      final Item item = await repo.addItem(
++        const ItemDraft(
++          name: 'Paneer',
++          categoryId: 'cat_dairy',
++          defaultUnit: Unit.g,
++        ),
++      );
++      final StockBatch b = await repo.addBatch(batch(item.id, 200, unit: Unit.g));
++      await repo.useStock(itemId: item.id, quantity: used, unit: Unit.g);
++      return (item, b);
++    }
++
++    StockBatch edited(Item item, StockBatch b, double remaining) => makeBatch(
++      id: b.id,
++      itemId: item.id,
++      bought: 200,
++      remaining: remaining,
++      unit: Unit.g,
++      purchase: DateTime(2026, 11, 1),
++    );
++
++    Future<double> loggedUse() async {
++      final List<ConsumptionEntry> all = await repo.watchAllHistory().first;
++      return all.fold<double>(0, (double sum, ConsumptionEntry e) => sum + e.quantityUsed);
++    }
++
++    test('150 g left as 50 g trims a 200 g use to 150 g', () async {
++      final (Item item, StockBatch b) = await paneerUsed(200);
++      await repo.updateBatch(edited(item, b, 50));
++      expect(await loggedUse(), 150);
++      expect((await load(item.id)).batches.single.quantityRemaining, 50);
++    });
++
++    test('putting everything back removes the use entry', () async {
++      final (Item item, StockBatch b) = await paneerUsed(200);
++      await repo.updateBatch(edited(item, b, 200));
++      expect(await repo.watchAllHistory().first, isEmpty);
++    });
++
++    test('an edit that does not raise the amount left leaves logs alone', () async {
++      final (Item item, StockBatch b) = await paneerUsed(150);
++      await repo.updateBatch(edited(item, b, 50));
++      expect(await loggedUse(), 150);
++      await repo.updateBatch(edited(item, b, 20));
++      expect(await loggedUse(), 150);
++    });
++
++    test('wasted entries are never trimmed', () async {
++      final (Item item, StockBatch b) = await paneerUsed(100);
++      await repo.useStock(
++        itemId: item.id,
++        quantity: 50,
++        unit: Unit.g,
++        type: ConsumptionType.wasted,
++      );
++      await repo.updateBatch(edited(item, b, 150));
++      final List<ConsumptionEntry> all = await repo.watchAllHistory().first;
++      expect(all.where((ConsumptionEntry e) => e.type == ConsumptionType.used), isEmpty);
++      expect(
++        all.single.type,
++        ConsumptionType.wasted,
++      );
++      expect(all.single.quantityUsed, 50);
++    });
++  });
+ }
+diff --git a/test/features/report/domain/report_bundle_test.dart b/test/features/report/domain/report_bundle_test.dart
+new file mode 100644
+index 0000000..aa9d155
+--- /dev/null
++++ b/test/features/report/domain/report_bundle_test.dart
+@@ -0,0 +1,42 @@
++import 'package:akshaya/features/pantry/domain/entities.dart';
++import 'package:akshaya/features/pantry/domain/stock_logic.dart';
++import 'package:akshaya/features/pantry/domain/unit.dart';
++import 'package:akshaya/features/report/domain/report_bundle.dart';
++import 'package:akshaya/features/report/domain/report_models.dart';
++import 'package:flutter_test/flutter_test.dart';
++
++import '../presentation/report_test_data.dart';
++
++ReportBundle _bundle(List<ConsumptionEntry> history) {
++  return buildReportBundle(
++    period: ReportPeriod.week,
++    today: reportToday,
++    history: history,
++    itemsById: <String, Item>{
++      for (final ItemStock s in reportStocks) s.item.id: s.item,
++    },
++    people: 2,
++    vegetarian: true,
++    stocks: reportStocks,
++  );
++}
++
++void main() {
++  group('an item that was removed from the app', () {
++    test('no longer counts towards the report or the streak', () {
++      final ReportBundle b = _bundle(<ConsumptionEntry>[
++        reportUsed('removed-item', 500, Unit.g),
++      ]);
++      expect(b.report.isEmpty, isTrue);
++      expect(b.streak, 0);
++    });
++
++    test('a day still counts when other food was used that day', () {
++      final ReportBundle b = _bundle(<ConsumptionEntry>[
++        reportUsed('removed-item', 500, Unit.g),
++        reportUsed('rice', 300, Unit.g),
++      ]);
++      expect(b.streak, 1);
++    });
++  });
++}

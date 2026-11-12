@@ -14,6 +14,7 @@ import '../../pantry/domain/unit.dart';
 import '../domain/shopping_entities.dart';
 import '../domain/shopping_enums.dart';
 import '../domain/shopping_repository.dart';
+import '../../../core/util/distinct_rows.dart';
 
 /// [ShoppingRepository] backed by the local Drift database.
 ///
@@ -82,7 +83,7 @@ class DriftShoppingRepository implements ShoppingRepository {
             (t) => OrderingTerm.asc(t.sortOrder),
             (t) => OrderingTerm.asc(t.createdAt),
           ]);
-    return query.watch().map(
+    return query.watch().distinctRows().map(
           (List<ShoppingListRow> rows) => rows.map(_list).toList(),
         );
   }
@@ -93,7 +94,7 @@ class DriftShoppingRepository implements ShoppingRepository {
         query = _db.select(_db.shoppingEntries)
           ..where((t) => t.isDeleted.equals(false))
           ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
-    return query.watch().map(
+    return query.watch().distinctRows().map(
           (List<ShoppingEntryRow> rows) => rows.map(_entry).toList(),
         );
   }

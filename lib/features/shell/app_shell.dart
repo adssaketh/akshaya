@@ -76,6 +76,30 @@ class _AppShellState extends ConsumerState<AppShell> {
     }
   }
 
+  /// The five tab pages, made once. A tab change rebuilds the shell; handing
+  /// it the very same page widgets lets Flutter skip rebuilding the pages
+  /// themselves (new callbacks on every build rebuilt the whole Home screen on
+  /// each tap).
+  late final List<Widget> _pages = <Widget>[
+    HomeScreen(
+      onShowPantry: _showPantry,
+      onShowShopping: _showShopping,
+      onShowRecipes: _showRecipes,
+    ),
+    const PantryScreen(),
+    const ShoppingScreen(),
+    const RecipesScreen(),
+    const SettingsScreen(),
+  ];
+
+  /// Kept for the life of the shell: a new key on each build would make every
+  /// blur below rebuild with it.
+  final BackdropKey _backdropKey = BackdropKey();
+
+  void _showShopping() => setState(() => _index = _shoppingTab);
+
+  void _showRecipes() => setState(() => _index = _recipesTab);
+
   @override
   void dispose() {
     _barCovered.dispose();
@@ -241,7 +265,11 @@ class _AppShellState extends ConsumerState<AppShell> {
     // background, for the eating report.
     ref.watch(pantryEstimateWatcherProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measureBar());
-    return NavBarScope(
+    // One shared copy of the screen behind every blur (the glass bar and the
+    // scroll edge bands), instead of one copy each on every frame.
+    return BackdropGroup(
+      backdropKey: _backdropKey,
+      child: NavBarScope(
       covered: _barCovered,
       child: Scaffold(
       // The tabs run behind the floating bar, so nothing is cut off in a
@@ -257,17 +285,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             Diag.info('nav', 'Tab ${_tabNames[i]} (swipe)');
             setState(() => _index = i);
           },
-          children: <Widget>[
-            HomeScreen(
-              onShowPantry: _showPantry,
-              onShowShopping: () => setState(() => _index = _shoppingTab),
-              onShowRecipes: () => setState(() => _index = _recipesTab),
-            ),
-            const PantryScreen(),
-            const ShoppingScreen(),
-            const RecipesScreen(),
-            const SettingsScreen(),
-          ],
+          children: _pages,
         ),
       ),
       bottomNavigationBar: AkshayaNavBar(
@@ -306,6 +324,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             label: 'Settings',
           ),
         ],
+      ),
       ),
       ),
     );

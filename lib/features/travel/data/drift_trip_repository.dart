@@ -5,6 +5,7 @@ import '../../../core/util/date_only.dart';
 import '../../pantry/data/database/app_database.dart';
 import '../domain/trip_models.dart';
 import '../domain/trip_repository.dart';
+import '../../../core/util/distinct_rows.dart';
 
 /// [TripRepository] backed by the local Drift database.
 ///
@@ -51,7 +52,7 @@ class DriftTripRepository implements TripRepository {
   Stream<List<Trip>> watchAll() {
     final SimpleSelectStatement<$TripsTable, TripRow> query =
         _db.select(_db.trips)..where((t) => t.isDeleted.equals(false));
-    return query.watch().map((List<TripRow> rows) {
+    return query.watch().distinctRows().map((List<TripRow> rows) {
       final List<Trip> out = <Trip>[];
       for (final TripRow row in rows) {
         final Trip? trip = _trip(row);
